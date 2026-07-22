@@ -11,7 +11,6 @@ st.set_page_config(page_title="NMC Health Dashboard", layout="wide")
 # --- 1. PASSWORD PROTECTION ---
 def check_password():
     def password_entered():
-        # Temporary password testing ke liye "nagpurhealth" rakha hai
         if st.session_state["password"] == "nagpurhealth": 
             st.session_state["password_correct"] = True
             del st.session_state["password"]
@@ -33,7 +32,6 @@ if check_password():
     # --- 2. DATA LOAD & MERGE ---
     @st.cache_data(ttl=600)
     def load_all_data():
-        # A) Table.xlsx ko load karke Wards aur Zones ko map karna
         try:
             mapping_df = pd.read_excel('Table.xlsx')
             mapping_df.rename(columns={'name': 'Ward_Name', 'description': 'Zone'}, inplace=True)
@@ -41,7 +39,6 @@ if check_password():
             st.error("Table.xlsx file nahi mili ya format galat hai.")
             return None, None, None
 
-        # B) Google Sheet CSV link yahan daalein
         google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv" 
         
         try:
@@ -55,7 +52,6 @@ if check_password():
             st.warning("Google Sheet link update nahi hua hai. Dummy data load ho raha hai.")
             patient_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
 
-        # C) GeoJSON Load karna Map Boundaries ke liye
         try:
             with open('wards.geojson', encoding='utf-8') as f:
                 geo_data = json.load(f)
@@ -73,35 +69,20 @@ if check_password():
         
         filtered_df = patient_df.copy()
         
-        # 0. SABSE UPAR: 2 Different Dates (From and To) in DD/MM/YYYY
         if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
             min_date = filtered_df['Date'].min().date()
             max_date = filtered_df['Date'].max().date()
             
             st.sidebar.markdown("**Date Window (DD/MM/YYYY)**")
             
-            # Sidebar ko 2 columns me divide kiya taaki From aur To aamne-saamne achhe dikhein
             col1, col2 = st.sidebar.columns(2)
             
             with col1:
-                start_date = st.date_input(
-                    "From",
-                    value=min_date,
-                    min_value=min_date,
-                    max_value=max_date,
-                    format="DD/MM/YYYY"
-                )
+                start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY")
                 
             with col2:
-                end_date = st.date_input(
-                    "To",
-                    value=max_date,
-                    min_value=min_date,
-                    max_value=max_date,
-                    format="DD/MM/YYYY"
-                )
+                end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY")
             
-            # Date filter apply karne ka logic (with error handling agar end date start se pehle ho)
             if start_date > end_date:
                 st.sidebar.error("Error: 'To' date 'From' date se aage ki honi chahiye.")
             else:
@@ -109,7 +90,6 @@ if check_password():
         else:
             st.sidebar.warning("Data me valid 'Date' column nahi hai.")
 
-        # 1. Disease Filter
         if 'Disease' in filtered_df.columns:
             disease_options = ["All"] + list(filtered_df['Disease'].dropna().unique())
         else:
@@ -121,7 +101,6 @@ if check_password():
         if selected_disease != "All":
             filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
 
-        # 2. Zone Filter
         zones_list = ["All"] + list(mapping_df['Zone'].dropna().unique())
         selected_zone = st.sidebar.selectbox("Select Zone", zones_list)
 
@@ -131,7 +110,6 @@ if check_password():
         else:
             wards_list = ["All"] + list(mapping_df['Ward_Name'].dropna().unique())
 
-        # 3. Ward Filter 
         selected_ward = st.sidebar.selectbox("Select Ward", wards_list)
         
         if selected_ward != "All":
@@ -142,13 +120,18 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP GENERATION (Clustering + Boundaries + Popups) ---
+        # --- 5. MAP GENERATION ---
         st.markdown("### 📍 Patients Map (Click on Boundaries & Zoom for Clustering)")
         
         if not filtered_df.empty and 'Lat' in filtered_df.columns and 'Long' in filtered_df.columns and geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
             
+            # Cases count karna (ward aur zone ke hisaab se)
+            ward_counts = filtered_df['Ward_Name'].value_counts().to_dict()
+            zone_counts = filtered_df['Zone'].value_counts().to_dict()
+            
             zone_dict = dict(zip(mapping_df['Ward_Name'], mapping_df['Zone']))
+            
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 raw_zone = zone_dict.get(raw_ward, 'Unknown Zone')
@@ -156,9 +139,15 @@ if check_password():
                 clean_zone = str(raw_zone).replace("Zone No. ", "").replace("Zone No.", "").replace("Zone No ", "").strip()
                 clean_ward = str(raw_ward).replace("Prabhag No. ", "").replace("Prabhag No.", "").replace("Prabhag No ", "").strip()
                 
+                # Zone aur Prabhag set karna
                 feature['properties']['Clean_Ward'] = clean_ward
                 feature['properties']['Clean_Zone'] = clean_zone
+                
+                # NAYE CHANGES: Cases ka count properties me add karna
+                feature['properties']['Ward_Cases'] = ward_counts.get(raw_ward, 0)
+                feature['properties']['Zone_Cases'] = zone_counts.get(raw_zone, 0)
 
+            # Map Boundaries + Custom Popup
             folium.GeoJson(
                 geo_data,
                 style_function=lambda x: {
@@ -168,8 +157,9 @@ if check_password():
                     'fillColor': '#3388ff'
                 },
                 popup=folium.features.GeoJsonPopup(
-                    fields=['Clean_Zone', 'Clean_Ward'],
-                    aliases=['📍 Zone:', '🏢 Prabhag:'],
+                    # Fields ko yaha map kiya hai jo upar add kiye the
+                    fields=['Clean_Zone', 'Clean_Ward', 'Zone_Cases', 'Ward_Cases'],
+                    aliases=['📍 Zone:', '🏢 Prabhag:', '📊 Total Cases in Zone:', '📈 Total Cases in Prabhag:'],
                     labels=True,
                     style="font-family: Arial; font-size: 14px; font-weight: bold;"
                 )
@@ -180,7 +170,7 @@ if check_password():
             for idx, row in filtered_df.iterrows():
                 date_str = "N/A"
                 if pd.notna(row.get('Date')):
-                    date_str = row['Date'].strftime('%d/%m/%Y') # Format updated to Indian Standard
+                    date_str = row['Date'].strftime('%d/%m/%Y') 
 
                 popup_text = f"""
                 <b>Date:</b> {date_str}<br>
@@ -206,6 +196,6 @@ if check_password():
         st.markdown("### 📋 Patient Details")
         display_df = filtered_df.copy()
         if 'Date' in display_df.columns:
-            display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') # Appliying Indian Standard format for DataFrame
+            display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
             
         st.dataframe(display_df)
