@@ -64,36 +64,42 @@ if check_password():
     patient_df, mapping_df, geo_data = load_all_data()
 
     if patient_df is not None:
-        # --- 3. SIDEBAR SMART FILTERS ---
         
-        # NAYA CHANGES: Filters header aur Reset button ko ek hi line me lane ka logic
-        col_header, col_reset = st.sidebar.columns([3, 1])
+        # Default dates set karne ke liye calculation
+        min_date, max_date = None, None
+        if 'Date' in patient_df.columns and not patient_df['Date'].dropna().empty:
+            min_date = patient_df['Date'].min().date()
+            max_date = patient_df['Date'].max().date()
+
+        # --- NAYA RESET FUNCTION ---
+        def clear_filters():
+            st.session_state['disease_filter'] = "All"
+            st.session_state['zone_filter'] = "All"
+            st.session_state['ward_filter'] = "All"
+            if min_date and max_date:
+                st.session_state['start_date'] = min_date
+                st.session_state['end_date'] = max_date
+
+        # --- 3. SIDEBAR SMART FILTERS ---
+        # Columns ratio change kiya taaki Reset button ka text na toote [5, 3 ratio]
+        col_header, col_reset = st.sidebar.columns([5, 3])
         with col_header:
             st.markdown("### Filters 🔍")
         with col_reset:
-            if st.button("Reset", help="Clear all filters"):
-                # Ye loop saare filters ki state clear kar dega
-                for key in ['start_date', 'end_date', 'disease_filter', 'zone_filter', 'ward_filter']:
-                    if key in st.session_state:
-                        del st.session_state[key]
-                st.rerun() # App ko wapas refresh karna
+            # on_click call karke properly function trigger hoga
+            st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
         
         filtered_df = patient_df.copy()
         
-        if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
-            min_date = filtered_df['Date'].min().date()
-            max_date = filtered_df['Date'].max().date()
-            
+        if min_date and max_date:
             st.sidebar.markdown("**Date Window (DD/MM/YYYY)**")
             
             col1, col2 = st.sidebar.columns(2)
             
             with col1:
-                # Key add kiya taaki reset kaam kare
                 start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
                 
             with col2:
-                # Key add kiya taaki reset kaam kare
                 end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
             
             if start_date > end_date:
@@ -109,14 +115,12 @@ if check_password():
             disease_options = ["All"]
             st.sidebar.warning("Sheet me 'Disease' column add nahi hua hai.")
             
-        # Key: disease_filter
         selected_disease = st.sidebar.selectbox("Select Disease", disease_options, key="disease_filter")
         
         if selected_disease != "All":
             filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
 
         zones_list = ["All"] + list(mapping_df['Zone'].dropna().unique())
-        # Key: zone_filter
         selected_zone = st.sidebar.selectbox("Select Zone", zones_list, key="zone_filter")
 
         if selected_zone != "All":
@@ -125,7 +129,6 @@ if check_password():
         else:
             wards_list = ["All"] + list(mapping_df['Ward_Name'].dropna().unique())
 
-        # Key: ward_filter
         selected_ward = st.sidebar.selectbox("Select Ward", wards_list, key="ward_filter")
         
         if selected_ward != "All":
