@@ -126,26 +126,46 @@ if check_password():
         if not filtered_df.empty and 'Lat' in filtered_df.columns and 'Long' in filtered_df.columns and geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
             
-            # Cases count karna (ward aur zone ke hisaab se)
-            ward_counts = filtered_df['Ward_Name'].value_counts().to_dict()
-            zone_counts = filtered_df['Zone'].value_counts().to_dict()
+            # --- NAYA ROBUST MATCHING LOGIC ---
+            # Ek function jo extra words aur float (jaise 13.0) ko hata kar saaf naam dega
+            def clean_str(val):
+                if pd.isna(val): return "Unknown"
+                val = str(val)
+                if val.endswith('.0'): val = val[:-2] # Excel format fix
+                for remove_word in ["Zone No. ", "Zone No.", "Zone No ", "Prabhag No. ", "Prabhag No.", "Prabhag No "]:
+                    val = val.replace(remove_word, "")
+                return val.strip()
+
+            # 1. Cleaned Mapping Dictionary 
+            zone_dict = {clean_str(w): clean_str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
             
-            zone_dict = dict(zip(mapping_df['Ward_Name'], mapping_df['Zone']))
-            
+            # 2. Cleaned Ward Counts Dictionary (Sheet ke cases ginna)
+            clean_ward_counts = {}
+            for w, count in filtered_df['Ward_Name'].value_counts().items():
+                clean_w = clean_str(w)
+                clean_ward_counts[clean_w] = clean_ward_counts.get(clean_w, 0) + count
+                
+            # 3. Cleaned Zone Counts Dictionary
+            clean_zone_counts = {}
+            for z, count in filtered_df['Zone'].value_counts().items():
+                clean_z = clean_str(z)
+                clean_zone_counts[clean_z] = clean_zone_counts.get(clean_z, 0) + count
+            # ------------------------------------
+
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
-                raw_zone = zone_dict.get(raw_ward, 'Unknown Zone')
                 
-                clean_zone = str(raw_zone).replace("Zone No. ", "").replace("Zone No.", "").replace("Zone No ", "").strip()
-                clean_ward = str(raw_ward).replace("Prabhag No. ", "").replace("Prabhag No.", "").replace("Prabhag No ", "").strip()
+                # GeoJSON ke naam ko bhi usi tareeqe se saaf karna
+                clean_ward = clean_str(raw_ward)
+                # Zone ab exactly match hokar aayega (Unknown Zone wali problem khatam)
+                clean_zone = zone_dict.get(clean_ward, 'Unknown Zone')
                 
-                # Zone aur Prabhag set karna
                 feature['properties']['Clean_Ward'] = clean_ward
                 feature['properties']['Clean_Zone'] = clean_zone
                 
-                # NAYE CHANGES: Cases ka count properties me add karna
-                feature['properties']['Ward_Cases'] = ward_counts.get(raw_ward, 0)
-                feature['properties']['Zone_Cases'] = zone_counts.get(raw_zone, 0)
+                # NAYE CHANGES: Properly matched cases add ho rahe hain
+                feature['properties']['Ward_Cases'] = clean_ward_counts.get(clean_ward, 0)
+                feature['properties']['Zone_Cases'] = clean_zone_counts.get(clean_zone, 0)
 
             # Map Boundaries + Custom Popup
             folium.GeoJson(
@@ -157,7 +177,6 @@ if check_password():
                     'fillColor': '#3388ff'
                 },
                 popup=folium.features.GeoJsonPopup(
-                    # Fields ko yaha map kiya hai jo upar add kiye the
                     fields=['Clean_Zone', 'Clean_Ward', 'Zone_Cases', 'Ward_Cases'],
                     aliases=['📍 Zone:', '🏢 Prabhag:', '📊 Total Cases in Zone:', '📈 Total Cases in Prabhag:'],
                     labels=True,
