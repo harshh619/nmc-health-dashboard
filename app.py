@@ -65,13 +65,11 @@ if check_password():
 
     if patient_df is not None:
         
-        # Default dates set karne ke liye calculation
         min_date, max_date = None, None
         if 'Date' in patient_df.columns and not patient_df['Date'].dropna().empty:
             min_date = patient_df['Date'].min().date()
             max_date = patient_df['Date'].max().date()
 
-        # --- NAYA RESET FUNCTION ---
         def clear_filters():
             st.session_state['disease_filter'] = "All"
             st.session_state['zone_filter'] = "All"
@@ -81,12 +79,10 @@ if check_password():
                 st.session_state['end_date'] = max_date
 
         # --- 3. SIDEBAR SMART FILTERS ---
-        # Columns ratio change kiya taaki Reset button ka text na toote [5, 3 ratio]
         col_header, col_reset = st.sidebar.columns([5, 3])
         with col_header:
             st.markdown("### Filters 🔍")
         with col_reset:
-            # on_click call karke properly function trigger hoga
             st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
         
         filtered_df = patient_df.copy()
@@ -110,7 +106,9 @@ if check_password():
             st.sidebar.warning("Data me valid 'Date' column nahi hai.")
 
         if 'Disease' in filtered_df.columns:
-            disease_options = ["All"] + list(filtered_df['Disease'].dropna().unique())
+            # Disease ko bhi alphabetically sort kar diya
+            raw_diseases = filtered_df['Disease'].dropna().unique()
+            disease_options = ["All"] + sorted([str(x) for x in raw_diseases])
         else:
             disease_options = ["All"]
             st.sidebar.warning("Sheet me 'Disease' column add nahi hua hai.")
@@ -120,14 +118,21 @@ if check_password():
         if selected_disease != "All":
             filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
 
-        zones_list = ["All"] + list(mapping_df['Zone'].dropna().unique())
+        # --- NAYA CHANGES: Sorting Zones and Wards ---
+        # Zone list ko alphabetically sort karna
+        raw_zones = mapping_df['Zone'].dropna().unique()
+        zones_list = ["All"] + sorted([str(x) for x in raw_zones])
+        
         selected_zone = st.sidebar.selectbox("Select Zone", zones_list, key="zone_filter")
 
+        # Ward list ko alphabetically sort karna
         if selected_zone != "All":
             filtered_df = filtered_df[filtered_df['Zone'] == selected_zone]
-            wards_list = ["All"] + list(mapping_df[mapping_df['Zone'] == selected_zone]['Ward_Name'].dropna().unique())
+            raw_wards = mapping_df[mapping_df['Zone'] == selected_zone]['Ward_Name'].dropna().unique()
         else:
-            wards_list = ["All"] + list(mapping_df['Ward_Name'].dropna().unique())
+            raw_wards = mapping_df['Ward_Name'].dropna().unique()
+            
+        wards_list = ["All"] + sorted([str(x) for x in raw_wards])
 
         selected_ward = st.sidebar.selectbox("Select Ward", wards_list, key="ward_filter")
         
