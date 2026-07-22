@@ -65,7 +65,18 @@ if check_password():
 
     if patient_df is not None:
         # --- 3. SIDEBAR SMART FILTERS ---
-        st.sidebar.header("Filters 🔍")
+        
+        # NAYA CHANGES: Filters header aur Reset button ko ek hi line me lane ka logic
+        col_header, col_reset = st.sidebar.columns([3, 1])
+        with col_header:
+            st.markdown("### Filters 🔍")
+        with col_reset:
+            if st.button("Reset", help="Clear all filters"):
+                # Ye loop saare filters ki state clear kar dega
+                for key in ['start_date', 'end_date', 'disease_filter', 'zone_filter', 'ward_filter']:
+                    if key in st.session_state:
+                        del st.session_state[key]
+                st.rerun() # App ko wapas refresh karna
         
         filtered_df = patient_df.copy()
         
@@ -78,10 +89,12 @@ if check_password():
             col1, col2 = st.sidebar.columns(2)
             
             with col1:
-                start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY")
+                # Key add kiya taaki reset kaam kare
+                start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
                 
             with col2:
-                end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY")
+                # Key add kiya taaki reset kaam kare
+                end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
             
             if start_date > end_date:
                 st.sidebar.error("Error: 'To' date 'From' date se aage ki honi chahiye.")
@@ -96,13 +109,15 @@ if check_password():
             disease_options = ["All"]
             st.sidebar.warning("Sheet me 'Disease' column add nahi hua hai.")
             
-        selected_disease = st.sidebar.selectbox("Select Disease", disease_options)
+        # Key: disease_filter
+        selected_disease = st.sidebar.selectbox("Select Disease", disease_options, key="disease_filter")
         
         if selected_disease != "All":
             filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
 
         zones_list = ["All"] + list(mapping_df['Zone'].dropna().unique())
-        selected_zone = st.sidebar.selectbox("Select Zone", zones_list)
+        # Key: zone_filter
+        selected_zone = st.sidebar.selectbox("Select Zone", zones_list, key="zone_filter")
 
         if selected_zone != "All":
             filtered_df = filtered_df[filtered_df['Zone'] == selected_zone]
@@ -110,7 +125,8 @@ if check_password():
         else:
             wards_list = ["All"] + list(mapping_df['Ward_Name'].dropna().unique())
 
-        selected_ward = st.sidebar.selectbox("Select Ward", wards_list)
+        # Key: ward_filter
+        selected_ward = st.sidebar.selectbox("Select Ward", wards_list, key="ward_filter")
         
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
@@ -126,48 +142,38 @@ if check_password():
         if not filtered_df.empty and 'Lat' in filtered_df.columns and 'Long' in filtered_df.columns and geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
             
-            # --- NAYA ROBUST MATCHING LOGIC ---
-            # Ek function jo extra words aur float (jaise 13.0) ko hata kar saaf naam dega
             def clean_str(val):
                 if pd.isna(val): return "Unknown"
                 val = str(val)
-                if val.endswith('.0'): val = val[:-2] # Excel format fix
+                if val.endswith('.0'): val = val[:-2]
                 for remove_word in ["Zone No. ", "Zone No.", "Zone No ", "Prabhag No. ", "Prabhag No.", "Prabhag No "]:
                     val = val.replace(remove_word, "")
                 return val.strip()
 
-            # 1. Cleaned Mapping Dictionary 
             zone_dict = {clean_str(w): clean_str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
             
-            # 2. Cleaned Ward Counts Dictionary (Sheet ke cases ginna)
             clean_ward_counts = {}
             for w, count in filtered_df['Ward_Name'].value_counts().items():
                 clean_w = clean_str(w)
                 clean_ward_counts[clean_w] = clean_ward_counts.get(clean_w, 0) + count
                 
-            # 3. Cleaned Zone Counts Dictionary
             clean_zone_counts = {}
             for z, count in filtered_df['Zone'].value_counts().items():
                 clean_z = clean_str(z)
                 clean_zone_counts[clean_z] = clean_zone_counts.get(clean_z, 0) + count
-            # ------------------------------------
 
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 
-                # GeoJSON ke naam ko bhi usi tareeqe se saaf karna
                 clean_ward = clean_str(raw_ward)
-                # Zone ab exactly match hokar aayega (Unknown Zone wali problem khatam)
                 clean_zone = zone_dict.get(clean_ward, 'Unknown Zone')
                 
                 feature['properties']['Clean_Ward'] = clean_ward
                 feature['properties']['Clean_Zone'] = clean_zone
                 
-                # NAYE CHANGES: Properly matched cases add ho rahe hain
                 feature['properties']['Ward_Cases'] = clean_ward_counts.get(clean_ward, 0)
                 feature['properties']['Zone_Cases'] = clean_zone_counts.get(clean_zone, 0)
 
-            # Map Boundaries + Custom Popup
             folium.GeoJson(
                 geo_data,
                 style_function=lambda x: {
