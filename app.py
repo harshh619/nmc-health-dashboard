@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import json
 import folium
-from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
 
@@ -11,11 +10,9 @@ st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="
 # --- PROFESSIONAL LIGHTWEIGHT CSS STYLING ---
 st.markdown("""
     <style>
-        /* Main background & font styling */
         .main {
             background-color: #f8f9fa;
         }
-        /* Sidebar layout adjustments */
         section[data-testid="stSidebar"] div.block-container {
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
@@ -23,7 +20,6 @@ st.markdown("""
         section[data-testid="stSidebar"] .stElementContainer {
             margin-bottom: -8px !important;
         }
-        /* Professional Card look for metrics */
         div[data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #e0e0e0;
@@ -31,13 +27,11 @@ st.markdown("""
             border-radius: 8px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        /* Clean Subheaders */
         h3 {
             color: #1f2937;
             font-weight: 600;
             letter-spacing: -0.5px;
         }
-        /* Sidebar styling enhancement */
         section[data-testid="stSidebar"] {
             background-color: #f1f5f9;
             border-right: 1px solid #e2e8f0;
@@ -212,10 +206,10 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP GENERATION ---
-        st.markdown("### 📍 Patients Map (Density Heatmap & Clustering)")
+        # --- 5. MAP GENERATION (EXACT WARD-WISE COUNT SYNC) ---
+        st.markdown("### 📍 Patients Map (Choropleth Density & Exact Ward Counts)")
         
-        if not filtered_df.empty and 'Lat' in filtered_df.columns and 'Long' in filtered_df.columns and geo_data:
+        if geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
             
             def clean_ward_str(val):
@@ -229,14 +223,16 @@ if check_password():
             zone_dict = {clean_ward_str(w): str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
             
             clean_ward_counts = {}
-            for w, count in filtered_df['Ward_Name'].value_counts().items():
-                clean_w = clean_ward_str(w)
-                clean_ward_counts[clean_w] = clean_ward_counts.get(clean_w, 0) + count
+            if not filtered_df.empty:
+                for w, count in filtered_df['Ward_Name'].value_counts().items():
+                    clean_w = clean_ward_str(w)
+                    clean_ward_counts[clean_w] = clean_ward_counts.get(clean_w, 0) + count
                 
             clean_zone_counts = {}
-            for z, count in filtered_df['Zone'].value_counts().items():
-                clean_z = str(z)
-                clean_zone_counts[clean_z] = clean_zone_counts.get(clean_z, 0) + count
+            if not filtered_df.empty:
+                for z, count in filtered_df['Zone'].value_counts().items():
+                    clean_z = str(z)
+                    clean_zone_counts[clean_z] = clean_zone_counts.get(clean_z, 0) + count
 
             max_ward_cases = max(clean_ward_counts.values()) if clean_ward_counts else 1
 
@@ -254,17 +250,13 @@ if check_password():
 
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
-                
                 clean_ward = clean_ward_str(raw_ward)
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
-                formatted_zone = zone_name
-                formatted_ward = clean_ward
-                
                 ward_cases = clean_ward_counts.get(clean_ward, 0)
                 
-                feature['properties']['Clean_Ward'] = formatted_ward 
-                feature['properties']['Clean_Zone'] = formatted_zone
+                feature['properties']['Clean_Ward'] = clean_ward 
+                feature['properties']['Clean_Zone'] = zone_name
                 feature['properties']['Ward_Cases'] = ward_cases
                 feature['properties']['Zone_Cases'] = clean_zone_counts.get(zone_name, 0)
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
@@ -286,6 +278,7 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
+            # Choropleth Styled GeoJson layer with Exact Ward Count Tooltip
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -300,6 +293,12 @@ if check_password():
                     'fillColor': feature['properties']['fill_color'],
                     'fillOpacity': 0.85
                 },
+                tooltip=folium.features.GeoJsonTooltip(
+                    fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases'],
+                    aliases=['📍 Zone:', '🏢 Prabhag:', '📈 Exact Cases:'],
+                    labels=True,
+                    style="font-family: Arial; font-size: 13px; font-weight: bold; background: white; padding: 5px; border-radius: 4px;"
+                ),
                 popup=folium.features.GeoJsonPopup(
                     fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases', 'Zone_Cases'],
                     aliases=['📍 Zone:', '🏢 Prabhag:', '📈 Prabhag Cases:', '📊 Zone Cases:'],
@@ -308,32 +307,35 @@ if check_password():
                 )
             ).add_to(m)
 
-            marker_cluster = MarkerCluster().add_to(m)
+            # Individual patient markers added directly without clustering for exact pin accuracy
+            if not filtered_df.empty:
+                for idx, row in filtered_df.iterrows():
+                    date_str = "N/A"
+                    if pd.notna(row.get('Date')):
+                        date_str = row['Date'].strftime('%d/%m/%Y') 
 
-            for idx, row in filtered_df.iterrows():
-                date_str = "N/A"
-                if pd.notna(row.get('Date')):
-                    date_str = row['Date'].strftime('%d/%m/%Y') 
-
-                popup_text = f"""
-                <b>Date:</b> {date_str}<br>
-                <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
-                <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
-                <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
-                <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
-                """
-                
-                if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                    folium.Marker(
-                        location=[row['Lat'], row['Long']],
-                        popup=folium.Popup(popup_text, max_width=300),
-                        icon=folium.Icon(color="red", icon="info-sign")
-                    ).add_to(marker_cluster)
+                    popup_text = f"""
+                    <b>Date:</b> {date_str}<br>
+                    <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
+                    <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
+                    <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
+                    <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
+                    """
+                    
+                    if pd.notna(row['Lat']) and pd.notna(row['Long']):
+                        folium.CircleMarker(
+                            location=[row['Lat'], row['Long']],
+                            radius=4,
+                            popup=folium.Popup(popup_text, max_width=300),
+                            color='red',
+                            fill=True,
+                            fill_color='red',
+                            fill_opacity=0.7
+                        ).add_to(m)
                 
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
-            
         else:
-            st.info("Is filter ke liye data ya Lat/Long points nahi hain.")
+            st.info("Geojson data available nahi hai.")
 
         # --- 6. DATA TABLE ---
         st.markdown("### 📋 Patient Details")
