@@ -8,16 +8,17 @@ import datetime
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide")
 
-# --- SIDEBAR PADDING & SPACING FIX CSS ---
+# --- ADVANCED CSS TO REMOVE SIDEBAR PADDING & GAPS ---
 st.markdown("""
     <style>
-        /* Sidebar ke upar ka extra gap kam karne ke liye */
-        section[data-testid="stSidebar"] > div:first-child {
-            padding-top: 1rem;
+        /* Sidebar ke upar aur niche ke extra padding/gaps ko zero karne ke liye */
+        section[data-testid="stSidebar"] div.block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
         }
-        /* Zone-wise cases table ke upar ka gap aur compact karne ke liye */
-        .stMarkdown {
-            margin-bottom: -10px;
+        /* Widgets ke beech ke extra margins kam karne ke liye */
+        section[data-testid="stSidebar"] .stElementContainer {
+            margin-bottom: -10px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -149,7 +150,7 @@ if check_password():
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
-        # --- ZONE-WISE SUMMARY TABLE (COMPACT HEIGHT) ---
+        # --- ZONE-WISE SUMMARY TABLE ---
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📊 Zone-wise Cases")
         
@@ -159,12 +160,11 @@ if check_password():
             
             zone_summary['Zone'] = zone_summary['Zone'].astype(str).str.replace("Zone No. ", "").str.replace("Zone No ", "")
             
-            # Height ko 320 set kiya hai taaki saare zones fit aa jayein aur bada scroll na aaye
             st.sidebar.dataframe(
                 zone_summary, 
                 hide_index=True, 
                 use_container_width=True,
-                height=320
+                height=300
             )
         else:
             st.sidebar.info("No data available for summary.")
