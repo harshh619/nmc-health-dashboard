@@ -6,21 +6,41 @@ from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
 
-st.set_page_config(page_title="NMC Health Dashboard", layout="wide")
+st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- ADVANCED CSS FOR PADDING & ALIGNMENT ---
+# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING ---
 st.markdown("""
     <style>
+        /* Main background & font styling */
+        .main {
+            background-color: #f8f9fa;
+        }
+        /* Sidebar layout adjustments */
         section[data-testid="stSidebar"] div.block-container {
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
         }
         section[data-testid="stSidebar"] .stElementContainer {
-            margin-bottom: -10px !important;
+            margin-bottom: -8px !important;
         }
-        .stHeadingContainer {
-            display: flex;
-            align-items: center;
+        /* Professional Card look for metrics */
+        div[data-testid="stMetric"] {
+            background-color: #ffffff;
+            border: 1px solid #e0e0e0;
+            padding: 12px 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        /* Clean Subheaders */
+        h3 {
+            color: #1f2937;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        /* Sidebar styling enhancement */
+        section[data-testid="stSidebar"] {
+            background-color: #f1f5f9;
+            border-right: 1px solid #e2e8f0;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -44,12 +64,12 @@ def check_password():
     return True
 
 if check_password():
-    # --- HEADER WITH PERFECT ALIGNMENT ---
+    # --- PROFESSIONAL HEADER WITH LOGO ---
     col_logo, col_title = st.columns([1, 14], vertical_alignment="center")
     with col_logo:
-        st.image("logo.png", width=60)
+        st.image("logo.png", width=55)
     with col_title:
-        st.markdown("<h2 style='margin: 0; font-weight: 700;'>Nagpur Municipal Corporation - Health Dashboard</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='margin: 0; font-weight: 700; color: #1e3a8a;'>Nagpur Municipal Corporation - Health Dashboard</h2>", unsafe_allow_html=True)
 
     # --- 2. DATA LOAD & MERGE ---
     @st.cache_data(ttl=600)
@@ -170,7 +190,7 @@ if check_password():
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
-        # --- ZONE-WISE SUMMARY TABLE (HEIGHT ADJUSTED TO 395 TO FIT ALL 10 ZONES) ---
+        # --- ZONE-WISE SUMMARY TABLE ---
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📊 Zone-wise Cases")
         
@@ -188,7 +208,7 @@ if check_password():
             st.sidebar.info("No data available for summary.")
 
         # --- 4. DASHBOARD METRICS ---
-        st.subheader(f"Current Filter: {selected_zone} Zone -> {selected_ward}")
+        st.markdown(f"**Active View:** `{selected_zone} Zone` ➔ `{selected_ward}`")
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
@@ -321,4 +341,4 @@ if check_password():
         if 'Date' in display_df.columns:
             display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
             
-        st.dataframe(display_df)
+        st.dataframe(display_df, use_container_width=True)
