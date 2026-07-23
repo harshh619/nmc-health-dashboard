@@ -207,12 +207,12 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP VIEW SWITCHER ---
+        # --- 5. MAP VIEW SWITCHER (3 MODES) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
             "Select Map View Mode",
-            ["Patient Cluster View", "Ward-wise Exact Count View"],
+            ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"],
             horizontal=True,
             label_visibility="collapsed"
         )
@@ -333,7 +333,7 @@ if check_password():
                                 icon=folium.Icon(color="red", icon="info-sign")
                             ).add_to(marker_cluster)
 
-            # --- MODE 2: WARD-WISE EXACT COUNT VIEW (EXACTLY LIKE SCREENSHOT) ---
+            # --- MODE 2: WARD-WISE EXACT COUNT VIEW ---
             elif map_mode == "Ward-wise Exact Count View":
                 for feature in geo_data['features']:
                     ward_cases = feature['properties']['Ward_Cases']
@@ -354,7 +354,6 @@ if check_password():
                                 center_lat = sum(lats) / len(lats)
                                 center_lon = sum(lons) / len(lons)
                                 
-                                # Red pin badge styling matching the reference screenshot
                                 badge_html = f"""
                                 <div style="
                                     background-color: #e53e3e; 
@@ -378,6 +377,34 @@ if check_password():
                                 ).add_to(m)
                         except Exception:
                             pass
+
+            # --- MODE 3: ALL CASES POINTS VIEW (WITHOUT CLUSTERING) ---
+            elif map_mode == "All Cases Points View":
+                if not filtered_df.empty:
+                    for idx, row in filtered_df.iterrows():
+                        date_str = "N/A"
+                        if pd.notna(row.get('Date')):
+                            date_str = row['Date'].strftime('%d/%m/%Y') 
+
+                        popup_text = f"""
+                        <b>Date:</b> {date_str}<br>
+                        <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
+                        <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
+                        <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
+                        <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
+                        """
+                        
+                        if pd.notna(row['Lat']) and pd.notna(row['Long']):
+                            folium.CircleMarker(
+                                location=[row['Lat'], row['Long']],
+                                radius=5,
+                                popup=folium.Popup(popup_text, max_width=300),
+                                color='#ffffff',
+                                weight=1,
+                                fill=True,
+                                fill_color='#e53e3e',
+                                fill_opacity=0.9
+                            ).add_to(m)
                 
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
