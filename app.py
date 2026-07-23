@@ -206,7 +206,7 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP GENERATION (EXACT WARD-WISE COUNT SYNC) ---
+        # --- 5. CLEAN MAP GENERATION (CHOROPLETH WITH PRECISE WARD POPUPS) ---
         st.markdown("### 📍 Patients Map (Choropleth Density & Exact Ward Counts)")
         
         if geo_data:
@@ -270,7 +270,7 @@ if check_password():
                     line-height: 1.3;
                 }
                 .leaflet-popup-content td, .leaflet-popup-content th {
-                    padding: 5px 8px !important;
+                    padding: 6px 10px !important;
                     vertical-align: middle !important;
                     white-space: nowrap !important;
                 }
@@ -278,7 +278,7 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # Choropleth Styled GeoJson layer with Exact Ward Count Tooltip
+            # Clean Choropleth Polygons Layer with precise Tooltip & Popup (No overlapping point markers)
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -297,7 +297,7 @@ if check_password():
                     fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases'],
                     aliases=['📍 Zone:', '🏢 Prabhag:', '📈 Exact Cases:'],
                     labels=True,
-                    style="font-family: Arial; font-size: 13px; font-weight: bold; background: white; padding: 5px; border-radius: 4px;"
+                    style="font-family: Arial; font-size: 13px; font-weight: bold; background: white; padding: 6px; border-radius: 4px;"
                 ),
                 popup=folium.features.GeoJsonPopup(
                     fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases', 'Zone_Cases'],
@@ -306,32 +306,6 @@ if check_password():
                     style="font-family: Arial; font-size: 13px; font-weight: bold;"
                 )
             ).add_to(m)
-
-            # Individual patient markers added directly without clustering for exact pin accuracy
-            if not filtered_df.empty:
-                for idx, row in filtered_df.iterrows():
-                    date_str = "N/A"
-                    if pd.notna(row.get('Date')):
-                        date_str = row['Date'].strftime('%d/%m/%Y') 
-
-                    popup_text = f"""
-                    <b>Date:</b> {date_str}<br>
-                    <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
-                    <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
-                    <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
-                    <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
-                    """
-                    
-                    if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                        folium.CircleMarker(
-                            location=[row['Lat'], row['Long']],
-                            radius=4,
-                            popup=folium.Popup(popup_text, max_width=300),
-                            color='red',
-                            fill=True,
-                            fill_color='red',
-                            fill_opacity=0.7
-                        ).add_to(m)
                 
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
