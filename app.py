@@ -8,7 +8,7 @@ import datetime
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide")
 
-# --- ADVANCED CSS TO REMOVE SIDEBAR PADDING & GAPS ---
+# --- ADVANCED CSS TO REMOVE PADDING & ALIGN HEADER ---
 st.markdown("""
     <style>
         section[data-testid="stSidebar"] div.block-container {
@@ -17,6 +17,11 @@ st.markdown("""
         }
         section[data-testid="stSidebar"] .stElementContainer {
             margin-bottom: -10px !important;
+        }
+        /* Header alignment fix */
+        .header-title {
+            margin-top: 8px !important;
+            font-weight: 700;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -40,12 +45,12 @@ def check_password():
     return True
 
 if check_password():
-    # --- HEADER WITH LOGO.PNG ---
+    # --- HEADER WITH PERFECT CENTER ALIGNMENT ---
     col_logo, col_title = st.columns([1, 12])
     with col_logo:
-        st.image("logo.png", width=65)
+        st.image("logo.png", width=60)
     with col_title:
-        st.markdown("<h2 style='margin-top: 5px;'>Nagpur Municipal Corporation - Health Dashboard</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 class='header-title'>Nagpur Municipal Corporation - Health Dashboard</h2>", unsafe_allow_html=True)
 
     # --- 2. DATA LOAD & MERGE ---
     @st.cache_data(ttl=600)
