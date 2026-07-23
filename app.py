@@ -209,35 +209,33 @@ if check_password():
         st.metric("Total Cases in Selected Window", total_cases)
 
         # --- 4.1 ANALYTICAL CHARTS (PIE CHART & BAR CHART) ---
-        if not filtered_df.empty:
-            col_chart1, col_chart2 = st.columns(2)
-            
-            with col_chart1:
-                st.markdown("### 🦠 Disease Distribution (Pie Chart)")
-                if 'Disease' in filtered_df.columns:
-                    disease_df = filtered_df['Disease'].value_counts().reset_index()
-                    disease_df.columns = ['Disease', 'Count']
-                    
-                    # Plotly Interactive Pie/Donut Chart
-                    fig_pie = px.pie(
-                        disease_df, 
-                        names='Disease', 
-                        values='Count', 
-                        hole=0.4,
-                        color_discrete_sequence=px.colors.qualitative.Set3
-                    )
-                    fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300)
-                    st.plotly_chart(fig_pie, use_container_width=True)
-                else:
-                    st.info("Disease column available nahi hai.")
-                    
-            with col_chart2:
-                st.markdown("### 🏢 Top Affected Wards")
-                if 'Ward_Name' in filtered_df.columns:
-                    ward_counts = filtered_df['Ward_Name'].value_counts().head(8)
-                    st.bar_chart(ward_counts, color="#bd0026", height=300)
-                else:
-                    st.info("Ward_Name column available nahi hai.")
+        col_chart1, col_chart2 = st.columns(2)
+        
+        with col_chart1:
+            st.markdown("### 🦠 Disease Distribution (Pie Chart)")
+            if 'Disease' in filtered_df.columns and not filtered_df['Disease'].dropna().empty:
+                disease_df = filtered_df['Disease'].value_counts().reset_index()
+                disease_df.columns = ['Disease', 'Count']
+                
+                fig_pie = px.pie(
+                    disease_df, 
+                    names='Disease', 
+                    values='Count', 
+                    hole=0.4,
+                    color_discrete_sequence=px.colors.qualitative.Set3
+                )
+                fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300)
+                st.plotly_chart(fig_pie, use_container_width=True)
+            else:
+                st.info("Disease data available nahi hai.")
+                
+        with col_chart2:
+            st.markdown("### 🏢 Top Affected Wards")
+            if 'Ward_Name' in filtered_df.columns and not filtered_df['Ward_Name'].dropna().empty:
+                ward_counts = filtered_df['Ward_Name'].value_counts().head(8)
+                st.bar_chart(ward_counts, color="#bd0026", height=300)
+            else:
+                st.info("Ward data available nahi hai.")
         
         # --- 5. MAP VIEW SWITCHER (3 MODES) ---
         st.markdown("### 📍 Patients Map View")
