@@ -135,35 +135,32 @@ if check_password():
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
-        # --- NAYA SECTION: SIDEBAR ZONE-WISE SUMMARY (DESCENDING ORDER) ---
+        # --- ZONE-WISE SUMMARY TABLE (HEIGHT INCREASED TO SHOW ALL 10 ZONES) ---
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📊 Zone-wise Cases")
         
         if not filtered_df.empty and 'Zone' in filtered_df.columns:
-            # Zone ke hisaab se count karke descending order me sort karna
             zone_summary = filtered_df['Zone'].value_counts().reset_index()
             zone_summary.columns = ['Zone', 'Cases']
             
-            # Clean zone names for display
             zone_summary['Zone'] = zone_summary['Zone'].astype(str).str.replace("Zone No. ", "").str.replace("Zone No ", "")
             
-            # DataFrame ke form me sidebar par display karna
+            # Height ko 400 kar diya hai taaki sabhi 10 zones bina scroll ke dikh sakein
             st.sidebar.dataframe(
                 zone_summary, 
                 hide_index=True, 
                 use_container_width=True,
-                height=250
+                height=400
             )
         else:
             st.sidebar.info("No data available for summary.")
-        # ----------------------------------------------------------------
 
         # --- 4. DASHBOARD METRICS ---
         st.subheader(f"Current Filter: {selected_zone} Zone -> {selected_ward}")
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP GENERATION (CHOROPLETH DENSITY STYLE) ---
+        # --- 5. MAP GENERATION ---
         st.markdown("### 📍 Patients Map (Density Heatmap & Clustering)")
         
         if not filtered_df.empty and 'Lat' in filtered_df.columns and 'Long' in filtered_df.columns and geo_data:
