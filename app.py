@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
 
@@ -206,8 +207,8 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. CLEAN MAP GENERATION (CHOROPLETH WITH PRECISE WARD POPUPS) ---
-        st.markdown("### 📍 Patients Map (Choropleth Density & Exact Ward Counts)")
+        # --- 5. MAP GENERATION WITH SINGLE UNIFIED POPUP & MARKER CLUSTER ---
+        st.markdown("### 📍 Patients Map (Density Choropleth & Marker Clustering)")
         
         if geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
@@ -278,27 +279,21 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # Clean Choropleth Polygons Layer with precise Tooltip & Popup (No overlapping point markers)
+            # Choropleth Polygons Layer with ONLY Popup (No Tooltip to avoid double box)
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
                     'color': '#444444',
                     'weight': 1,
                     'fillColor': feature['properties']['fill_color'],
-                    'fillOpacity': 0.65
+                    'fillOpacity': 0.60
                 },
                 highlight_function=lambda feature: {
                     'color': '#000000',
                     'weight': 2.5,
                     'fillColor': feature['properties']['fill_color'],
-                    'fillOpacity': 0.85
+                    'fillOpacity': 0.80
                 },
-                tooltip=folium.features.GeoJsonTooltip(
-                    fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases'],
-                    aliases=['📍 Zone:', '🏢 Prabhag:', '📈 Exact Cases:'],
-                    labels=True,
-                    style="font-family: Arial; font-size: 13px; font-weight: bold; background: white; padding: 6px; border-radius: 4px;"
-                ),
                 popup=folium.features.GeoJsonPopup(
                     fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases', 'Zone_Cases'],
                     aliases=['📍 Zone:', '🏢 Prabhag:', '📈 Prabhag Cases:', '📊 Zone Cases:'],
@@ -306,6 +301,30 @@ if check_password():
                     style="font-family: Arial; font-size: 13px; font-weight: bold;"
                 )
             ).add_to(m)
+
+            # --- MARKER CLUSTER FOR PATIENT PINS ---
+            marker_cluster = MarkerCluster().add_to(m)
+
+            if not filtered_df.empty:
+                for idx, row in filtered_df.iterrows():
+                    date_str = "N/A"
+                    if pd.notna(row.get('Date')):
+                        date_str = row['Date'].strftime('%d/%m/%Y') 
+
+                    popup_text = f"""
+                    <b>Date:</b> {date_str}<br>
+                    <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
+                    <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
+                    <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
+                    <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
+                    """
+                    
+                    if pd.notna(row['Lat']) and pd.notna(row['Long']):
+                        folium.Marker(
+                            location=[row['Lat'], row['Long']],
+                            popup=folium.Popup(popup_text, max_width=300),
+                            icon=folium.Icon(color="red", icon="info-sign")
+                        ).add_to(marker_cluster)
                 
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
