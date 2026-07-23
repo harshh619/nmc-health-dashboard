@@ -8,7 +8,7 @@ import datetime
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide")
 
-# --- ADVANCED CSS TO REMOVE PADDING & ALIGN HEADER ---
+# --- ADVANCED CSS FOR PERFECT VERTICAL CENTERING ---
 st.markdown("""
     <style>
         section[data-testid="stSidebar"] div.block-container {
@@ -18,10 +18,16 @@ st.markdown("""
         section[data-testid="stSidebar"] .stElementContainer {
             margin-bottom: -10px !important;
         }
-        /* Header alignment fix */
+        /* Flexbox alignment for header row */
+        .header-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
         .header-title {
-            margin-top: 8px !important;
+            margin: 0 !important;
             font-weight: 700;
+            line-height: 1.2;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -45,12 +51,13 @@ def check_password():
     return True
 
 if check_password():
-    # --- HEADER WITH PERFECT CENTER ALIGNMENT ---
-    col_logo, col_title = st.columns([1, 12])
-    with col_logo:
-        st.image("logo.png", width=60)
-    with col_title:
-        st.markdown("<h2 class='header-title'>Nagpur Municipal Corporation - Health Dashboard</h2>", unsafe_allow_html=True)
+    # --- HEADER WITH PERFECT FLEXBOX ALIGNMENT ---
+    st.markdown("""
+        <div class="header-row">
+            <img src="app/static/logo.png" width="60" style="margin-right: 15px;">
+            <h2 class="header-title">Nagpur Municipal Corporation - Health Dashboard</h2>
+        </div>
+    """, unsafe_allow_html=True)
 
     # --- 2. DATA LOAD & MERGE ---
     @st.cache_data(ttl=600)
