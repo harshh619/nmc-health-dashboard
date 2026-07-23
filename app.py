@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import json
 import folium
-from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
 
@@ -207,8 +206,8 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP GENERATION WITH MARKER CLUSTER & EXACT COUNTS ---
-        st.markdown("### 📍 Patients Map (Density Choropleth & Marker Clustering)")
+        # --- 5. MAP GENERATION (EXACT WARD-WISE COUNT SYNC) ---
+        st.markdown("### 📍 Patients Map (Choropleth Density & Exact Ward Counts)")
         
         if geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
@@ -279,20 +278,20 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # Choropleth Polygons Layer with Exact Counts in Tooltip & Popup
+            # Choropleth Styled GeoJson layer with Exact Ward Count Tooltip
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
                     'color': '#444444',
                     'weight': 1,
                     'fillColor': feature['properties']['fill_color'],
-                    'fillOpacity': 0.60
+                    'fillOpacity': 0.65
                 },
                 highlight_function=lambda feature: {
                     'color': '#000000',
                     'weight': 2.5,
                     'fillColor': feature['properties']['fill_color'],
-                    'fillOpacity': 0.80
+                    'fillOpacity': 0.85
                 },
                 tooltip=folium.features.GeoJsonTooltip(
                     fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases'],
@@ -308,9 +307,7 @@ if check_password():
                 )
             ).add_to(m)
 
-            # --- MARKER CLUSTER RESTORED FOR CLEAN ZOOM IN/OUT ---
-            marker_cluster = MarkerCluster().add_to(m)
-
+            # Individual patient markers added directly without clustering for exact pin accuracy
             if not filtered_df.empty:
                 for idx, row in filtered_df.iterrows():
                     date_str = "N/A"
@@ -326,11 +323,15 @@ if check_password():
                     """
                     
                     if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                        folium.Marker(
+                        folium.CircleMarker(
                             location=[row['Lat'], row['Long']],
+                            radius=4,
                             popup=folium.Popup(popup_text, max_width=300),
-                            icon=folium.Icon(color="red", icon="info-sign")
-                        ).add_to(marker_cluster)
+                            color='red',
+                            fill=True,
+                            fill_color='red',
+                            fill_opacity=0.7
+                        ).add_to(m)
                 
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
