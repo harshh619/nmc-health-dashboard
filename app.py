@@ -135,6 +135,29 @@ if check_password():
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
+        # --- NAYA SECTION: SIDEBAR ZONE-WISE SUMMARY (DESCENDING ORDER) ---
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 📊 Zone-wise Cases")
+        
+        if not filtered_df.empty and 'Zone' in filtered_df.columns:
+            # Zone ke hisaab se count karke descending order me sort karna
+            zone_summary = filtered_df['Zone'].value_counts().reset_index()
+            zone_summary.columns = ['Zone', 'Cases']
+            
+            # Clean zone names for display
+            zone_summary['Zone'] = zone_summary['Zone'].astype(str).str.replace("Zone No. ", "").str.replace("Zone No ", "")
+            
+            # DataFrame ke form me sidebar par display karna
+            st.sidebar.dataframe(
+                zone_summary, 
+                hide_index=True, 
+                use_container_width=True,
+                height=250
+            )
+        else:
+            st.sidebar.info("No data available for summary.")
+        # ----------------------------------------------------------------
+
         # --- 4. DASHBOARD METRICS ---
         st.subheader(f"Current Filter: {selected_zone} Zone -> {selected_ward}")
         total_cases = len(filtered_df)
@@ -166,20 +189,18 @@ if check_password():
                 clean_z = str(z)
                 clean_zone_counts[clean_z] = clean_zone_counts.get(clean_z, 0) + count
 
-            # Case count ke aadhar par color shade nikalne ka logic (Yellow -> Orange -> Red)
             max_ward_cases = max(clean_ward_counts.values()) if clean_ward_counts else 1
 
             def get_density_color(cases):
                 if cases == 0:
-                    return "#ebedef"  # Bohot kam/0 cases ke liye grey/light
+                    return "#ebedef"  
                 elif cases < max_ward_cases * 0.2:
-                    return "#ffeda0"  # Light Yellow
+                    return "#ffeda0"  
                 elif cases < max_ward_cases * 0.4:
-                    return "#feb24c"  # Orange-Yellow
+                    return "#feb24c"  
                 elif cases < max_ward_cases * 0.7:
-                    return "#fc4e2a"  # Orange-Red
+                    return "#fc4e2a"  
                 else:
-                    # Sabse zyada cases wale wards ke liye dark red
                     return "#bd0026"
 
             for feature in geo_data['features']:
@@ -197,8 +218,6 @@ if check_password():
                 feature['properties']['Clean_Zone'] = formatted_zone
                 feature['properties']['Ward_Cases'] = ward_cases
                 feature['properties']['Zone_Cases'] = clean_zone_counts.get(zone_name, 0)
-                
-                # Density color assign karna
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
 
             popup_styling = """
@@ -218,7 +237,6 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # Choropleth Styled GeoJson layer
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
