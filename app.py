@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import json
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
 
@@ -206,8 +207,8 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP GENERATION WITH PERMANENT WARD BADGES ---
-        st.markdown("### 📍 Patients Map (Density Choropleth & Direct Ward Labels)")
+        # --- 5. MAP GENERATION WITH MARKER CLUSTER & EXACT COUNTS ---
+        st.markdown("### 📍 Patients Map (Density Choropleth & Marker Clustering)")
         
         if geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
@@ -278,20 +279,20 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # Choropleth Polygons Layer
+            # Choropleth Polygons Layer with Exact Counts in Tooltip & Popup
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
                     'color': '#444444',
                     'weight': 1,
                     'fillColor': feature['properties']['fill_color'],
-                    'fillOpacity': 0.65
+                    'fillOpacity': 0.60
                 },
                 highlight_function=lambda feature: {
                     'color': '#000000',
                     'weight': 2.5,
                     'fillColor': feature['properties']['fill_color'],
-                    'fillOpacity': 0.85
+                    'fillOpacity': 0.80
                 },
                 tooltip=folium.features.GeoJsonTooltip(
                     fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases'],
@@ -307,51 +308,9 @@ if check_password():
                 )
             ).add_to(m)
 
-            # --- PERMANENT BADGE LABELS ON EACH WARD ---
-            for feature in geo_data['features']:
-                ward_cases = feature['properties']['Ward_Cases']
-                if ward_cases > 0:  # Sirf unhi wards par dikhayein jahan cases hain
-                    geom = feature.get('geometry')
-                    if geom:
-                        coords = geom.get('coordinates')
-                        # Simple centroid approximation from polygon coordinates
-                        try:
-                            if geom['type'] == 'Polygon':
-                                ring = coords[0]
-                            elif geom['type'] == 'MultiPolygon':
-                                ring = coords[0][0]
-                            else:
-                                ring = None
-                            
-                            if ring:
-                                lons = [p[0] for p in ring]
-                                lats = [p[1] for p in ring]
-                                center_lat = sum(lats) / len(lats)
-                                center_lon = sum(lons) / len(lons)
-                                
-                                badge_html = f"""
-                                <div style="
-                                    background-color: white; 
-                                    border: 2px solid #bd0026; 
-                                    color: #bd0026; 
-                                    font-weight: bold; 
-                                    font-size: 11px; 
-                                    padding: 2px 6px; 
-                                    border-radius: 12px; 
-                                    text-align: center; 
-                                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                                    white-space: nowrap;">
-                                    {ward_cases}
-                                </div>
-                                """
-                                folium.Marker(
-                                    location=[center_lat, center_lon],
-                                    icon=folium.DivIcon(html=badge_html)
-                                ).add_to(m)
-                        except Exception:
-                            pass
+            # --- MARKER CLUSTER RESTORED FOR CLEAN ZOOM IN/OUT ---
+            marker_cluster = MarkerCluster().add_to(m)
 
-            # Individual patient pins
             if not filtered_df.empty:
                 for idx, row in filtered_df.iterrows():
                     date_str = "N/A"
@@ -367,15 +326,11 @@ if check_password():
                     """
                     
                     if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                        folium.CircleMarker(
+                        folium.Marker(
                             location=[row['Lat'], row['Long']],
-                            radius=4,
                             popup=folium.Popup(popup_text, max_width=300),
-                            color='red',
-                            fill=True,
-                            fill_color='red',
-                            fill_opacity=0.7
-                        ).add_to(m)
+                            icon=folium.Icon(color="red", icon="info-sign")
+                        ).add_to(marker_cluster)
                 
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
