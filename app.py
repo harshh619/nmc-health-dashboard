@@ -117,13 +117,11 @@ if check_password():
         if selected_disease != "All":
             filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
 
-        # Zones sorted alphabetically
         raw_zones = mapping_df['Zone'].dropna().unique()
         zones_list = ["All"] + sorted([str(x) for x in raw_zones])
         
         selected_zone = st.sidebar.selectbox("Select Zone", zones_list, key="zone_filter")
 
-        # Wards sorted alphabetically
         if selected_zone != "All":
             filtered_df = filtered_df[filtered_df['Zone'] == selected_zone]
             raw_wards = mapping_df[mapping_df['Zone'] == selected_zone]['Ward_Name'].dropna().unique()
@@ -156,7 +154,6 @@ if check_password():
                     val = val.replace(remove_word, "")
                 return val.strip()
 
-            # Direct mapping dictionary banayi hai kyunki Zone names ab Excel mein properly format ho chuke hain
             zone_dict = {clean_ward_str(w): str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
             
             clean_ward_counts = {}
@@ -173,14 +170,35 @@ if check_password():
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 
                 clean_ward = clean_ward_str(raw_ward)
-                # Excel se direct Zone ka naam uthayega (jaise "Zone No. 8 Lakadganj")
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
-                feature['properties']['Clean_Ward'] = raw_ward # Map par ward ka original naam dikhega
+                feature['properties']['Clean_Ward'] = raw_ward 
                 feature['properties']['Clean_Zone'] = zone_name
                 
                 feature['properties']['Ward_Cases'] = clean_ward_counts.get(clean_ward, 0)
                 feature['properties']['Zone_Cases'] = clean_zone_counts.get(zone_name, 0)
+
+            # --- NAYA STYLE CHANGE POPUP KE LIYE ---
+            popup_styling = """
+            <style>
+                .leaflet-popup-content table {
+                    width: 100%;
+                }
+                .leaflet-popup-content tr {
+                    line-height: 1.4;
+                }
+                .leaflet-popup-content td {
+                    padding: 4px 6px !important;
+                    vertical-align: middle !important;
+                }
+                .leaflet-popup-content th {
+                    padding: 4px 6px !important;
+                    vertical-align: middle !important;
+                }
+            </style>
+            """
+            m.get_root().html.add_child(folium.Element(popup_styling))
+            # ----------------------------------------
 
             folium.GeoJson(
                 geo_data,
@@ -194,7 +212,7 @@ if check_password():
                     fields=['Clean_Zone', 'Clean_Ward', 'Zone_Cases', 'Ward_Cases'],
                     aliases=['📍 Zone:', '🏢 Prabhag:', '📊 Total Cases in Zone:', '📈 Total Cases in Prabhag:'],
                     labels=True,
-                    style="font-family: Arial; font-size: 14px; font-weight: bold;"
+                    style="font-family: Arial; font-size: 13px; font-weight: bold;"
                 )
             ).add_to(m)
 
