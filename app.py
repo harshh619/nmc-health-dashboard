@@ -172,13 +172,13 @@ if check_password():
                 clean_ward = clean_ward_str(raw_ward)
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
-                # --- UPDATED FORMATTING LOGIC ---
-                # "Zone No. 9 AashiNagar" ko "Zone No. : 9 AashiNagar" banana
-                formatted_zone = zone_name.replace("Zone No. ", "Zone No. : ").replace("Zone No ", "Zone No. : ")
+                # --- EXACT SCREENSHOT FORMATTING LOGIC ---
+                # "Zone No. 8 Lakadganj" se "Zone No. " hata kar sirf "8 Lakadganj" kar diya
+                formatted_zone = zone_name.replace("Zone No. ", "").replace("Zone No ", "")
                 
-                # "Prabhag No. 3" ko "Prabhag No. : 3" banana
-                formatted_ward = raw_ward.replace("Prabhag No. ", "Prabhag No. : ").replace("Prabhag No ", "Prabhag No. : ")
-                # --------------------------------
+                # "Prabhag No. 4" se "Prabhag No. " hata kar sirf "4" kar diya
+                formatted_ward = clean_ward
+                # ----------------------------------------
                 
                 feature['properties']['Clean_Ward'] = formatted_ward 
                 feature['properties']['Clean_Zone'] = formatted_zone
