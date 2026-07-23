@@ -206,8 +206,8 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP GENERATION (EXACT WARD-WISE COUNT SYNC) ---
-        st.markdown("### 📍 Patients Map (Choropleth Density & Exact Ward Counts)")
+        # --- 5. MAP GENERATION WITH PERMANENT WARD BADGES ---
+        st.markdown("### 📍 Patients Map (Density Choropleth & Direct Ward Labels)")
         
         if geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
@@ -278,7 +278,7 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # Choropleth Styled GeoJson layer with Exact Ward Count Tooltip
+            # Choropleth Polygons Layer
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -307,7 +307,51 @@ if check_password():
                 )
             ).add_to(m)
 
-            # Individual patient markers added directly without clustering for exact pin accuracy
+            # --- PERMANENT BADGE LABELS ON EACH WARD ---
+            for feature in geo_data['features']:
+                ward_cases = feature['properties']['Ward_Cases']
+                if ward_cases > 0:  # Sirf unhi wards par dikhayein jahan cases hain
+                    geom = feature.get('geometry')
+                    if geom:
+                        coords = geom.get('coordinates')
+                        # Simple centroid approximation from polygon coordinates
+                        try:
+                            if geom['type'] == 'Polygon':
+                                ring = coords[0]
+                            elif geom['type'] == 'MultiPolygon':
+                                ring = coords[0][0]
+                            else:
+                                ring = None
+                            
+                            if ring:
+                                lons = [p[0] for p in ring]
+                                lats = [p[1] for p in ring]
+                                center_lat = sum(lats) / len(lats)
+                                center_lon = sum(lons) / len(lons)
+                                
+                                badge_html = f"""
+                                <div style="
+                                    background-color: white; 
+                                    border: 2px solid #bd0026; 
+                                    color: #bd0026; 
+                                    font-weight: bold; 
+                                    font-size: 11px; 
+                                    padding: 2px 6px; 
+                                    border-radius: 12px; 
+                                    text-align: center; 
+                                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                                    white-space: nowrap;">
+                                    {ward_cases}
+                                </div>
+                                """
+                                folium.Marker(
+                                    location=[center_lat, center_lon],
+                                    icon=folium.DivIcon(html=badge_html)
+                                ).add_to(m)
+                        except Exception:
+                            pass
+
+            # Individual patient pins
             if not filtered_df.empty:
                 for idx, row in filtered_df.iterrows():
                     date_str = "N/A"
