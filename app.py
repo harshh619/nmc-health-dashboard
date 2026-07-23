@@ -106,7 +106,6 @@ if check_password():
             st.sidebar.warning("Data me valid 'Date' column nahi hai.")
 
         if 'Disease' in filtered_df.columns:
-            # Disease ko bhi alphabetically sort kar diya
             raw_diseases = filtered_df['Disease'].dropna().unique()
             disease_options = ["All"] + sorted([str(x) for x in raw_diseases])
         else:
@@ -118,14 +117,13 @@ if check_password():
         if selected_disease != "All":
             filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
 
-        # --- NAYA CHANGES: Sorting Zones and Wards ---
-        # Zone list ko alphabetically sort karna
+        # Zones sorted alphabetically
         raw_zones = mapping_df['Zone'].dropna().unique()
         zones_list = ["All"] + sorted([str(x) for x in raw_zones])
         
         selected_zone = st.sidebar.selectbox("Select Zone", zones_list, key="zone_filter")
 
-        # Ward list ko alphabetically sort karna
+        # Wards sorted alphabetically
         if selected_zone != "All":
             filtered_df = filtered_df[filtered_df['Zone'] == selected_zone]
             raw_wards = mapping_df[mapping_df['Zone'] == selected_zone]['Ward_Name'].dropna().unique()
@@ -150,37 +148,39 @@ if check_password():
         if not filtered_df.empty and 'Lat' in filtered_df.columns and 'Long' in filtered_df.columns and geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
             
-            def clean_str(val):
+            def clean_ward_str(val):
                 if pd.isna(val): return "Unknown"
                 val = str(val)
                 if val.endswith('.0'): val = val[:-2]
-                for remove_word in ["Zone No. ", "Zone No.", "Zone No ", "Prabhag No. ", "Prabhag No.", "Prabhag No "]:
+                for remove_word in ["Prabhag No. ", "Prabhag No.", "Prabhag No "]:
                     val = val.replace(remove_word, "")
                 return val.strip()
 
-            zone_dict = {clean_str(w): clean_str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
+            # Direct mapping dictionary banayi hai kyunki Zone names ab Excel mein properly format ho chuke hain
+            zone_dict = {clean_ward_str(w): str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
             
             clean_ward_counts = {}
             for w, count in filtered_df['Ward_Name'].value_counts().items():
-                clean_w = clean_str(w)
+                clean_w = clean_ward_str(w)
                 clean_ward_counts[clean_w] = clean_ward_counts.get(clean_w, 0) + count
                 
             clean_zone_counts = {}
             for z, count in filtered_df['Zone'].value_counts().items():
-                clean_z = clean_str(z)
+                clean_z = str(z)
                 clean_zone_counts[clean_z] = clean_zone_counts.get(clean_z, 0) + count
 
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 
-                clean_ward = clean_str(raw_ward)
-                clean_zone = zone_dict.get(clean_ward, 'Unknown Zone')
+                clean_ward = clean_ward_str(raw_ward)
+                # Excel se direct Zone ka naam uthayega (jaise "Zone No. 8 Lakadganj")
+                zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
-                feature['properties']['Clean_Ward'] = clean_ward
-                feature['properties']['Clean_Zone'] = clean_zone
+                feature['properties']['Clean_Ward'] = raw_ward # Map par ward ka original naam dikhega
+                feature['properties']['Clean_Zone'] = zone_name
                 
                 feature['properties']['Ward_Cases'] = clean_ward_counts.get(clean_ward, 0)
-                feature['properties']['Zone_Cases'] = clean_zone_counts.get(clean_zone, 0)
+                feature['properties']['Zone_Cases'] = clean_zone_counts.get(zone_name, 0)
 
             folium.GeoJson(
                 geo_data,
