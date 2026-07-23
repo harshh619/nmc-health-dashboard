@@ -40,7 +40,12 @@ def check_password():
     return True
 
 if check_password():
-    st.title("🏥 Nagpur Municipal Corporation - Health Dashboard")
+    # --- HEADER WITH NMC LOGO ---
+    col_logo, col_title = st.columns([1, 12])
+    with col_logo:
+        st.image("Nagpur_Municipal_Corporation_logo.png", width=65)
+    with col_title:
+        st.markdown("<h2 style='margin-top: 5px;'>Nagpur Municipal Corporation - Health Dashboard</h2>", unsafe_allow_html=True)
 
     # --- 2. DATA LOAD & MERGE ---
     @st.cache_data(ttl=600)
@@ -78,7 +83,6 @@ if check_password():
 
     if patient_df is not None:
         
-        # --- UNIFORM ZONE CLEANING FUNCTION ---
         def clean_zone_name(val):
             if pd.isna(val): return "Unknown"
             val = str(val)
