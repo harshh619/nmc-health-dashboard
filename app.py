@@ -18,7 +18,6 @@ st.markdown("""
         section[data-testid="stSidebar"] .stElementContainer {
             margin-bottom: -10px !important;
         }
-        /* Header title vertical alignment fix */
         .stHeadingContainer {
             display: flex;
             align-items: center;
@@ -171,7 +170,7 @@ if check_password():
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
-        # --- ZONE-WISE SUMMARY TABLE ---
+        # --- ZONE-WISE SUMMARY TABLE (HEIGHT REDUCED TO 360 TO REMOVE EXTRA ROW) ---
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📊 Zone-wise Cases")
         
@@ -183,7 +182,7 @@ if check_password():
                 zone_summary, 
                 hide_index=True, 
                 use_container_width=True,
-                height=420
+                height=360
             )
         else:
             st.sidebar.info("No data available for summary.")
