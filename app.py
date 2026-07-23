@@ -11,12 +11,10 @@ st.set_page_config(page_title="NMC Health Dashboard", layout="wide")
 # --- ADVANCED CSS TO REMOVE SIDEBAR PADDING & GAPS ---
 st.markdown("""
     <style>
-        /* Sidebar ke upar aur niche ke extra padding/gaps ko zero karne ke liye */
         section[data-testid="stSidebar"] div.block-container {
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
         }
-        /* Widgets ke beech ke extra margins kam karne ke liye */
         section[data-testid="stSidebar"] .stElementContainer {
             margin-bottom: -10px !important;
         }
@@ -150,7 +148,7 @@ if check_password():
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
-        # --- ZONE-WISE SUMMARY TABLE ---
+        # --- ZONE-WISE SUMMARY TABLE (HEIGHT INCREASED TO 420 TO FIT ALL 10 ZONES) ---
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📊 Zone-wise Cases")
         
@@ -164,7 +162,7 @@ if check_password():
                 zone_summary, 
                 hide_index=True, 
                 use_container_width=True,
-                height=300
+                height=420
             )
         else:
             st.sidebar.info("No data available for summary.")
