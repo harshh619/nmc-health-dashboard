@@ -172,13 +172,8 @@ if check_password():
                 clean_ward = clean_ward_str(raw_ward)
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
-                # --- FORMATTING ZONES & WARDS FOR POPUP ---
-                # "Zone No. 8 Lakadganj" ko "Zone No. : 8 Lakadganj" banana
                 formatted_zone = zone_name.replace("Zone No. ", "Zone No. : ").replace("Zone No ", "Zone No. : ")
-                
-                # "Prabhag No. 3" ko "Prabhag No. 3" hi rehne dena ya space adjust karna
                 formatted_ward = raw_ward.replace("Prabhag No. ", "Prabhag No. ")
-                # ------------------------------------------
                 
                 feature['properties']['Clean_Ward'] = formatted_ward 
                 feature['properties']['Clean_Zone'] = formatted_zone
@@ -253,4 +248,3 @@ if check_password():
             display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
             
         st.dataframe(display_df)
-```[cite: 1]
