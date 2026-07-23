@@ -5,6 +5,7 @@ import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
+import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
@@ -207,15 +208,26 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
 
-        # --- 4.1 ANALYTICAL CHARTS (DISEASE & WARD DISTRIBUTION) ---
+        # --- 4.1 ANALYTICAL CHARTS (PIE CHART & BAR CHART) ---
         if not filtered_df.empty:
             col_chart1, col_chart2 = st.columns(2)
             
             with col_chart1:
-                st.markdown("### 🦠 Disease Distribution")
+                st.markdown("### 🦠 Disease Distribution (Pie Chart)")
                 if 'Disease' in filtered_df.columns:
-                    disease_counts = filtered_df['Disease'].value_counts()
-                    st.bar_chart(disease_counts, color="#1e3a8a")
+                    disease_df = filtered_df['Disease'].value_counts().reset_index()
+                    disease_df.columns = ['Disease', 'Count']
+                    
+                    # Plotly Interactive Pie/Donut Chart
+                    fig_pie = px.pie(
+                        disease_df, 
+                        names='Disease', 
+                        values='Count', 
+                        hole=0.4,
+                        color_discrete_sequence=px.colors.qualitative.Set3
+                    )
+                    fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300)
+                    st.plotly_chart(fig_pie, use_container_width=True)
                 else:
                     st.info("Disease column available nahi hai.")
                     
@@ -223,7 +235,7 @@ if check_password():
                 st.markdown("### 🏢 Top Affected Wards")
                 if 'Ward_Name' in filtered_df.columns:
                     ward_counts = filtered_df['Ward_Name'].value_counts().head(8)
-                    st.bar_chart(ward_counts, color="#bd0026")
+                    st.bar_chart(ward_counts, color="#bd0026", height=300)
                 else:
                     st.info("Ward_Name column available nahi hai.")
         
