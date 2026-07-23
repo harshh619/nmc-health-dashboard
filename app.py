@@ -207,7 +207,7 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP VIEW SWITCHER (TABS / PILL SWITCH) ---
+        # --- 5. MAP VIEW SWITCHER ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -333,49 +333,51 @@ if check_password():
                                 icon=folium.Icon(color="red", icon="info-sign")
                             ).add_to(marker_cluster)
 
-            # --- MODE 2: WARD-WISE EXACT COUNT VIEW ---
+            # --- MODE 2: WARD-WISE EXACT COUNT VIEW (EXACTLY LIKE SCREENSHOT) ---
             elif map_mode == "Ward-wise Exact Count View":
                 for feature in geo_data['features']:
                     ward_cases = feature['properties']['Ward_Cases']
-                    if ward_cases > 0:
-                        geom = feature.get('geometry')
-                        if geom:
-                            try:
-                                coords = geom.get('coordinates')
-                                if geom['type'] == 'Polygon':
-                                    ring = coords[0]
-                                elif geom['type'] == 'MultiPolygon':
-                                    ring = coords[0][0]
-                                else:
-                                    ring = None
+                    geom = feature.get('geometry')
+                    if geom:
+                        try:
+                            coords = geom.get('coordinates')
+                            if geom['type'] == 'Polygon':
+                                ring = coords[0]
+                            elif geom['type'] == 'MultiPolygon':
+                                ring = coords[0][0]
+                            else:
+                                ring = None
+                            
+                            if ring:
+                                lons = [p[0] for p in ring]
+                                lats = [p[1] for p in ring]
+                                center_lat = sum(lats) / len(lats)
+                                center_lon = sum(lons) / len(lons)
                                 
-                                if ring:
-                                    lons = [p[0] for p in ring]
-                                    lats = [p[1] for p in ring]
-                                    center_lat = sum(lats) / len(lats)
-                                    center_lon = sum(lons) / len(lons)
-                                    
-                                    badge_html = f"""
-                                    <div style="
-                                        background-color: white; 
-                                        border: 2px solid #bd0026; 
-                                        color: #bd0026; 
-                                        font-weight: bold; 
-                                        font-size: 11px; 
-                                        padding: 2px 6px; 
-                                        border-radius: 12px; 
-                                        text-align: center; 
-                                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                                        white-space: nowrap;">
-                                        {ward_cases}
-                                    </div>
-                                    """
-                                    folium.Marker(
-                                        location=[center_lat, center_lon],
-                                        icon=folium.DivIcon(html=badge_html)
-                                    ).add_to(m)
-                            except Exception:
-                                pass
+                                # Red pin badge styling matching the reference screenshot
+                                badge_html = f"""
+                                <div style="
+                                    background-color: #e53e3e; 
+                                    border: 2px solid #ffffff; 
+                                    color: #ffffff; 
+                                    font-weight: bold; 
+                                    font-size: 11px; 
+                                    width: 24px; 
+                                    height: 24px; 
+                                    line-height: 20px; 
+                                    border-radius: 50%; 
+                                    text-align: center; 
+                                    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+                                    transform: translate(-50%, -50%);">
+                                    {ward_cases}
+                                </div>
+                                """
+                                folium.Marker(
+                                    location=[center_lat, center_lon],
+                                    icon=folium.DivIcon(html=badge_html)
+                                ).add_to(m)
+                        except Exception:
+                            pass
                 
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
