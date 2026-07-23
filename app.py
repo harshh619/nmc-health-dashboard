@@ -172,13 +172,20 @@ if check_password():
                 clean_ward = clean_ward_str(raw_ward)
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
-                feature['properties']['Clean_Ward'] = raw_ward 
-                feature['properties']['Clean_Zone'] = zone_name
+                # --- FORMATTING ZONES & WARDS FOR POPUP ---
+                # "Zone No. 8 Lakadganj" ko "Zone No. : 8 Lakadganj" banana
+                formatted_zone = zone_name.replace("Zone No. ", "Zone No. : ").replace("Zone No ", "Zone No. : ")
+                
+                # "Prabhag No. 3" ko "Prabhag No. 3" hi rehne dena ya space adjust karna
+                formatted_ward = raw_ward.replace("Prabhag No. ", "Prabhag No. ")
+                # ------------------------------------------
+                
+                feature['properties']['Clean_Ward'] = formatted_ward 
+                feature['properties']['Clean_Zone'] = formatted_zone
                 
                 feature['properties']['Ward_Cases'] = clean_ward_counts.get(clean_ward, 0)
                 feature['properties']['Zone_Cases'] = clean_zone_counts.get(zone_name, 0)
 
-            # --- CSS FIX FOR SINGLE LINE & SPACING ---
             popup_styling = """
             <style>
                 .leaflet-popup-content table {
@@ -195,7 +202,6 @@ if check_password():
             </style>
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
-            # ----------------------------------------
 
             folium.GeoJson(
                 geo_data,
@@ -207,7 +213,6 @@ if check_password():
                 },
                 popup=folium.features.GeoJsonPopup(
                     fields=['Clean_Zone', 'Clean_Ward', 'Zone_Cases', 'Ward_Cases'],
-                    # Chote aur precise names taaki line wrap na ho
                     aliases=['📍 Zone:', '🏢 Prabhag:', '📊 Zone Cases:', '📈 Prabhag Cases:'],
                     labels=True,
                     style="font-family: Arial; font-size: 13px; font-weight: bold;"
@@ -248,3 +253,4 @@ if check_password():
             display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
             
         st.dataframe(display_df)
+```[cite: 1]
