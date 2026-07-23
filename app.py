@@ -178,22 +178,19 @@ if check_password():
                 feature['properties']['Ward_Cases'] = clean_ward_counts.get(clean_ward, 0)
                 feature['properties']['Zone_Cases'] = clean_zone_counts.get(zone_name, 0)
 
-            # --- NAYA STYLE CHANGE POPUP KE LIYE ---
+            # --- CSS FIX FOR SINGLE LINE & SPACING ---
             popup_styling = """
             <style>
                 .leaflet-popup-content table {
                     width: 100%;
                 }
                 .leaflet-popup-content tr {
-                    line-height: 1.4;
+                    line-height: 1.3;
                 }
-                .leaflet-popup-content td {
-                    padding: 4px 6px !important;
+                .leaflet-popup-content td, .leaflet-popup-content th {
+                    padding: 5px 8px !important;
                     vertical-align: middle !important;
-                }
-                .leaflet-popup-content th {
-                    padding: 4px 6px !important;
-                    vertical-align: middle !important;
+                    white-space: nowrap !important;
                 }
             </style>
             """
@@ -210,7 +207,8 @@ if check_password():
                 },
                 popup=folium.features.GeoJsonPopup(
                     fields=['Clean_Zone', 'Clean_Ward', 'Zone_Cases', 'Ward_Cases'],
-                    aliases=['📍 Zone:', '🏢 Prabhag:', '📊 Total Cases in Zone:', '📈 Total Cases in Prabhag:'],
+                    # Chote aur precise names taaki line wrap na ho
+                    aliases=['📍 Zone:', '🏢 Prabhag:', '📊 Zone Cases:', '📈 Prabhag Cases:'],
                     labels=True,
                     style="font-family: Arial; font-size: 13px; font-weight: bold;"
                 )
