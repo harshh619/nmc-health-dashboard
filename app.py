@@ -172,13 +172,8 @@ if check_password():
                 clean_ward = clean_ward_str(raw_ward)
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
-                # --- EXACT SCREENSHOT FORMATTING LOGIC ---
-                # "Zone No. 8 Lakadganj" se "Zone No. " hata kar sirf "8 Lakadganj" kar diya
                 formatted_zone = zone_name.replace("Zone No. ", "").replace("Zone No ", "")
-                
-                # "Prabhag No. 4" se "Prabhag No. " hata kar sirf "4" kar diya
                 formatted_ward = clean_ward
-                # ----------------------------------------
                 
                 feature['properties']['Clean_Ward'] = formatted_ward 
                 feature['properties']['Clean_Zone'] = formatted_zone
@@ -203,6 +198,7 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
+            # --- NAYA SEQUENCE SET KIYA GAYA HAI ---
             folium.GeoJson(
                 geo_data,
                 style_function=lambda x: {
@@ -212,8 +208,8 @@ if check_password():
                     'fillColor': '#3388ff'
                 },
                 popup=folium.features.GeoJsonPopup(
-                    fields=['Clean_Zone', 'Clean_Ward', 'Zone_Cases', 'Ward_Cases'],
-                    aliases=['📍 Zone:', '🏢 Prabhag:', '📊 Zone Cases:', '📈 Prabhag Cases:'],
+                    fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases', 'Zone_Cases'],
+                    aliases=['📍 Zone:', '🏢 Prabhag:', '📈 Prabhag Cases:', '📊 Zone Cases:'],
                     labels=True,
                     style="font-family: Arial; font-size: 13px; font-weight: bold;"
                 )
