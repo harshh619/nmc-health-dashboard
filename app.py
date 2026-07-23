@@ -207,8 +207,15 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP GENERATION WITH SINGLE UNIFIED POPUP & MARKER CLUSTER ---
-        st.markdown("### 📍 Patients Map (Density Choropleth & Marker Clustering)")
+        # --- 5. MAP VIEW SWITCHER (TABS / PILL SWITCH) ---
+        st.markdown("### 📍 Patients Map View")
+        
+        map_mode = st.radio(
+            "Select Map View Mode",
+            ["Patient Cluster View", "Ward-wise Exact Count View"],
+            horizontal=True,
+            label_visibility="collapsed"
+        )
         
         if geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
@@ -279,7 +286,7 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # Choropleth Polygons Layer with ONLY Popup (No Tooltip to avoid double box)
+            # Base Choropleth Layer
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -302,29 +309,73 @@ if check_password():
                 )
             ).add_to(m)
 
-            # --- MARKER CLUSTER FOR PATIENT PINS ---
-            marker_cluster = MarkerCluster().add_to(m)
+            # --- MODE 1: PATIENT CLUSTER VIEW ---
+            if map_mode == "Patient Cluster View":
+                marker_cluster = MarkerCluster().add_to(m)
+                if not filtered_df.empty:
+                    for idx, row in filtered_df.iterrows():
+                        date_str = "N/A"
+                        if pd.notna(row.get('Date')):
+                            date_str = row['Date'].strftime('%d/%m/%Y') 
 
-            if not filtered_df.empty:
-                for idx, row in filtered_df.iterrows():
-                    date_str = "N/A"
-                    if pd.notna(row.get('Date')):
-                        date_str = row['Date'].strftime('%d/%m/%Y') 
+                        popup_text = f"""
+                        <b>Date:</b> {date_str}<br>
+                        <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
+                        <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
+                        <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
+                        <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
+                        """
+                        
+                        if pd.notna(row['Lat']) and pd.notna(row['Long']):
+                            folium.Marker(
+                                location=[row['Lat'], row['Long']],
+                                popup=folium.Popup(popup_text, max_width=300),
+                                icon=folium.Icon(color="red", icon="info-sign")
+                            ).add_to(marker_cluster)
 
-                    popup_text = f"""
-                    <b>Date:</b> {date_str}<br>
-                    <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
-                    <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
-                    <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
-                    <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
-                    """
-                    
-                    if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                        folium.Marker(
-                            location=[row['Lat'], row['Long']],
-                            popup=folium.Popup(popup_text, max_width=300),
-                            icon=folium.Icon(color="red", icon="info-sign")
-                        ).add_to(marker_cluster)
+            # --- MODE 2: WARD-WISE EXACT COUNT VIEW ---
+            elif map_mode == "Ward-wise Exact Count View":
+                for feature in geo_data['features']:
+                    ward_cases = feature['properties']['Ward_Cases']
+                    if ward_cases > 0:
+                        geom = feature.get('geometry')
+                        if geom:
+                            try:
+                                coords = geom.get('coordinates')
+                                if geom['type'] == 'Polygon':
+                                    ring = coords[0]
+                                elif geom['type'] == 'MultiPolygon':
+                                    ring = coords[0][0]
+                                else:
+                                    ring = None
+                                
+                                if ring:
+                                    lons = [p[0] for p in ring]
+                                    lats = [p[1] for p in ring]
+                                    center_lat = sum(lats) / len(lats)
+                                    center_lon = sum(lons) / len(lons)
+                                    
+                                    badge_html = f"""
+                                    <div style="
+                                        background-color: white; 
+                                        border: 2px solid #bd0026; 
+                                        color: #bd0026; 
+                                        font-weight: bold; 
+                                        font-size: 11px; 
+                                        padding: 2px 6px; 
+                                        border-radius: 12px; 
+                                        text-align: center; 
+                                        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                                        white-space: nowrap;">
+                                        {ward_cases}
+                                    </div>
+                                    """
+                                    folium.Marker(
+                                        location=[center_lat, center_lon],
+                                        icon=folium.DivIcon(html=badge_html)
+                                    ).add_to(m)
+                            except Exception:
+                                pass
                 
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
