@@ -8,6 +8,20 @@ import datetime
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide")
 
+# --- SIDEBAR PADDING & SPACING FIX CSS ---
+st.markdown("""
+    <style>
+        /* Sidebar ke upar ka extra gap kam karne ke liye */
+        section[data-testid="stSidebar"] > div:first-child {
+            padding-top: 1rem;
+        }
+        /* Zone-wise cases table ke upar ka gap aur compact karne ke liye */
+        .stMarkdown {
+            margin-bottom: -10px;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # --- 1. PASSWORD PROTECTION ---
 def check_password():
     def password_entered():
@@ -135,7 +149,7 @@ if check_password():
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
-        # --- ZONE-WISE SUMMARY TABLE (HEIGHT INCREASED TO SHOW ALL 10 ZONES) ---
+        # --- ZONE-WISE SUMMARY TABLE (COMPACT HEIGHT) ---
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📊 Zone-wise Cases")
         
@@ -145,12 +159,12 @@ if check_password():
             
             zone_summary['Zone'] = zone_summary['Zone'].astype(str).str.replace("Zone No. ", "").str.replace("Zone No ", "")
             
-            # Height ko 400 kar diya hai taaki sabhi 10 zones bina scroll ke dikh sakein
+            # Height ko 320 set kiya hai taaki saare zones fit aa jayein aur bada scroll na aaye
             st.sidebar.dataframe(
                 zone_summary, 
                 hide_index=True, 
                 use_container_width=True,
-                height=400
+                height=320
             )
         else:
             st.sidebar.info("No data available for summary.")
