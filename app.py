@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import json
 import folium
-from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
 
@@ -207,8 +206,8 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
         
-        # --- 5. MAP GENERATION WITH MARKER CLUSTER & EXACT COUNTS ---
-        st.markdown("### 📍 Patients Map (Density Choropleth & Marker Clustering)")
+        # --- 5. MAP GENERATION WITH EXACT 10 ZONE-WISE TOTAL LABELS ---
+        st.markdown("### 📍 Patients Map (Choropleth Density & Exact Zone Totals)")
         
         if geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
@@ -249,6 +248,8 @@ if check_password():
                 else:
                     return "#bd0026"
 
+            zone_coords_accumulator = {}
+
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 clean_ward = clean_ward_str(raw_ward)
@@ -261,6 +262,31 @@ if check_password():
                 feature['properties']['Ward_Cases'] = ward_cases
                 feature['properties']['Zone_Cases'] = clean_zone_counts.get(zone_name, 0)
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
+
+                # Calculate approximate center to accumulate zone centroids
+                geom = feature.get('geometry')
+                if geom:
+                    try:
+                        coords = geom.get('coordinates')
+                        if geom['type'] == 'Polygon':
+                            ring = coords[0]
+                        elif geom['type'] == 'MultiPolygon':
+                            ring = coords[0][0]
+                        else:
+                            ring = None
+                        
+                        if ring:
+                            lons = [p[0] for p in ring]
+                            lats = [p[1] for p in ring]
+                            c_lat = sum(lats) / len(lats)
+                            c_lon = sum(lons) / len(lons)
+                            
+                            if zone_name not in zone_coords_accumulator:
+                                zone_coords_accumulator[zone_name] = {'lats': [], 'lons': []}
+                            zone_coords_accumulator[zone_name]['lats'].append(c_lat)
+                            zone_coords_accumulator[zone_name]['lons'].append(c_lon)
+                    except:
+                        pass
 
             popup_styling = """
             <style>
@@ -279,7 +305,7 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # Choropleth Polygons Layer with Exact Counts in Tooltip & Popup
+            # Choropleth Polygons Layer
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -308,30 +334,32 @@ if check_password():
                 )
             ).add_to(m)
 
-            # --- MARKER CLUSTER RESTORED FOR CLEAN ZOOM IN/OUT ---
-            marker_cluster = MarkerCluster().add_to(m)
-
-            if not filtered_df.empty:
-                for idx, row in filtered_df.iterrows():
-                    date_str = "N/A"
-                    if pd.notna(row.get('Date')):
-                        date_str = row['Date'].strftime('%d/%m/%Y') 
-
-                    popup_text = f"""
-                    <b>Date:</b> {date_str}<br>
-                    <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
-                    <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
-                    <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
-                    <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
-                    """
+            # --- EXACT ZONE-WISE TOTAL LABELS (EXACTLY MATCHES TABLE) ---
+            for z_name, z_cases in clean_zone_counts.items():
+                if z_name in zone_coords_accumulator and z_cases > 0:
+                    avg_lat = sum(zone_coords_accumulator[z_name]['lats']) / len(zone_coords_accumulator[z_name]['lats'])
+                    avg_lon = sum(zone_coords_accumulator[z_name]['lons']) / len(zone_coords_accumulator[z_name]['lons'])
                     
-                    if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                        folium.Marker(
-                            location=[row['Lat'], row['Long']],
-                            popup=folium.Popup(popup_text, max_width=300),
-                            icon=folium.Icon(color="red", icon="info-sign")
-                        ).add_to(marker_cluster)
-                
+                    zone_badge_html = f"""
+                    <div style="
+                        background-color: #1e3a8a; 
+                        border: 2px solid #ffffff; 
+                        color: #ffffff; 
+                        font-weight: bold; 
+                        font-size: 13px; 
+                        padding: 4px 10px; 
+                        border-radius: 16px; 
+                        text-align: center; 
+                        box-shadow: 0 3px 6px rgba(0,0,0,0.4);
+                        white-space: nowrap;">
+                        {z_name}: {z_cases}
+                    </div>
+                    """
+                    folium.Marker(
+                        location=[avg_lat, avg_lon],
+                        icon=folium.DivIcon(html=zone_badge_html)
+                    ).add_to(m)
+
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
             st.info("Geojson data available nahi hai.")
