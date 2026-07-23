@@ -208,7 +208,7 @@ if check_password():
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
 
-        # --- 4.1 ANALYTICAL CHARTS (PIE CHART & BAR CHART) ---
+        # --- 4.1 ANALYTICAL CHARTS (PIE, BAR & LINE TIMELINE) ---
         col_chart1, col_chart2 = st.columns(2)
         
         with col_chart1:
@@ -236,6 +236,19 @@ if check_password():
                 st.bar_chart(ward_counts, color="#bd0026", height=300)
             else:
                 st.info("Ward data available nahi hai.")
+
+        # --- DATE TREND / TIMELINE LINE GRAPH ---
+        st.markdown("### 📈 Date Trend / Timeline Analysis")
+        if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
+            timeline_df = filtered_df.dropna(subset=['Date']).copy()
+            timeline_df['DateOnly'] = timeline_df['Date'].dt.date
+            timeline_counts = timeline_df['DateOnly'].value_counts().sort_index().reset_index()
+            timeline_counts.columns = ['Date', 'Cases']
+            timeline_counts.set_index('Date', inplace=True)
+            
+            st.line_chart(timeline_counts, color="#1e3a8a", height=250)
+        else:
+            st.info("Timeline ke liye valid Date data available nahi hai.")
         
         # --- 5. MAP VIEW SWITCHER (3 MODES) ---
         st.markdown("### 📍 Patients Map View")
