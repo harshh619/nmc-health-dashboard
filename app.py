@@ -78,6 +78,20 @@ if check_password():
 
     if patient_df is not None:
         
+        # --- UNIFORM ZONE CLEANING FUNCTION ---
+        def clean_zone_name(val):
+            if pd.isna(val): return "Unknown"
+            val = str(val)
+            for prefix in ["Zone No. ", "Zone No ", "Zone No."]:
+                if val.startswith(prefix):
+                    val = val[len(prefix):]
+            return val.strip()
+
+        if 'Zone' in mapping_df.columns:
+            mapping_df['Zone'] = mapping_df['Zone'].apply(clean_zone_name)
+        if 'Zone' in patient_df.columns:
+            patient_df['Zone'] = patient_df['Zone'].apply(clean_zone_name)
+
         min_date, max_date = None, None
         if 'Date' in patient_df.columns and not patient_df['Date'].dropna().empty:
             min_date = patient_df['Date'].min().date()
@@ -131,7 +145,7 @@ if check_password():
             filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
 
         raw_zones = mapping_df['Zone'].dropna().unique()
-        zones_list = ["All"] + sorted([str(x) for x in raw_zones])
+        zones_list = ["All"] + sorted([str(x) for x in raw_zones], key=lambda x: int(''.join(filter(str.isdigit, str(x))) or 0))
         
         selected_zone = st.sidebar.selectbox("Select Zone", zones_list, key="zone_filter")
 
@@ -148,15 +162,13 @@ if check_password():
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
-        # --- ZONE-WISE SUMMARY TABLE (HEIGHT INCREASED TO 420 TO FIT ALL 10 ZONES) ---
+        # --- ZONE-WISE SUMMARY TABLE ---
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📊 Zone-wise Cases")
         
         if not filtered_df.empty and 'Zone' in filtered_df.columns:
             zone_summary = filtered_df['Zone'].value_counts().reset_index()
             zone_summary.columns = ['Zone', 'Cases']
-            
-            zone_summary['Zone'] = zone_summary['Zone'].astype(str).str.replace("Zone No. ", "").str.replace("Zone No ", "")
             
             st.sidebar.dataframe(
                 zone_summary, 
@@ -218,7 +230,7 @@ if check_password():
                 clean_ward = clean_ward_str(raw_ward)
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
-                formatted_zone = zone_name.replace("Zone No. ", "").replace("Zone No ", "")
+                formatted_zone = zone_name
                 formatted_ward = clean_ward
                 
                 ward_cases = clean_ward_counts.get(clean_ward, 0)
