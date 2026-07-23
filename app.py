@@ -166,6 +166,14 @@ if check_password():
                 clean_z = str(z)
                 clean_zone_counts[clean_z] = clean_zone_counts.get(clean_z, 0) + count
 
+            # Alag-alag zones ke liye distinct colors ki mapping
+            zone_color_palette = [
+                "#e6194b", "#3cb44b", "#ffe119", "#4363d8", "#f58231", 
+                "#911eb4", "#42d4f4", "#f032e6", "#bfef45", "#fabed4"
+            ]
+            unique_zones = sorted(list(set(zone_dict.values())))
+            zone_color_map = {z: zone_color_palette[i % len(zone_color_palette)] for i, z in enumerate(unique_zones)}
+
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 
@@ -180,6 +188,9 @@ if check_password():
                 
                 feature['properties']['Ward_Cases'] = clean_ward_counts.get(clean_ward, 0)
                 feature['properties']['Zone_Cases'] = clean_zone_counts.get(zone_name, 0)
+                
+                # Zone ke hisaab se color assign karna
+                feature['properties']['zone_color'] = zone_color_map.get(zone_name, "#3388ff")
 
             popup_styling = """
             <style>
@@ -198,14 +209,20 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # --- NAYA SEQUENCE SET KIYA GAYA HAI ---
-            folium.GeoJson(
+            # GeoJson layer jisme har zone ka alag color aur click par highlight effect ho
+            g = folium.GeoJson(
                 geo_data,
-                style_function=lambda x: {
-                    'color': 'black', 
-                    'weight': 1.5, 
-                    'fillOpacity': 0.1, 
-                    'fillColor': '#3388ff'
+                style_function=lambda feature: {
+                    'color': 'black',
+                    'weight': 1.2,
+                    'fillColor': feature['properties']['zone_color'],
+                    'fillOpacity': 0.35
+                },
+                highlight_function=lambda feature: {
+                    'color': '#ff0000',
+                    'weight': 3,
+                    'fillColor': feature['properties']['zone_color'],
+                    'fillOpacity': 0.6
                 },
                 popup=folium.features.GeoJsonPopup(
                     fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases', 'Zone_Cases'],
@@ -213,7 +230,8 @@ if check_password():
                     labels=True,
                     style="font-family: Arial; font-size: 13px; font-weight: bold;"
                 )
-            ).add_to(m)
+            )
+            g.add_to(m)
 
             marker_cluster = MarkerCluster().add_to(m)
 
