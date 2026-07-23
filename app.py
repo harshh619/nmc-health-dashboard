@@ -206,6 +206,26 @@ if check_password():
         st.markdown(f"**Active View:** `{selected_zone} Zone` ➔ `{selected_ward}`")
         total_cases = len(filtered_df)
         st.metric("Total Cases in Selected Window", total_cases)
+
+        # --- 4.1 ANALYTICAL CHARTS (DISEASE & WARD DISTRIBUTION) ---
+        if not filtered_df.empty:
+            col_chart1, col_chart2 = st.columns(2)
+            
+            with col_chart1:
+                st.markdown("### 🦠 Disease Distribution")
+                if 'Disease' in filtered_df.columns:
+                    disease_counts = filtered_df['Disease'].value_counts()
+                    st.bar_chart(disease_counts, color="#1e3a8a")
+                else:
+                    st.info("Disease column available nahi hai.")
+                    
+            with col_chart2:
+                st.markdown("### 🏢 Top Affected Wards")
+                if 'Ward_Name' in filtered_df.columns:
+                    ward_counts = filtered_df['Ward_Name'].value_counts().head(8)
+                    st.bar_chart(ward_counts, color="#bd0026")
+                else:
+                    st.info("Ward_Name column available nahi hai.")
         
         # --- 5. MAP VIEW SWITCHER (3 MODES) ---
         st.markdown("### 📍 Patients Map View")
@@ -378,7 +398,7 @@ if check_password():
                         except Exception:
                             pass
 
-            # --- MODE 3: ALL CASES POINTS VIEW (WITHOUT CLUSTERING) ---
+            # --- MODE 3: ALL CASES POINTS VIEW ---
             elif map_mode == "All Cases Points View":
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
