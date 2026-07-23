@@ -40,10 +40,10 @@ def check_password():
     return True
 
 if check_password():
-    # --- HEADER WITH NMC LOGO ---
+    # --- HEADER WITH LOGO.PNG ---
     col_logo, col_title = st.columns([1, 12])
     with col_logo:
-        st.image("Nagpur_Municipal_Corporation_logo.png", width=65)
+        st.image("logo.png", width=65)
     with col_title:
         st.markdown("<h2 style='margin-top: 5px;'>Nagpur Municipal Corporation - Health Dashboard</h2>", unsafe_allow_html=True)
 
