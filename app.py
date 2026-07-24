@@ -9,17 +9,13 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING & TOP SPACE REMOVAL ---
+# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING & SPACING FIX ---
 st.markdown("""
     <style>
-        /* Completely eliminate Streamlit's default header/top whitespace */
+        /* Proper top spacing for clean layout */
         .block-container {
-            padding-top: 0rem !important;
+            padding-top: 2rem !important;
             padding-bottom: 2rem !important;
-            margin-top: -25px !important;
-        }
-        header[data-testid="stHeader"] {
-            display: none !important;
         }
         .main {
             background-color: #f8f9fa;
@@ -27,7 +23,6 @@ st.markdown("""
         section[data-testid="stSidebar"] div.block-container {
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
-            margin-top: 0px !important;
         }
         section[data-testid="stSidebar"] .stElementContainer {
             margin-bottom: -8px !important;
@@ -117,17 +112,24 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("### 🔐 Nagpur Municipal Corporation - Health Dashboard")
+            st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
-        st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
-        st.error("❌ Galat Password")
+        st.markdown("<br><br>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.markdown("### 🔐 Nagpur Municipal Corporation - Health Dashboard")
+            st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
+            st.error("❌ Galat Password")
         return False
     return True
 
 if check_password():
     # --- PROFESSIONAL HEADER BANNER WITH LOCAL LOGO ---
-    # Attempt to load local logo inside the banner cleanly, fallback to icon if file missing
     logo_html = ""
     try:
         import base64
