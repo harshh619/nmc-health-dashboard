@@ -9,7 +9,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING ---
+# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING WITH HEADER BANNER ---
 st.markdown("""
     <style>
         .main {
@@ -37,6 +37,26 @@ st.markdown("""
         section[data-testid="stSidebar"] {
             background-color: #f1f5f9;
             border-right: 1px solid #e2e8f0;
+        }
+        
+        /* Professional Municipal Header Banner */
+        .header-banner {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            padding: 16px 20px;
+            border-radius: 10px;
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .header-banner h2 {
+            color: white !important;
+            margin: 0;
+            font-weight: 700;
+            font-size: 26px;
+            letter-spacing: -0.5px;
         }
         
         /* Pulsating Animation for High-Risk Alert Box */
@@ -96,12 +116,16 @@ def check_password():
     return True
 
 if check_password():
-    # --- PROFESSIONAL HEADER WITH LOGO ---
-    col_logo, col_title = st.columns([1, 14], vertical_alignment="center")
-    with col_logo:
-        st.image("logo.png", width=55)
-    with col_title:
-        st.markdown("<h2 style='margin: 0; font-weight: 700; color: #1e3a8a;'>Nagpur Municipal Corporation - Health Dashboard</h2>", unsafe_allow_html=True)
+    # --- PROFESSIONAL HEADER BANNER WITH LOGO ---
+    st.markdown("""
+        <div class="header-banner">
+            <img src="https://i.ibb.co/5G8N03X/logo.png" width="50" style="background: white; border-radius: 50%; padding: 3px;" onerror="this.style.display='none'">
+            <div>
+                <h2>Nagpur Municipal Corporation - Health Dashboard</h2>
+                <div style="font-size: 13px; opacity: 0.85; margin-top: 2px;">Public Health Intelligence & Disease Surveillance Portal</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
     # --- 2. DATA LOAD & MERGE ---
     @st.cache_data(ttl=600)
@@ -391,7 +415,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (3 MODES WITH B&W & NO-LABELS TILE LAYERS) ---
+        # --- 5. MAP VIEW SWITCHER (3 MODES WITH ALL MAP LAYERS) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -411,7 +435,7 @@ if check_password():
                 control=True
             ).add_to(m)
 
-            # 2. Clean No-Labels Map Layer (Bilkul saaf, bina kisi city name ya text ke)
+            # 2. Clean No-Labels Map Layer (Bilkul saaf, bina kisi text ke)
             folium.TileLayer(
                 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
                 attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
