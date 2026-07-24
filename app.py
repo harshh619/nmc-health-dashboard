@@ -366,7 +366,6 @@ if check_password():
             timeline_counts = timeline_df['DateOnly'].value_counts().sort_index().reset_index()
             timeline_counts.columns = ['Date', 'Cases']
             
-            # Plotly Area Chart with Smooth Curves & Gradient Fill
             fig_timeline = px.area(
                 timeline_counts,
                 x='Date',
@@ -392,7 +391,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (3 MODES) ---
+        # --- 5. MAP VIEW SWITCHER (3 MODES WITH B&W TILE LAYER) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -403,7 +402,22 @@ if check_password():
         )
         
         if geo_data:
-            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5)
+            # Initialize map with no default tiles to manage multiple layers cleanly
+            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None)
+            
+            # Clean Black & White Tile Layer (CartoDB Positron)
+            folium.TileLayer(
+                'CartoDB Positron', 
+                name='Clean B&W Map',
+                control=True
+            ).add_to(m)
+
+            # Standard OpenStreetMap layer option
+            folium.TileLayer(
+                'OpenStreetMap', 
+                name='Default Map',
+                control=True
+            ).add_to(m)
             
             def clean_ward_str(val):
                 if pd.isna(val): return "Unknown"
@@ -592,6 +606,9 @@ if check_password():
                                 fill_color='#e53e3e',
                                 fill_opacity=0.9
                             ).add_to(m)
+            
+            # Add Layer Control to switch map styles (B&W vs Default)
+            folium.LayerControl().add_to(m)
                 
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
