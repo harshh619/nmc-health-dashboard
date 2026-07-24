@@ -111,6 +111,22 @@ st.markdown("""
             height: 320px;
             margin: auto;
         }
+
+        /* Professional Footer Styling */
+        .footer-container {
+            margin-top: 40px;
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            border-radius: 8px;
+            text-align: center;
+            color: #475569;
+            font-size: 13.5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .footer-container b {
+            color: #1e3a8a;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -316,7 +332,7 @@ if check_password():
         col_m1, col_m2 = st.columns([1, 2])
         with col_m1:
             total_cases = len(filtered_df)
-            st.metric("Total Cases in Selected Window", total_cases)
+            st.metric("Total Cases in Selected Window", total_cases, delta="Live Data")
             
         with col_m2:
             if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
@@ -338,14 +354,7 @@ if check_password():
             status_counts = filtered_df['Status'].value_counts()
             status_cols = st.columns(len(status_counts) if len(status_counts) > 0 else 1)
             
-            status_colors = {
-                "Recovered": "#10b981",  # Green
-                "Admitted": "#f59e0b",   # Amber/Yellow
-                "Died": "#ef4444"        # Red
-            }
-            
             for idx, (status_name, count_val) in enumerate(status_counts.items()):
-                dot_color = status_colors.get(status_name, "#3b82f6")
                 with status_cols[idx % len(status_cols)]:
                     st.metric(
                         label=f"● Status: {status_name}", 
@@ -472,14 +481,12 @@ if check_password():
         if geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None)
             
-            # 1. Clean B&W Map Layer
             folium.TileLayer(
                 'CartoDB Positron', 
                 name='Clean B&W Map',
                 control=True
             ).add_to(m)
 
-            # 2. Clean No-Labels Map Layer
             folium.TileLayer(
                 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
                 attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -487,7 +494,6 @@ if check_password():
                 control=True
             ).add_to(m)
 
-            # 3. Default OpenStreetMap layer
             folium.TileLayer(
                 'OpenStreetMap', 
                 name='Default Map',
@@ -560,7 +566,6 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_styling))
 
-            # Base Choropleth Layer
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -583,7 +588,6 @@ if check_password():
                 )
             ).add_to(m)
 
-            # --- MODE 1: PATIENT CLUSTER VIEW ---
             if map_mode == "Patient Cluster View":
                 marker_cluster = MarkerCluster().add_to(m)
                 if not filtered_df.empty:
@@ -608,7 +612,6 @@ if check_password():
                                 icon=folium.Icon(color="red", icon="info-sign")
                             ).add_to(marker_cluster)
 
-            # --- MODE 2: WARD-WISE EXACT COUNT VIEW (Hiding 0 cases) ---
             elif map_mode == "Ward-wise Exact Count View":
                 for feature in geo_data['features']:
                     ward_cases = feature['properties']['Ward_Cases']
@@ -655,7 +658,6 @@ if check_password():
                             except Exception:
                                 pass
 
-            # --- MODE 3: ALL CASES POINTS VIEW ---
             elif map_mode == "All Cases Points View":
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
@@ -689,10 +691,30 @@ if check_password():
         else:
             st.info("Geojson data available nahi hai.")
 
-        # --- 6. DATA TABLE ---
-        st.markdown("### 📋 Patient Details")
+        # --- 6. DATA TABLE WITH EXPORT BUTTON ---
+        col_t1, col_t2 = st.columns([8, 2], vertical_alignment="bottom")
+        with col_t1:
+            st.markdown("### 📋 Patient Details")
+        with col_t2:
+            csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Export CSV",
+                data=csv_data,
+                file_name="NMC_Health_Report.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
         display_df = filtered_df.copy()
         if 'Date' in display_df.columns:
             display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
             
         st.dataframe(display_df, use_container_width=True)
+
+        # --- PROFESSIONAL FOOTER ---
+        st.markdown("""
+            <div class="footer-container">
+                <div><b>Nagpur Municipal Corporation (NMC)</b> - Public Health Intelligence & Disease Surveillance Portal</div>
+                <div style="margin-top: 4px; color: #64748b;">Designed & Developed by <b>Harsh Wardhan Chandel</b> (Technical Officer I.T., MSU Nagpur)</div>
+            </div>
+        """, unsafe_allow_html=True)
