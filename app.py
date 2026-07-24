@@ -9,7 +9,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING WITH PULSATING ALERT ANIMATION ---
+# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING ---
 st.markdown("""
     <style>
         .main {
@@ -154,6 +154,7 @@ if check_password():
             st.session_state['disease_filter'] = "All"
             st.session_state['zone_filter'] = "All"
             st.session_state['ward_filter'] = "All"
+            st.session_state['status_filter'] = "All"
             if min_date and max_date:
                 st.session_state['start_date'] = min_date
                 st.session_state['end_date'] = max_date
@@ -215,6 +216,18 @@ if check_password():
         if selected_ward != "All":
             filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
+        # --- PATIENT STATUS FILTER ---
+        if 'Status' in filtered_df.columns:
+            raw_statuses = filtered_df['Status'].dropna().unique()
+            status_options = ["All"] + sorted([str(x) for x in raw_statuses])
+        else:
+            status_options = ["All"]
+            
+        selected_status = st.sidebar.selectbox("Select Patient Status", status_options, key="status_filter")
+        
+        if selected_status != "All":
+            filtered_df = filtered_df[filtered_df['Status'] == selected_status]
+
         # --- ZONE-WISE SUMMARY TABLE ---
         st.sidebar.markdown("---")
         st.sidebar.markdown("### 📊 Zone-wise Cases")
@@ -245,7 +258,6 @@ if check_password():
                 top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
                 top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
                 
-                # Pulsating HTML Alert Box
                 st.markdown(f"""
                     <div class="pulsing-alert">
                         <span>🚨</span>
@@ -254,6 +266,16 @@ if check_password():
                 """, unsafe_allow_html=True)
             else:
                 st.info("Hotspot data ke liye sufficient records nahi hain.")
+
+        # --- PATIENT STATUS TRACKING SUMMARY METRICS ---
+        if 'Status' in filtered_df.columns and not filtered_df['Status'].dropna().empty:
+            st.markdown("### 🏥 Patient Status Breakdown")
+            status_counts = filtered_df['Status'].value_counts()
+            status_cols = st.columns(len(status_counts) if len(status_counts) > 0 else 1)
+            
+            for idx, (status_name, count_val) in enumerate(status_counts.items()):
+                with status_cols[idx % len(status_cols)]:
+                    st.metric(label=f"Status: {status_name}", value=count_val)
 
         # --- 4.1 ANALYTICAL CHARTS (PIE, BAR & LINE TIMELINE) ---
         col_chart1, col_chart2 = st.columns(2)
@@ -413,6 +435,7 @@ if check_password():
                         <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
                         <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
                         <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
+                        <b>Status:</b> {row.get('Status', 'N/A')}<br>
                         <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
                         """
                         
@@ -481,6 +504,7 @@ if check_password():
                         <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
                         <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
                         <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
+                        <b>Status:</b> {row.get('Status', 'N/A')}<br>
                         <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
                         """
                         
