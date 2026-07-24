@@ -277,8 +277,8 @@ if check_password():
                 with status_cols[idx % len(status_cols)]:
                     st.metric(label=f"Status: {status_name}", value=count_val)
 
-        # --- 4.1 ANALYTICAL CHARTS (BEAUTIFIED PIE CHART & BAR CHART) ---
-        col_chart1, col_chart2 = st.columns(2)
+        # --- 4.1 ANALYTICAL CHARTS (ADJUSTED COLUMN WIDTHS FOR PIE & BAR) ---
+        col_chart1, col_chart2 = st.columns([4, 6])
         
         with col_chart1:
             st.markdown("### 🦠 Disease Distribution (Pie Chart)")
