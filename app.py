@@ -391,7 +391,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (3 MODES WITH B&W TILE LAYER) ---
+        # --- 5. MAP VIEW SWITCHER (3 MODES WITH B&W & NO-LABELS TILE LAYERS) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -404,12 +404,22 @@ if check_password():
         if geo_data:
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None)
             
+            # 1. Clean B&W Map Layer
             folium.TileLayer(
                 'CartoDB Positron', 
                 name='Clean B&W Map',
                 control=True
             ).add_to(m)
 
+            # 2. Clean No-Labels Map Layer (Bilkul saaf, bina kisi city name ya text ke)
+            folium.TileLayer(
+                'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+                attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                name='Clean No-Labels Map',
+                control=True
+            ).add_to(m)
+
+            # 3. Default OpenStreetMap layer
             folium.TileLayer(
                 'OpenStreetMap', 
                 name='Default Map',
@@ -535,7 +545,6 @@ if check_password():
                 for feature in geo_data['features']:
                     ward_cases = feature['properties']['Ward_Cases']
                     
-                    # Sirf tabhi badge dikhayein jab cases 0 se zyada hon
                     if ward_cases > 0:
                         geom = feature.get('geometry')
                         if geom:
