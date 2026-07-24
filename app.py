@@ -284,7 +284,7 @@ if check_password():
                 with status_cols[idx % len(status_cols)]:
                     st.metric(label=f"Status: {status_name}", value=count_val)
 
-        # --- 4.1 ANALYTICAL CHARTS (PIE, DIVIDER LINE & BAR CHART) ---
+        # --- 4.1 ANALYTICAL CHARTS (BEAUTIFIED PIE, DIVIDER & BEAUTIFIED PLOTLY BAR CHART) ---
         col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
         
         with col_chart1:
@@ -323,14 +323,37 @@ if check_password():
                 st.info("Disease data available nahi hai.")
 
         with col_divider:
-            # Beautiful Vertical Divider Line
             st.markdown("<div class='vertical-divider'></div>", unsafe_allow_html=True)
                 
         with col_chart2:
             st.markdown("### 🏢 Top Affected Wards")
             if 'Ward_Name' in filtered_df.columns and not filtered_df['Ward_Name'].dropna().empty:
-                ward_counts = filtered_df['Ward_Name'].value_counts().head(8)
-                st.bar_chart(ward_counts, color="#bd0026", height=300)
+                ward_df = filtered_df['Ward_Name'].value_counts().head(8).reset_index()
+                ward_df.columns = ['Ward', 'Cases']
+                
+                # Beautified Plotly Bar Chart
+                fig_bar = px.bar(
+                    ward_df,
+                    x='Ward',
+                    y='Cases',
+                    text='Cases',
+                    color='Cases',
+                    color_continuous_scale=['#fca5a5', '#dc2626', '#991b1b']
+                )
+                fig_bar.update_traces(
+                    textposition='outside',
+                    marker_cornerradius=6
+                )
+                fig_bar.update_layout(
+                    margin=dict(t=20, b=10, l=10, r=10),
+                    height=300,
+                    xaxis=dict(title='', tickangle=-25, tickfont=dict(size=11, color='#1f2937')),
+                    yaxis=dict(title='Cases Count', showgrid=True, gridcolor='#f3f4f6'),
+                    coloraxis_showscale=False,
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)'
+                )
+                st.plotly_chart(fig_bar, use_container_width=True)
             else:
                 st.info("Ward data available nahi hai.")
 
