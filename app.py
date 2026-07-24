@@ -402,17 +402,14 @@ if check_password():
         )
         
         if geo_data:
-            # Initialize map with no default tiles to manage multiple layers cleanly
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None)
             
-            # Clean Black & White Tile Layer (CartoDB Positron)
             folium.TileLayer(
                 'CartoDB Positron', 
                 name='Clean B&W Map',
                 control=True
             ).add_to(m)
 
-            # Standard OpenStreetMap layer option
             folium.TileLayer(
                 'OpenStreetMap', 
                 name='Default Map',
@@ -533,50 +530,53 @@ if check_password():
                                 icon=folium.Icon(color="red", icon="info-sign")
                             ).add_to(marker_cluster)
 
-            # --- MODE 2: WARD-WISE EXACT COUNT VIEW ---
+            # --- MODE 2: WARD-WISE EXACT COUNT VIEW (Hiding 0 cases) ---
             elif map_mode == "Ward-wise Exact Count View":
                 for feature in geo_data['features']:
                     ward_cases = feature['properties']['Ward_Cases']
-                    geom = feature.get('geometry')
-                    if geom:
-                        try:
-                            coords = geom.get('coordinates')
-                            if geom['type'] == 'Polygon':
-                                ring = coords[0]
-                            elif geom['type'] == 'MultiPolygon':
-                                ring = coords[0][0]
-                            else:
-                                ring = None
-                            
-                            if ring:
-                                lons = [p[0] for p in ring]
-                                lats = [p[1] for p in ring]
-                                center_lat = sum(lats) / len(lats)
-                                center_lon = sum(lons) / len(lons)
+                    
+                    # Sirf tabhi badge dikhayein jab cases 0 se zyada hon
+                    if ward_cases > 0:
+                        geom = feature.get('geometry')
+                        if geom:
+                            try:
+                                coords = geom.get('coordinates')
+                                if geom['type'] == 'Polygon':
+                                    ring = coords[0]
+                                elif geom['type'] == 'MultiPolygon':
+                                    ring = coords[0][0]
+                                else:
+                                    ring = None
                                 
-                                badge_html = f"""
-                                <div style="
-                                    background-color: #e53e3e; 
-                                    border: 2px solid #ffffff; 
-                                    color: #ffffff; 
-                                    font-weight: bold; 
-                                    font-size: 11px; 
-                                    width: 24px; 
-                                    height: 24px; 
-                                    line-height: 20px; 
-                                    border-radius: 50%; 
-                                    text-align: center; 
-                                    box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-                                    transform: translate(-50%, -50%);">
-                                    {ward_cases}
-                                </div>
-                                """
-                                folium.Marker(
-                                    location=[center_lat, center_lon],
-                                    icon=folium.DivIcon(html=badge_html)
-                                ).add_to(m)
-                        except Exception:
-                            pass
+                                if ring:
+                                    lons = [p[0] for p in ring]
+                                    lats = [p[1] for p in ring]
+                                    center_lat = sum(lats) / len(lats)
+                                    center_lon = sum(lons) / len(lons)
+                                    
+                                    badge_html = f"""
+                                    <div style="
+                                        background-color: #e53e3e; 
+                                        border: 2px solid #ffffff; 
+                                        color: #ffffff; 
+                                        font-weight: bold; 
+                                        font-size: 11px; 
+                                        width: 24px; 
+                                        height: 24px; 
+                                        line-height: 20px; 
+                                        border-radius: 50%; 
+                                        text-align: center; 
+                                        box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+                                        transform: translate(-50%, -50%);">
+                                        {ward_cases}
+                                    </div>
+                                    """
+                                    folium.Marker(
+                                        location=[center_lat, center_lon],
+                                        icon=folium.DivIcon(html=badge_html)
+                                    ).add_to(m)
+                            except Exception:
+                                pass
 
             # --- MODE 3: ALL CASES POINTS VIEW ---
             elif map_mode == "All Cases Points View":
@@ -606,10 +606,8 @@ if check_password():
                                 fill_color='#e53e3e',
                                 fill_opacity=0.9
                             ).add_to(m)
-            
-            # Add Layer Control to switch map styles (B&W vs Default)
-            folium.LayerControl().add_to(m)
                 
+            folium.LayerControl().add_to(m)
             st_folium(m, height=750, use_container_width=True, returned_objects=[])
         else:
             st.info("Geojson data available nahi hai.")
