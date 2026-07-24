@@ -9,13 +9,17 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING & TOP PADDING REMOVAL ---
+# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING & TOP SPACE REMOVAL ---
 st.markdown("""
     <style>
-        /* Remove default Streamlit top whitespace */
+        /* Completely eliminate Streamlit's default header/top whitespace */
         .block-container {
-            padding-top: 1rem !important;
+            padding-top: 0rem !important;
             padding-bottom: 2rem !important;
+            margin-top: -25px !important;
+        }
+        header[data-testid="stHeader"] {
+            display: none !important;
         }
         .main {
             background-color: #f8f9fa;
@@ -23,6 +27,7 @@ st.markdown("""
         section[data-testid="stSidebar"] div.block-container {
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
+            margin-top: 0px !important;
         }
         section[data-testid="stSidebar"] .stElementContainer {
             margin-bottom: -8px !important;
@@ -121,17 +126,20 @@ def check_password():
     return True
 
 if check_password():
-    # --- PROFESSIONAL HEADER BANNER WITH LOCAL LOGO HANDLING ---
+    # --- PROFESSIONAL HEADER BANNER WITH LOCAL LOGO ---
+    # Attempt to load local logo inside the banner cleanly, fallback to icon if file missing
+    logo_html = ""
     try:
-        st.image("logo.png", width=50) # Fallback / Direct image render if present
+        import base64
+        with open("logo.png", "rb") as img_file:
+            encoded_string = base64.b64encode(img_file.read()).decode()
+            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="48" style="background: white; border-radius: 50%; padding: 2px;" />'
     except:
-        pass
+        logo_html = '<div style="background: white; border-radius: 50%; padding: 6px; display: flex; align-items: center; justify-content: center; width: 45px; height: 45px;"><span style="font-size: 24px;">🏥</span></div>'
 
-    st.markdown("""
+    st.markdown(f"""
         <div class="header-banner">
-            <div style="background: white; border-radius: 50%; padding: 6px; display: flex; align-items: center; justify-content: center; width: 45px; height: 45px;">
-                <span style="font-size: 24px;">🏥</span>
-            </div>
+            {logo_html}
             <div>
                 <h2>Nagpur Municipal Corporation - Health Dashboard</h2>
                 <div style="font-size: 13px; opacity: 0.85; margin-top: 2px;">Public Health Intelligence & Disease Surveillance Portal</div>
