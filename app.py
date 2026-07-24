@@ -308,7 +308,7 @@ if check_password():
                         y=0.5,
                         xanchor="left",
                         x=0.82,
-                        font=dict(size=11, color="#1f2937")
+                        font=dict(size=12, color="#111827", family="Arial Black")
                     )
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
