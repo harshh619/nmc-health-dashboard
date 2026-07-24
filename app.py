@@ -7,9 +7,9 @@ from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
 
-st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
+st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="collapsed")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (SIDEBAR ALWAYS EXPANDED) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS & HOVER AUTO-HIDE SIDEBAR ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -33,14 +33,31 @@ st.markdown("""
             background-color: #f8fafc;
         }
         
-        /* Sidebar Styling & Clean Glitch-Free Padding */
+        /* --- HOVER AUTO-HIDE SIDEBAR STYLING --- */
         section[data-testid="stSidebar"] {
-            background-color: #f1f5f9;
+            width: 5px !important;
+            min-width: 5px !important;
+            max-width: 300px !important;
+            transition: width 0.3s ease-in-out, transform 0.3s ease-in-out !important;
+            background-color: #f1f5f9 !important;
             border-right: 1px solid #e2e8f0;
+            overflow-x: hidden !important;
         }
+        
+        /* Jab mouse sidebar par ya uske left edge par ho, toh expand ho jaye */
+        section[data-testid="stSidebar"]:hover {
+            width: 300px !important;
+            min-width: 300px !important;
+        }
+        
         section[data-testid="stSidebar"] div.block-container {
-            padding-top: 2rem !important;
-            padding-bottom: 1rem !important;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+            width: 290px;
+        }
+        
+        section[data-testid="stSidebar"]:hover div.block-container {
+            opacity: 1;
         }
         
         /* Modern Metric Cards with Soft Shadows */
