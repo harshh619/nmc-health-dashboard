@@ -277,7 +277,7 @@ if check_password():
                 with status_cols[idx % len(status_cols)]:
                     st.metric(label=f"Status: {status_name}", value=count_val)
 
-        # --- 4.1 ANALYTICAL CHARTS (PIE, BAR & LINE TIMELINE) ---
+        # --- 4.1 ANALYTICAL CHARTS (BEAUTIFIED PIE CHART & BAR CHART) ---
         col_chart1, col_chart2 = st.columns(2)
         
         with col_chart1:
@@ -286,14 +286,32 @@ if check_password():
                 disease_df = filtered_df['Disease'].value_counts().reset_index()
                 disease_df.columns = ['Disease', 'Count']
                 
+                # Beautified Plotly Donut Chart with bold clear text & compact legend alignment
                 fig_pie = px.pie(
                     disease_df, 
                     names='Disease', 
                     values='Count', 
-                    hole=0.4,
-                    color_discrete_sequence=px.colors.qualitative.Set3
+                    hole=0.45,
+                    color_discrete_sequence=px.colors.qualitative.Bold
                 )
-                fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300)
+                fig_pie.update_traces(
+                    textinfo='percent+label', 
+                    textfont_size=13, 
+                    textfont_color='white',
+                    marker=dict(line=dict(color='#ffffff', width=2))
+                )
+                fig_pie.update_layout(
+                    margin=dict(t=15, b=15, l=15, r=15), 
+                    height=320,
+                    legend=dict(
+                        orientation="v",
+                        yanchor="middle",
+                        y=0.5,
+                        xanchor="left",
+                        x=0.95,
+                        font=dict(size=12, color="#1f2937")
+                    )
+                )
                 st.plotly_chart(fig_pie, use_container_width=True)
             else:
                 st.info("Disease data available nahi hai.")
@@ -302,7 +320,7 @@ if check_password():
             st.markdown("### 🏢 Top Affected Wards")
             if 'Ward_Name' in filtered_df.columns and not filtered_df['Ward_Name'].dropna().empty:
                 ward_counts = filtered_df['Ward_Name'].value_counts().head(8)
-                st.bar_chart(ward_counts, color="#bd0026", height=300)
+                st.bar_chart(ward_counts, color="#bd0026", height=320)
             else:
                 st.info("Ward data available nahi hai.")
 
