@@ -284,7 +284,7 @@ if check_password():
                 with status_cols[idx % len(status_cols)]:
                     st.metric(label=f"Status: {status_name}", value=count_val)
 
-        # --- 4.1 ANALYTICAL CHARTS (BEAUTIFIED PIE, DIVIDER & BEAUTIFIED PLOTLY BAR CHART) ---
+        # --- 4.1 ANALYTICAL CHARTS (BEAUTIFIED PIE, DIVIDER & DARK BOLD BAR CHART) ---
         col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
         
         with col_chart1:
@@ -330,8 +330,9 @@ if check_password():
             if 'Ward_Name' in filtered_df.columns and not filtered_df['Ward_Name'].dropna().empty:
                 ward_df = filtered_df['Ward_Name'].value_counts().head(8).reset_index()
                 ward_df.columns = ['Ward', 'Cases']
+                max_cases_val = ward_df['Cases'].max() if not ward_df.empty else 10
                 
-                # Beautified Plotly Bar Chart
+                # Beautified Plotly Bar Chart with Dark Bold Fonts & Extra Top Head Room
                 fig_bar = px.bar(
                     ward_df,
                     x='Ward',
@@ -342,13 +343,14 @@ if check_password():
                 )
                 fig_bar.update_traces(
                     textposition='outside',
+                    textfont=dict(size=12, color='#111827', family="Arial Black"),
                     marker_cornerradius=6
                 )
                 fig_bar.update_layout(
-                    margin=dict(t=20, b=10, l=10, r=10),
+                    margin=dict(t=25, b=10, l=10, r=10),
                     height=300,
-                    xaxis=dict(title='', tickangle=-25, tickfont=dict(size=11, color='#1f2937')),
-                    yaxis=dict(title='Cases Count', showgrid=True, gridcolor='#f3f4f6'),
+                    xaxis=dict(title='', tickangle=-25, tickfont=dict(size=11, color='#111827', family="Arial Bold")),
+                    yaxis=dict(title='Cases Count', showgrid=True, gridcolor='#f3f4f6', range=[0, max_cases_val * 1.2], tickfont=dict(size=11, color='#111827', family="Arial Bold")),
                     coloraxis_showscale=False,
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)'
