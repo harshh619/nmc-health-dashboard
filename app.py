@@ -7,9 +7,9 @@ from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
 
-st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
+st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (SIDEBAR TEXT GLITCH PERMANENT FIX) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (SIDEBAR ALWAYS EXPANDED) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -22,7 +22,6 @@ st.markdown("""
             padding-bottom: 2rem !important;
         }
         
-        /* Hide default Streamlit top header completely without breaking sidebar toggle */
         header[data-testid="stHeader"] {
             background-color: transparent !important;
         }
