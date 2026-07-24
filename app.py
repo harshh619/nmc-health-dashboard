@@ -9,9 +9,14 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING WITH HEADER BANNER ---
+# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING & TOP PADDING REMOVAL ---
 st.markdown("""
     <style>
+        /* Remove default Streamlit top whitespace */
+        .block-container {
+            padding-top: 1rem !important;
+            padding-bottom: 2rem !important;
+        }
         .main {
             background-color: #f8f9fa;
         }
@@ -116,10 +121,17 @@ def check_password():
     return True
 
 if check_password():
-    # --- PROFESSIONAL HEADER BANNER WITH LOGO ---
+    # --- PROFESSIONAL HEADER BANNER WITH LOCAL LOGO HANDLING ---
+    try:
+        st.image("logo.png", width=50) # Fallback / Direct image render if present
+    except:
+        pass
+
     st.markdown("""
         <div class="header-banner">
-            <img src="https://i.ibb.co/5G8N03X/logo.png" width="50" style="background: white; border-radius: 50%; padding: 3px;" onerror="this.style.display='none'">
+            <div style="background: white; border-radius: 50%; padding: 6px; display: flex; align-items: center; justify-content: center; width: 45px; height: 45px;">
+                <span style="font-size: 24px;">🏥</span>
+            </div>
             <div>
                 <h2>Nagpur Municipal Corporation - Health Dashboard</h2>
                 <div style="font-size: 13px; opacity: 0.85; margin-top: 2px;">Public Health Intelligence & Disease Surveillance Portal</div>
@@ -435,7 +447,7 @@ if check_password():
                 control=True
             ).add_to(m)
 
-            # 2. Clean No-Labels Map Layer (Bilkul saaf, bina kisi text ke)
+            # 2. Clean No-Labels Map Layer
             folium.TileLayer(
                 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
                 attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
