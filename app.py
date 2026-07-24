@@ -9,94 +9,106 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING & SPACING FIX ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING ---
 st.markdown("""
     <style>
-        /* Proper top spacing for clean layout */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif !important;
+        }
         .block-container {
-            padding-top: 2rem !important;
+            padding-top: 1.5rem !important;
             padding-bottom: 2rem !important;
         }
+        header[data-testid="stHeader"] {
+            display: none !important;
+        }
         .main {
-            background-color: #f8f9fa;
+            background-color: #f8fafc;
         }
-        section[data-testid="stSidebar"] div.block-container {
-            padding-top: 1rem !important;
-            padding-bottom: 1rem !important;
-        }
-        section[data-testid="stSidebar"] .stElementContainer {
-            margin-bottom: -8px !important;
-        }
-        div[data-testid="stMetric"] {
-            background-color: #ffffff;
-            border: 1px solid #e0e0e0;
-            padding: 12px 15px;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-        h3 {
-            color: #1f2937;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-        }
+        
+        /* Sidebar Styling */
         section[data-testid="stSidebar"] {
             background-color: #f1f5f9;
             border-right: 1px solid #e2e8f0;
         }
+        section[data-testid="stSidebar"] div.block-container {
+            padding-top: 1.5rem !important;
+            padding-bottom: 1rem !important;
+        }
+        
+        /* Modern Metric Cards with Soft Shadows */
+        div[data-testid="stMetric"] {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 16px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            transition: all 0.3s ease;
+        }
+        div[data-testid="stMetric"]:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+            border-color: #cbd5e1;
+        }
+        
+        /* Section Headings with Accent Bar */
+        h3 {
+            color: #0f172a;
+            font-weight: 700;
+            font-size: 1.25rem;
+            letter-spacing: -0.025em;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
         
         /* Professional Municipal Header Banner */
         .header-banner {
-            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
-            padding: 16px 20px;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            padding: 20px 24px;
+            border-radius: 12px;
             color: white;
             display: flex;
             align-items: center;
-            gap: 15px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+            gap: 18px;
+            box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);
+            margin-bottom: 24px;
         }
         .header-banner h2 {
             color: white !important;
             margin: 0;
             font-weight: 700;
-            font-size: 26px;
-            letter-spacing: -0.5px;
+            font-size: 28px;
+            letter-spacing: -0.03em;
         }
         
         /* Pulsating Animation for High-Risk Alert Box */
         @keyframes pulse-alert {
-            0% {
-                background-color: #f8d7da;
-                border-color: #f5c6cb;
-            }
-            50% {
-                background-color: #f5c6cb;
-                border-color: #f1b0b7;
-            }
-            100% {
-                background-color: #f8d7da;
-                border-color: #f5c6cb;
-            }
+            0% { background-color: #fef2f2; border-color: #fecaca; }
+            50% { background-color: #fee2e2; border-color: #fca5a5; }
+            100% { background-color: #fef2f2; border-color: #fecaca; }
         }
         .pulsing-alert {
-            padding: 15px 20px;
-            border-radius: 8px;
-            border: 1px solid #f5c6cb;
-            color: #721c24;
+            padding: 18px 22px;
+            border-radius: 10px;
+            border: 1px solid #fecaca;
+            color: #991b1b;
             font-weight: 600;
-            font-size: 16px;
+            font-size: 15px;
             animation: pulse-alert 2s infinite ease-in-out;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
         
         /* Vertical Divider Line between Charts */
         .vertical-divider {
-            border-left: 2px solid #e5e7eb;
-            height: 340px;
+            border-left: 2px solid #e2e8f0;
+            height: 320px;
             margin: auto;
         }
     </style>
@@ -112,39 +124,39 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.markdown("### 🔐 Nagpur Municipal Corporation - Health Dashboard")
-            st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
+            st.markdown("### 🔐 Nagpur Municipal Corporation - Health Portal")
+            st.text_input("Enter Dashboard Password", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<br><br><br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
-            st.markdown("### 🔐 Nagpur Municipal Corporation - Health Dashboard")
-            st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
-            st.error("❌ Galat Password")
+            st.markdown("### 🔐 Nagpur Municipal Corporation - Health Portal")
+            st.text_input("Enter Dashboard Password", type="password", on_change=password_entered, key="password")
+            st.error("❌ Incorrect Password")
         return False
     return True
 
 if check_password():
-    # --- PROFESSIONAL HEADER BANNER WITH LOCAL LOGO ---
+    # --- PROFESSIONAL HEADER BANNER WITH LOGO ---
     logo_html = ""
     try:
         import base64
         with open("logo.png", "rb") as img_file:
             encoded_string = base64.b64encode(img_file.read()).decode()
-            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="48" style="background: white; border-radius: 50%; padding: 2px;" />'
+            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="52" style="background: white; border-radius: 50%; padding: 3px;" />'
     except:
-        logo_html = '<div style="background: white; border-radius: 50%; padding: 6px; display: flex; align-items: center; justify-content: center; width: 45px; height: 45px;"><span style="font-size: 24px;">🏥</span></div>'
+        logo_html = '<div style="background: white; border-radius: 50%; padding: 8px; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px;"><span style="font-size: 26px;">🏥</span></div>'
 
     st.markdown(f"""
         <div class="header-banner">
             {logo_html}
             <div>
                 <h2>Nagpur Municipal Corporation - Health Dashboard</h2>
-                <div style="font-size: 13px; opacity: 0.85; margin-top: 2px;">Public Health Intelligence & Disease Surveillance Portal</div>
+                <div style="font-size: 13.5px; opacity: 0.9; font-weight: 500; margin-top: 3px;">Public Health Intelligence & Disease Surveillance Portal</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -320,15 +332,25 @@ if check_password():
             else:
                 st.info("Hotspot data ke liye sufficient records nahi hain.")
 
-        # --- PATIENT STATUS TRACKING SUMMARY METRICS ---
+        # --- PATIENT STATUS TRACKING SUMMARY METRICS WITH INDICATOR DOTS ---
         if 'Status' in filtered_df.columns and not filtered_df['Status'].dropna().empty:
             st.markdown("### 🏥 Patient Status Breakdown")
             status_counts = filtered_df['Status'].value_counts()
             status_cols = st.columns(len(status_counts) if len(status_counts) > 0 else 1)
             
+            status_colors = {
+                "Recovered": "#10b981",  # Green
+                "Admitted": "#f59e0b",   # Amber/Yellow
+                "Died": "#ef4444"        # Red
+            }
+            
             for idx, (status_name, count_val) in enumerate(status_counts.items()):
+                dot_color = status_colors.get(status_name, "#3b82f6")
                 with status_cols[idx % len(status_cols)]:
-                    st.metric(label=f"Status: {status_name}", value=count_val)
+                    st.metric(
+                        label=f"● Status: {status_name}", 
+                        value=count_val
+                    )
 
         # --- 4.1 ANALYTICAL CHARTS (BEAUTIFIED PIE, DIVIDER & DARK BOLD BAR CHART) ---
         col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
@@ -361,7 +383,7 @@ if check_password():
                         y=0.5,
                         xanchor="left",
                         x=0.82,
-                        font=dict(size=12, color="#111827", family="Arial Black")
+                        font=dict(size=12, color="#111827", family="Inter")
                     )
                 )
                 st.plotly_chart(fig_pie, use_container_width=True)
@@ -388,14 +410,14 @@ if check_password():
                 )
                 fig_bar.update_traces(
                     textposition='outside',
-                    textfont=dict(size=12, color='#111827', family="Arial Black"),
+                    textfont=dict(size=12, color='#111827', family="Inter"),
                     marker_cornerradius=6
                 )
                 fig_bar.update_layout(
                     margin=dict(t=25, b=10, l=10, r=10),
                     height=300,
-                    xaxis=dict(title='', tickangle=-25, tickfont=dict(size=11, color='#111827', family="Arial Bold")),
-                    yaxis=dict(title='Cases Count', showgrid=True, gridcolor='#f3f4f6', range=[0, max_cases_val * 1.2], tickfont=dict(size=11, color='#111827', family="Arial Bold")),
+                    xaxis=dict(title='', tickangle=-25, tickfont=dict(size=11, color='#111827', family="Inter")),
+                    yaxis=dict(title='Cases Count', showgrid=True, gridcolor='#f1f5f9', range=[0, max_cases_val * 1.2], tickfont=dict(size=11, color='#111827', family="Inter")),
                     coloraxis_showscale=False,
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)'
@@ -423,13 +445,13 @@ if check_password():
                 line=dict(width=3, color='#1e3a8a'),
                 marker=dict(size=6, color='#1e3a8a', line=dict(width=2, color='white')),
                 fill='tozeroy',
-                fillcolor='rgba(30, 58, 138, 0.15)'
+                fillcolor='rgba(30, 58, 138, 0.12)'
             )
             fig_timeline.update_layout(
                 margin=dict(t=10, b=10, l=10, r=10),
                 height=280,
-                xaxis=dict(title='', showgrid=False, tickfont=dict(size=11, color='#111827', family="Arial Bold")),
-                yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f3f4f6', tickfont=dict(size=11, color='#111827', family="Arial Bold")),
+                xaxis=dict(title='', showgrid=False, tickfont=dict(size=11, color='#111827', family="Inter")),
+                yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9', tickfont=dict(size=11, color='#111827', family="Inter")),
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)'
             )
@@ -557,7 +579,7 @@ if check_password():
                     fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases', 'Zone_Cases'],
                     aliases=['📍 Zone:', '🏢 Prabhag:', '📈 Prabhag Cases:', '📊 Zone Cases:'],
                     labels=True,
-                    style="font-family: Arial; font-size: 13px; font-weight: bold;"
+                    style="font-family: Inter; font-size: 13px; font-weight: bold;"
                 )
             ).add_to(m)
 
