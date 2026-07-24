@@ -332,7 +332,6 @@ if check_password():
                 ward_df.columns = ['Ward', 'Cases']
                 max_cases_val = ward_df['Cases'].max() if not ward_df.empty else 10
                 
-                # Beautified Plotly Bar Chart with Dark Bold Fonts & Extra Top Head Room
                 fig_bar = px.bar(
                     ward_df,
                     x='Ward',
@@ -359,16 +358,37 @@ if check_password():
             else:
                 st.info("Ward data available nahi hai.")
 
-        # --- DATE TREND / TIMELINE LINE GRAPH ---
+        # --- ADVANCED BEAUTIFIED DATE TREND / TIMELINE AREA CHART ---
         st.markdown("### 📈 Date Trend / Timeline Analysis")
         if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
             timeline_df = filtered_df.dropna(subset=['Date']).copy()
             timeline_df['DateOnly'] = timeline_df['Date'].dt.date
             timeline_counts = timeline_df['DateOnly'].value_counts().sort_index().reset_index()
             timeline_counts.columns = ['Date', 'Cases']
-            timeline_counts.set_index('Date', inplace=True)
             
-            st.line_chart(timeline_counts, color="#1e3a8a", height=250)
+            # Plotly Area Chart with Smooth Curves & Gradient Fill
+            fig_timeline = px.area(
+                timeline_counts,
+                x='Date',
+                y='Cases',
+                markers=True,
+                color_discrete_sequence=['#1e3a8a']
+            )
+            fig_timeline.update_traces(
+                line=dict(width=3, color='#1e3a8a'),
+                marker=dict(size=6, color='#1e3a8a', line=dict(width=2, color='white')),
+                fill='tozeroy',
+                fillcolor='rgba(30, 58, 138, 0.15)'
+            )
+            fig_timeline.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10),
+                height=280,
+                xaxis=dict(title='', showgrid=False, tickfont=dict(size=11, color='#111827', family="Arial Bold")),
+                yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f3f4f6', tickfont=dict(size=11, color='#111827', family="Arial Bold")),
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
+            st.plotly_chart(fig_timeline, use_container_width=True)
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
