@@ -9,7 +9,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING ---
+# --- PROFESSIONAL LIGHTWEIGHT CSS STYLING WITH PULSATING ALERT ANIMATION ---
 st.markdown("""
     <style>
         .main {
@@ -38,6 +38,35 @@ st.markdown("""
             background-color: #f1f5f9;
             border-right: 1px solid #e2e8f0;
         }
+        
+        /* Pulsating Animation for High-Risk Alert Box */
+        @keyframes pulse-alert {
+            0% {
+                background-color: #f8d7da;
+                border-color: #f5c6cb;
+            }
+            50% {
+                background-color: #f5c6cb;
+                border-color: #f1b0b7;
+            }
+            100% {
+                background-color: #f8d7da;
+                border-color: #f5c6cb;
+            }
+        }
+        .pulsing-alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            font-weight: 600;
+            font-size: 16px;
+            animation: pulse-alert 2s infinite ease-in-out;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -51,11 +80,11 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        st.text_input("Enter Password", type="password", on_change=password_entered, key="password")
+        st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
-        st.text_input("Enter Password", type="password", on_change=password_entered, key="password")
-        st.error("❌ Wrong Password")
+        st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
+        st.error("❌ Galat Password")
         return False
     return True
 
@@ -203,7 +232,7 @@ if check_password():
         else:
             st.sidebar.info("No data available for summary.")
 
-        # --- 4. DASHBOARD METRICS & HIGH-RISK HOTSPOT ALERT ---
+        # --- 4. DASHBOARD METRICS & PULSATING HIGH-RISK HOTSPOT ALERT ---
         st.markdown(f"**Active View:** `{selected_zone} Zone` ➔ `{selected_ward}`")
         
         col_m1, col_m2 = st.columns([1, 2])
@@ -215,7 +244,14 @@ if check_password():
             if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
                 top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
                 top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
-                st.error(f"🚨 **High-Risk Hotspot Alert:** `{top_ward}` is currently the most affected area with **{top_ward_cases} cases**!")
+                
+                # Pulsating HTML Alert Box
+                st.markdown(f"""
+                    <div class="pulsing-alert">
+                        <span>🚨</span>
+                        <div><b>High-Risk Hotspot Alert:</b> {top_ward} is currently the most affected area with <b>{top_ward_cases} cases</b>!</div>
+                    </div>
+                """, unsafe_allow_html=True)
             else:
                 st.info("Hotspot data ke liye sufficient records nahi hain.")
 
