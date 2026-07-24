@@ -51,11 +51,11 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        st.text_input("Enter Password", type="password", on_change=password_entered, key="password")
+        st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
         return False
     elif not st.session_state["password_correct"]:
         st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
-        st.error("❌ Wrong Password")
+        st.error("❌ Galat Password")
         return False
     return True
 
@@ -203,10 +203,21 @@ if check_password():
         else:
             st.sidebar.info("No data available for summary.")
 
-        # --- 4. DASHBOARD METRICS ---
+        # --- 4. DASHBOARD METRICS & HIGH-RISK HOTSPOT ALERT ---
         st.markdown(f"**Active View:** `{selected_zone} Zone` ➔ `{selected_ward}`")
-        total_cases = len(filtered_df)
-        st.metric("Total Cases in Selected Window", total_cases)
+        
+        col_m1, col_m2 = st.columns([1, 2])
+        with col_m1:
+            total_cases = len(filtered_df)
+            st.metric("Total Cases in Selected Window", total_cases)
+            
+        with col_m2:
+            if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
+                top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
+                top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
+                st.error(f"🚨 **High-Risk Hotspot Alert:** `{top_ward}` is currently the most affected area with **{top_ward_cases} cases**!")
+            else:
+                st.info("Hotspot data ke liye sufficient records nahi hain.")
 
         # --- 4.1 ANALYTICAL CHARTS (PIE, BAR & LINE TIMELINE) ---
         col_chart1, col_chart2 = st.columns(2)
