@@ -67,6 +67,13 @@ st.markdown("""
             align-items: center;
             gap: 10px;
         }
+        
+        /* Vertical Divider Line between Charts */
+        .vertical-divider {
+            border-left: 2px solid #e5e7eb;
+            height: 340px;
+            margin: auto;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -277,8 +284,8 @@ if check_password():
                 with status_cols[idx % len(status_cols)]:
                     st.metric(label=f"Status: {status_name}", value=count_val)
 
-        # --- 4.1 ANALYTICAL CHARTS (ADJUSTED COLUMN WIDTHS FOR PIE & BAR) ---
-        col_chart1, col_chart2 = st.columns([4, 6])
+        # --- 4.1 ANALYTICAL CHARTS (PIE, DIVIDER LINE & BAR CHART) ---
+        col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
         
         with col_chart1:
             st.markdown("### 🦠 Disease Distribution (Pie Chart)")
@@ -314,6 +321,10 @@ if check_password():
                 st.plotly_chart(fig_pie, use_container_width=True)
             else:
                 st.info("Disease data available nahi hai.")
+
+        with col_divider:
+            # Beautiful Vertical Divider Line
+            st.markdown("<div class='vertical-divider'></div>", unsafe_allow_html=True)
                 
         with col_chart2:
             st.markdown("### 🏢 Top Affected Wards")
