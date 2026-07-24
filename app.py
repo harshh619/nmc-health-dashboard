@@ -9,7 +9,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (SIDEBAR GLITCH FIXED) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (SIDEBAR TEXT GLITCH PERMANENT FIX) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -21,9 +21,15 @@ st.markdown("""
             padding-top: 2rem !important;
             padding-bottom: 2rem !important;
         }
+        
+        /* Hide default Streamlit top header completely without breaking sidebar toggle */
         header[data-testid="stHeader"] {
+            background-color: transparent !important;
+        }
+        header[data-testid="stHeader"] > div {
             display: none !important;
         }
+        
         .main {
             background-color: #f8fafc;
         }
@@ -34,7 +40,7 @@ st.markdown("""
             border-right: 1px solid #e2e8f0;
         }
         section[data-testid="stSidebar"] div.block-container {
-            padding-top: 3.5rem !important;
+            padding-top: 2rem !important;
             padding-bottom: 1rem !important;
         }
         
