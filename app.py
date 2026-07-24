@@ -9,7 +9,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING & SIDEBAR FIX ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -18,7 +18,7 @@ st.markdown("""
             font-family: 'Inter', sans-serif !important;
         }
         .block-container {
-            padding-top: 1.5rem !important;
+            padding-top: 2rem !important;
             padding-bottom: 2rem !important;
         }
         header[data-testid="stHeader"] {
@@ -28,13 +28,13 @@ st.markdown("""
             background-color: #f8fafc;
         }
         
-        /* Sidebar Styling */
+        /* Sidebar Styling & Toggle Glitch Fix */
         section[data-testid="stSidebar"] {
             background-color: #f1f5f9;
             border-right: 1px solid #e2e8f0;
         }
         section[data-testid="stSidebar"] div.block-container {
-            padding-top: 1.5rem !important;
+            padding-top: 2.5rem !important;
             padding-bottom: 1rem !important;
         }
         
