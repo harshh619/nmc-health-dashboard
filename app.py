@@ -55,7 +55,7 @@ def check_password():
         return False
     elif not st.session_state["password_correct"]:
         st.text_input("NMC Dashboard ka Password enter karein", type="password", on_change=password_entered, key="password")
-        st.error("❌ Galat Password")
+        st.error("❌ Wrong Password")
         return False
     return True
 
