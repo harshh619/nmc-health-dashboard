@@ -18,15 +18,13 @@ st.markdown("""
             font-family: 'Inter', sans-serif !important;
         }
         .block-container {
-            padding-top: 2rem !important;
+            padding-top: 1rem !important;
             padding-bottom: 2rem !important;
         }
         
+        /* Keep header transparent so native sidebar toggle arrow is always visible and clickable */
         header[data-testid="stHeader"] {
-            background-color: transparent !important;
-        }
-        header[data-testid="stHeader"] > div {
-            display: none !important;
+            background: transparent !important;
         }
         
         .main {
