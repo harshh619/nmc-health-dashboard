@@ -119,17 +119,20 @@ st.markdown("""
         /* 4. Ultra-Compact Header Banner */
         .header-banner {
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            padding: 8px 16px; 
+            padding: 10px 18px; 
             border-radius: 8px; color: white;
-            display: flex; align-items: center; gap: 12px;
+            display: flex; align-items: center; gap: 16px;
             box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);
-            margin-bottom: 10px; 
+            margin-bottom: 12px; 
             margin-top: 0px;
         }
         .header-banner h2 {
             color: white !important; margin: 0; font-weight: 700;
-            font-size: 20px; 
+            font-size: 22px; 
             letter-spacing: -0.02em;
+        }
+        .header-banner-subtitle {
+            font-size: 13px; opacity: 0.9; font-weight: 500; margin-top: 2px;
         }
         
         @keyframes pulse-alert {
@@ -190,13 +193,14 @@ def check_password():
     return False
 
 if check_password():
-    # --- HEADER ---
-    logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;"><span style="font-size: 18px;">🏥</span></div>'
+    # --- HEADER (INCREASED LOGO SIZE) ---
+    # Width and height increased to 60px for a prominent look
+    logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px;"><span style="font-size: 32px;">🏥</span></div>'
     try:
         import base64
         with open("logo.png", "rb") as img_file:
             encoded_string = base64.b64encode(img_file.read()).decode()
-            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="36" style="background: white; border-radius: 50%; padding: 2px;" />'
+            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="60" style="background: white; border-radius: 50%; padding: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />'
     except:
         pass
 
@@ -205,7 +209,7 @@ if check_password():
             {logo_html}
             <div>
                 <h2>Nagpur Municipal Corporation - Health Dashboard</h2>
-                <div style="font-size: 12px; opacity: 0.9; font-weight: 500; margin-top: 1px;">Public Health Intelligence & Disease Surveillance Portal</div>
+                <div class="header-banner-subtitle">Public Health Intelligence & Disease Surveillance Portal</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
