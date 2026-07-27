@@ -11,7 +11,7 @@ import requests
 # Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (INTER FONT ENFORCED) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -188,6 +188,11 @@ st.markdown("""
         }
         .footer-container b {
             color: #1e3a8a;
+        }
+
+        /* Hide Leaflet map attribution footer / logo */
+        .leaflet-control-attribution {
+            display: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
