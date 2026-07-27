@@ -612,12 +612,7 @@ if check_password():
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
                 ward_cases = clean_ward_counts.get(clean_ward, 0)
-                
-                # FIX: If a specific ward filter is active, respect the filter context for zone cases as well, or show respective zone cases
-                if selected_ward != "All":
-                    zone_cases = ward_cases if clean_ward == clean_ward_str(selected_ward) else 0
-                else:
-                    zone_cases = clean_zone_counts.get(zone_name, 0)
+                zone_cases = clean_zone_counts.get(zone_name, 0)
                 
                 feature['properties']['Clean_Ward'] = clean_ward 
                 feature['properties']['Clean_Zone'] = zone_name
@@ -635,6 +630,14 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_font_injection))
 
+            # CONDITIONAL POPUP FIELDS LOGIC: If a specific ward filter is active, omit Zone Cases line from popup
+            if selected_ward != "All":
+                popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone']
+                popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :']
+            else:
+                popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
+                popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
+
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -650,8 +653,8 @@ if check_password():
                     'fillOpacity': 0.80
                 },
                 popup=folium.GeoJsonPopup(
-                    fields=['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases'],
-                    aliases=['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :'],
+                    fields=popup_fields,
+                    aliases=popup_aliases,
                     labels=True,
                     style="font-family: 'Inter', sans-serif; font-size: 13px;"
                 )
@@ -720,14 +723,23 @@ if check_password():
                                     {ward_cases}
                                 </div>
                                 """
-                                popup_html = f"""
-                                <div style="font-family: 'Inter', sans-serif; font-size: 13px;">
-                                    <b>Ward No :</b> {feature['properties']['Clean_Ward']}<br>
-                                    <b>Total Cases :</b> {ward_cases}<br>
-                                    <b>Zone No :</b> {feature['properties']['Clean_Zone']}<br>
-                                    <b>Total Cases :</b> {zone_cases}
-                                </div>
-                                """
+                                if selected_ward != "All":
+                                    popup_html = f"""
+                                    <div style="font-family: 'Inter', sans-serif; font-size: 13px;">
+                                        <b>Ward No :</b> {feature['properties']['Clean_Ward']}<br>
+                                        <b>Total Cases :</b> {ward_cases}<br>
+                                        <b>Zone No :</b> {feature['properties']['Clean_Zone']}
+                                    </div>
+                                    """
+                                else:
+                                    popup_html = f"""
+                                    <div style="font-family: 'Inter', sans-serif; font-size: 13px;">
+                                        <b>Ward No :</b> {feature['properties']['Clean_Ward']}<br>
+                                        <b>Total Cases :</b> {ward_cases}<br>
+                                        <b>Zone No :</b> {feature['properties']['Clean_Zone']}<br>
+                                        <b>Total Cases :</b> {zone_cases}
+                                    </div>
+                                    """
                                 folium.Marker(
                                     location=[center_lat, center_lon],
                                     icon=folium.DivIcon(html=badge_html),
