@@ -332,7 +332,7 @@ if check_password():
             zone_summary.columns = ['Zone', 'Cases']
             st.sidebar.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
 
-        # --- SMART AI EPIDEMIOLOGICAL RISK ALERT (LEVEL 2 FORECASTING) ---
+        # --- SMART AI EPIDEMIOLOGICAL RISK ALERT ---
         def generate_ai_risk_alert(df, current_humidity, current_rain):
             if df.empty or 'Disease' not in df.columns:
                 return "🟢 Stable Environmental Conditions", "Insufficient disease data to formulate a localized risk correlation.", "#f0fdfa", "#0d9488"
@@ -433,7 +433,6 @@ if check_password():
                 recent_data = timeline_counts.tail(14).copy()
                 recent_data['Days_Numeric'] = (pd.to_datetime(recent_data['Date']) - pd.to_datetime(recent_data['Date'].min())).dt.days
                 
-                # Numpy polyfit for trend extraction
                 z = np.polyfit(recent_data['Days_Numeric'], recent_data['7-Day Trend'], 1)
                 p = np.poly1d(z)
                 
@@ -441,7 +440,7 @@ if check_password():
                 last_day_numeric = recent_data['Days_Numeric'].max()
                 future_numeric = [last_day_numeric + i for i in range(1, 8)]
                 future_trend = p(future_numeric)
-                future_trend = [max(0, val) for val in future_trend] # Prevent negative cases
+                future_trend = [max(0, val) for val in future_trend]
                 
                 future_df = pd.DataFrame({'Date': future_dates, 'Cases': [None]*7, '7-Day Trend': future_trend, 'Type': ['Forecast']*7})
                 timeline_counts['Type'] = 'Historical'
@@ -519,22 +518,19 @@ if check_password():
                 elif cases < max_ward_cases * 0.7: return "#fc4e2a"  
                 else: return "#bd0026"
 
-            # ---------------------------------------------
-            # NEW FIX: Inject data into GeoJson for Tooltips
-            # ---------------------------------------------
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 clean_ward = clean_ward_str(raw_ward)
-                zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 ward_cases = clean_ward_counts.get(clean_ward, 0)
                 
-                # Colors
+                # Colors & Data injection for Popup
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
-                # Data fields for Tooltip
                 feature['properties']['clean_ward_name'] = clean_ward
                 feature['properties']['total_cases'] = ward_cases
 
-            # Map Layer: GeoJson Polygons with Tooltip
+            # ---------------------------------------------
+            # CLICK-ONLY POPUP FOR WARD BOUNDARIES (No Hover Tooltip)
+            # ---------------------------------------------
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -542,10 +538,10 @@ if check_password():
                     'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.5
                 },
                 highlight_function=lambda feature: {'weight': 2.5, 'fillOpacity': 0.8},
-                tooltip=folium.features.GeoJsonTooltip(
+                popup=folium.GeoJsonPopup(
                     fields=['clean_ward_name', 'total_cases'],
                     aliases=['Ward:', 'Total Cases:'],
-                    style="background-color: white; color: #333333; font-family: arial; font-size: 13px; padding: 10px;"
+                    style="background-color: white; color: #333333; font-family: Inter, sans-serif; font-size: 13px; padding: 10px;"
                 )
             ).add_to(m)
 
@@ -556,7 +552,6 @@ if check_password():
                     for idx, row in filtered_df.iterrows():
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
                             
-                            # Creating detailed HTML popup
                             popup_html = f"""
                             <div style="font-family: Inter, sans-serif; font-size: 13px; min-width: 160px;">
                                 <b style="color: #1e3a8a; font-size: 14px;">Patient ID: {row.get('Patient_ID', 'N/A')}</b><br>
@@ -575,8 +570,7 @@ if check_password():
                                 fill=True,
                                 fill_color='#2563eb', 
                                 fill_opacity=0.9,
-                                popup=folium.Popup(popup_html, max_width=250), # POPUP ADDED
-                                tooltip=str(row.get('Disease', 'Patient'))     # TOOLTIP ADDED
+                                popup=folium.Popup(popup_html, max_width=250) # ONLY POPUP, NO TOOLTIP
                             ).add_to(marker_cluster)
 
             # MODE 2: Ward-wise Exact Count View
@@ -597,8 +591,7 @@ if check_password():
                             folium.Marker(
                                 location=[center_lat, center_lon], 
                                 icon=folium.DivIcon(html=badge),
-                                popup=folium.Popup(popup_html, max_width=200), # POPUP ADDED
-                                tooltip=f"{feature['properties']['clean_ward_name']} - Cases: {ward_cases}" # TOOLTIP ADDED
+                                popup=folium.Popup(popup_html, max_width=200) # ONLY POPUP, NO TOOLTIP
                             ).add_to(m)
                         except: pass
 
@@ -608,7 +601,6 @@ if check_password():
                     for idx, row in filtered_df.iterrows():
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
                             
-                            # Creating detailed HTML popup
                             popup_html = f"""
                             <div style="font-family: Inter, sans-serif; font-size: 13px; min-width: 160px;">
                                 <b style="color: #dc2626; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br>
@@ -627,8 +619,7 @@ if check_password():
                                 fill=True, 
                                 fill_color='#e53e3e', 
                                 fill_opacity=0.9,
-                                popup=folium.Popup(popup_html, max_width=250), # POPUP ADDED
-                                tooltip=str(row.get('Disease', 'Patient'))     # TOOLTIP ADDED
+                                popup=folium.Popup(popup_html, max_width=250) # ONLY POPUP, NO TOOLTIP
                             ).add_to(m)
                 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
