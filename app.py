@@ -10,7 +10,7 @@ import requests
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (TEXT GLITCH PERMANENT FIX) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (CLEAN SIDEBAR TOGGLE FIX) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -23,13 +23,10 @@ st.markdown("""
             padding-bottom: 2rem !important;
         }
         
-        /* Completely hide the broken header collapse button text glitch */
+        /* Restore header and make sidebar toggle button clean */
         header[data-testid="stHeader"] {
             background: transparent !important;
-            visibility: hidden !important;
-        }
-        button[kind="header"] {
-            display: none !important;
+            visibility: visible !important;
         }
         
         .main {
