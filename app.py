@@ -10,17 +10,17 @@ import requests
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (TEXT GLITCH PERMANENT FIX) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (PREMIUM SIDEBAR TOGGLE) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* 1. Dashboard ke liye global font apply karein (except icons) */
+        /* Global Font */
         html, body, [class*="st-"], .stApp {
             font-family: 'Inter', sans-serif !important;
         }
         
-        /* 2. CRITICAL FIX: Streamlit ke internal icons ko unka asli font wapas dein taaki text na dikhe */
+        /* Protect Material Icons */
         .material-symbols-rounded, 
         .material-icons, 
         [data-testid="stIconMaterial"], 
@@ -34,11 +34,26 @@ st.markdown("""
             padding-bottom: 2rem !important;
         }
         
-        /* Clean Header Background */
         header[data-testid="stHeader"] {
             background: transparent !important;
         }
         
+        /* --- PROFESSIONAL STYLING FOR SIDEBAR COLLAPSE / TOGGLE BUTTON --- */
+        [data-testid="collapsedControl"] {
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04) !important;
+            transition: all 0.2s ease-in-out !important;
+            color: #1e3a8a !important;
+        }
+        [data-testid="collapsedControl"]:hover {
+            background-color: #1e3a8a !important;
+            color: #ffffff !important;
+            border-color: #1e3a8a !important;
+            transform: scale(1.05);
+        }
+
         .main {
             background-color: #f8fafc;
         }
