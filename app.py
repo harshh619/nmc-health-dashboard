@@ -10,7 +10,7 @@ import requests
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (COMPACT METRIC CARDS) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (TEXT GLITCH PERMANENT FIX) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -22,17 +22,16 @@ st.markdown("""
             padding-top: 1.5rem !important;
             padding-bottom: 2rem !important;
         }
+        
+        /* Completely hide the broken header collapse button text glitch */
         header[data-testid="stHeader"] {
             background: transparent !important;
+            visibility: hidden !important;
         }
         button[kind="header"] {
-            color: transparent !important;
+            display: none !important;
         }
-        button[kind="header"] svg {
-            fill: #1e3a8a !important;
-            width: 22px !important;
-            height: 22px !important;
-        }
+        
         .main {
             background-color: #f8fafc;
         }
