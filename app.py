@@ -13,7 +13,7 @@ import requests
 # Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (COMPACT VIEW) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (ULTRA-COMPACT VIEW) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -26,9 +26,9 @@ st.markdown("""
             font-weight: normal !important;
         }
 
-        /* 1. Reduce overall app padding */
+        /* 1. Eliminate Top Padding to stick banner to the top */
         .block-container {
-            padding-top: 1rem !important;
+            padding-top: 0.1rem !important; /* Almost zero top padding */
             padding-bottom: 1rem !important;
         }
         
@@ -61,7 +61,7 @@ st.markdown("""
             transform: scale(1.08) !important;
         }
 
-        header[data-testid="stHeader"] { background: transparent !important; }
+        header[data-testid="stHeader"] { background: transparent !important; height: 0px !important; }
         header[data-testid="stHeader"] .stAppToolbar { opacity: 0; transition: opacity 0.3s ease; }
         header[data-testid="stHeader"]:hover .stAppToolbar { opacity: 1; }
 
@@ -79,7 +79,7 @@ st.markdown("""
         div[data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
-            padding: 8px 12px !important; /* Reduced padding */
+            padding: 8px 12px !important; 
             border-radius: 8px;
             box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.04);
             transition: all 0.3s ease;
@@ -90,32 +90,33 @@ st.markdown("""
         }
         div[data-testid="stMetric"] label { font-size: 12px !important; color: #475569 !important; margin-bottom: 2px !important;}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-            font-size: 20px !important; /* Smaller value font */
+            font-size: 20px !important; 
             font-weight: 700 !important; color: #0f172a !important;
         }
 
         /* 3. Compact Headings */
         h3 {
-            color: #0f172a; font-weight: 700; font-size: 1.15rem; /* Smaller H3 */
+            color: #0f172a; font-weight: 700; font-size: 1.15rem; 
             letter-spacing: -0.025em; 
-            margin-top: 0.75rem; /* Tighter margins */
+            margin-top: 0.75rem; 
             margin-bottom: 0.5rem;
             display: flex; align-items: center; gap: 8px;
         }
         
-        /* 4. Compact Header Banner */
+        /* 4. Ultra-Compact Header Banner */
         .header-banner {
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            padding: 12px 20px; /* Reduced padding */
-            border-radius: 10px; color: white;
-            display: flex; align-items: center; gap: 15px;
-            box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);
-            margin-bottom: 12px; /* Reduced bottom gap */
+            padding: 8px 16px; /* Drastically reduced padding */
+            border-radius: 8px; color: white;
+            display: flex; align-items: center; gap: 12px;
+            box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);
+            margin-bottom: 10px; /* Reduced bottom gap */
+            margin-top: 0px;
         }
         .header-banner h2 {
             color: white !important; margin: 0; font-weight: 700;
-            font-size: 24px; /* Slightly smaller header text */
-            letter-spacing: -0.03em;
+            font-size: 20px; /* Smaller header text */
+            letter-spacing: -0.02em;
         }
         
         @keyframes pulse-alert {
@@ -135,8 +136,8 @@ st.markdown("""
         
         .ai-risk-panel {
             background-color: #f0fdfa; border-left: 5px solid #0d9488;
-            padding: 12px 16px; border-radius: 0 8px 8px 0; /* Reduced padding */
-            margin-top: 8px; margin-bottom: 12px; /* Tighter margins */
+            padding: 12px 16px; border-radius: 0 8px 8px 0; 
+            margin-top: 8px; margin-bottom: 12px; 
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .ai-risk-title { color: #0f766e; font-weight: 700; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap:6px;}
@@ -177,12 +178,13 @@ def check_password():
 
 if check_password():
     # --- HEADER ---
-    logo_html = '<div style="background: white; border-radius: 50%; padding: 6px; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;"><span style="font-size: 22px;">🏥</span></div>'
+    # Reduced logo size from 42px to 36px to fit the smaller banner
+    logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;"><span style="font-size: 18px;">🏥</span></div>'
     try:
         import base64
         with open("logo.png", "rb") as img_file:
             encoded_string = base64.b64encode(img_file.read()).decode()
-            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="42" style="background: white; border-radius: 50%; padding: 3px;" />'
+            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="36" style="background: white; border-radius: 50%; padding: 2px;" />'
     except:
         pass
 
@@ -191,7 +193,7 @@ if check_password():
             {logo_html}
             <div>
                 <h2>Nagpur Municipal Corporation - Health Dashboard</h2>
-                <div style="font-size: 13px; opacity: 0.9; font-weight: 500; margin-top: 2px;">Public Health Intelligence & Disease Surveillance Portal</div>
+                <div style="font-size: 12px; opacity: 0.9; font-weight: 500; margin-top: 1px;">Public Health Intelligence & Disease Surveillance Portal</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
