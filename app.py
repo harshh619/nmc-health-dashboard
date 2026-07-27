@@ -554,7 +554,6 @@ if check_password():
         )
         
         if geo_data:
-            # Added attribution_control=False to completely disable the Leaflet/OSM attribution footer
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, attribution_control=False)
             
             folium.TileLayer(
@@ -613,7 +612,12 @@ if check_password():
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
                 ward_cases = clean_ward_counts.get(clean_ward, 0)
-                zone_cases = clean_zone_counts.get(zone_name, 0)
+                
+                # FIX: If a specific ward filter is active, respect the filter context for zone cases as well, or show respective zone cases
+                if selected_ward != "All":
+                    zone_cases = ward_cases if clean_ward == clean_ward_str(selected_ward) else 0
+                else:
+                    zone_cases = clean_zone_counts.get(zone_name, 0)
                 
                 feature['properties']['Clean_Ward'] = clean_ward 
                 feature['properties']['Clean_Zone'] = zone_name
@@ -621,7 +625,6 @@ if check_password():
                 feature['properties']['Zone_Cases'] = zone_cases
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
 
-            # Custom CSS injected into map to enforce 'Inter' font across ALL popups uniformly
             popup_font_injection = """
             <style>
                 .leaflet-popup-content, .leaflet-popup-content-wrapper {
@@ -632,7 +635,6 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_font_injection))
 
-            # Background Boundary Layer with Unified Inter Font Popup
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
