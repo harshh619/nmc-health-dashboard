@@ -75,9 +75,8 @@ st.markdown("""
         section[data-testid="stSidebar"] div.block-container {
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
-            gap: 0.2rem !important; /* Streamlit 1.30+ variable for widget gaps */
+            gap: 0.2rem !important; 
         }
-        /* Target specifically vertical blocks inside sidebar to reduce spacing */
         section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
             gap: 0.4rem !important;
         }
@@ -319,14 +318,14 @@ if check_password():
         selected_status = st.sidebar.selectbox("Select Patient Status", status_options, key="status_filter")
         if selected_status != "All": filtered_df = filtered_df[filtered_df['Status'] == selected_status]
 
-        # --- ZONE-WISE SUMMARY TABLE (RESTORED & COMPACT) ---
+        # --- ZONE-WISE SUMMARY TABLE (RESTORED & HEIGHT INCREASED) ---
         st.sidebar.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
         st.sidebar.markdown("<h3 style='margin-top:0px; margin-bottom: 5px; font-size: 15px;'>📊 Zone-wise Cases</h3>", unsafe_allow_html=True)
         if not filtered_df.empty and 'Zone' in filtered_df.columns:
             zone_summary = filtered_df['Zone'].value_counts().reset_index()
             zone_summary.columns = ['Zone', 'Cases']
-            # Height reduced to 210 to fit 10 zones without large scrollbars
-            st.sidebar.dataframe(zone_summary, hide_index=True, use_container_width=True, height=210)
+            # Height increased to 450 to comfortably fit all 10 zones in the empty space
+            st.sidebar.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
 
         # --- SMART AI EPIDEMIOLOGICAL RISK ALERT (LEVEL 2 FORECASTING) ---
         def generate_ai_risk_alert(df, current_humidity, current_rain):
