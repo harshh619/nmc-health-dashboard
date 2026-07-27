@@ -612,7 +612,11 @@ if check_password():
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 
                 ward_cases = clean_ward_counts.get(clean_ward, 0)
-                zone_cases = clean_zone_counts.get(zone_name, 0)
+                
+                if selected_ward != "All":
+                    zone_cases = ward_cases if clean_ward == clean_ward_str(selected_ward) else 0
+                else:
+                    zone_cases = clean_zone_counts.get(zone_name, 0)
                 
                 feature['properties']['Clean_Ward'] = clean_ward 
                 feature['properties']['Clean_Zone'] = zone_name
@@ -630,7 +634,6 @@ if check_password():
             """
             m.get_root().html.add_child(folium.Element(popup_font_injection))
 
-            # CONDITIONAL POPUP FIELDS LOGIC: If a specific ward filter is active, omit Zone Cases line from popup
             if selected_ward != "All":
                 popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone']
                 popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :']
@@ -668,12 +671,12 @@ if check_password():
                         if pd.notna(row.get('Date')):
                             date_str = row['Date'].strftime('%d/%m/%Y') 
 
+                        # UPDATED: Patient Name instead of Patient ID in Patient Cluster View popup
                         popup_text = f"""
                         <div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
-                            <b style="color: #1e3a8a; font-size: 14px;">Patient ID: {row.get('Patient_ID', 'N/A')}</b><br>
+                            <b style="color: #1e3a8a; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br>
                             <hr style="margin: 4px 0;">
-                            <b>Date:</b> {date_str}<br>
-                            <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
+                            <b>Patient Name:</b> {row.get('Patient_Name', 'N/A')}<br>
                             <b>Ward No:</b> {clean_ward_str(row.get('Ward_Name', 'N/A'))}<br>
                             <b>Status:</b> {row.get('Status', 'N/A')}
                         </div>
