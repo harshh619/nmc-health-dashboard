@@ -541,7 +541,7 @@ if check_password():
                 feature['properties']['zone_cases'] = zone_cases
 
             # ---------------------------------------------
-            # CLICK-ONLY POPUP FOR WARD BOUNDARIES (Updated Format)
+            # CLICK-ONLY POPUP FOR WARD BOUNDARIES
             # ---------------------------------------------
             folium.GeoJson(
                 geo_data,
@@ -569,7 +569,7 @@ if check_password():
                                 <b style="color: #1e3a8a; font-size: 14px;">Patient ID: {row.get('Patient_ID', 'N/A')}</b><br>
                                 <hr style="margin: 4px 0;">
                                 <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
-                                <b>Ward:</b> {row.get('Ward_Name', 'N/A')}<br>
+                                <b>Ward No:</b> {clean_ward_str(row.get('Ward_Name', 'N/A'))}<br>
                                 <b>Status:</b> {row.get('Status', 'N/A')}
                             </div>
                             """
@@ -600,7 +600,6 @@ if check_password():
                             
                             badge = f'<div style="background-color:#e53e3e; color:white; border-radius:50%; width:24px; height:24px; text-align:center; line-height:24px; font-weight:bold; font-size:11px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">{ward_cases}</div>'
                             
-                            # Updated Popup Format for exact count view as well
                             popup_html = f"""
                             <div style='font-family: Inter, sans-serif; font-size: 13px;'>
                                 <b>Ward No :</b> {feature['properties']['clean_ward_name']}<br>
@@ -617,7 +616,7 @@ if check_password():
                             ).add_to(m)
                         except: pass
 
-            # MODE 3: All Cases Points View (UPDATED)
+            # MODE 3: All Cases Points View (UPDATED: Cleaned Ward String)
             elif map_mode == "All Cases Points View":
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
@@ -628,7 +627,7 @@ if check_password():
                                 <b style="color: #dc2626; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br>
                                 <hr style="margin: 4px 0;">
                                 <b>Patient Name:</b> {row.get('Patient_Name', 'N/A')}<br>
-                                <b>Ward No:</b> {row.get('Ward_Name', 'N/A')}<br>
+                                <b>Ward No:</b> {clean_ward_str(row.get('Ward_Name', 'N/A'))}<br>
                                 <b>Status:</b> {row.get('Status', 'N/A')}
                             </div>
                             """
