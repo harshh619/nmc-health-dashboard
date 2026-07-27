@@ -106,16 +106,16 @@ st.markdown("""
         /* 4. Ultra-Compact Header Banner */
         .header-banner {
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            padding: 8px 16px; /* Drastically reduced padding */
+            padding: 8px 16px; 
             border-radius: 8px; color: white;
             display: flex; align-items: center; gap: 12px;
             box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);
-            margin-bottom: 10px; /* Reduced bottom gap */
+            margin-bottom: 10px; 
             margin-top: 0px;
         }
         .header-banner h2 {
             color: white !important; margin: 0; font-weight: 700;
-            font-size: 20px; /* Smaller header text */
+            font-size: 20px; 
             letter-spacing: -0.02em;
         }
         
@@ -178,7 +178,6 @@ def check_password():
 
 if check_password():
     # --- HEADER ---
-    # Reduced logo size from 42px to 36px to fit the smaller banner
     logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;"><span style="font-size: 18px;">🏥</span></div>'
     try:
         import base64
@@ -308,6 +307,14 @@ if check_password():
         status_options = ["All"] + sorted([str(x) for x in filtered_df['Status'].dropna().unique()]) if 'Status' in filtered_df.columns else ["All"]
         selected_status = st.sidebar.selectbox("Select Patient Status", status_options, key="status_filter")
         if selected_status != "All": filtered_df = filtered_df[filtered_df['Status'] == selected_status]
+
+        # --- ZONE-WISE SUMMARY TABLE (RESTORED) ---
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 📊 Zone-wise Cases")
+        if not filtered_df.empty and 'Zone' in filtered_df.columns:
+            zone_summary = filtered_df['Zone'].value_counts().reset_index()
+            zone_summary.columns = ['Zone', 'Cases']
+            st.sidebar.dataframe(zone_summary, hide_index=True, use_container_width=True, height=350)
 
         # --- SMART AI EPIDEMIOLOGICAL RISK ALERT (LEVEL 2 FORECASTING) ---
         def generate_ai_risk_alert(df, current_humidity, current_rain):
