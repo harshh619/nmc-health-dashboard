@@ -617,7 +617,7 @@ if check_password():
                             ).add_to(m)
                         except: pass
 
-            # MODE 3: All Cases Points View
+            # MODE 3: All Cases Points View (UPDATED)
             elif map_mode == "All Cases Points View":
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
@@ -627,8 +627,8 @@ if check_password():
                             <div style="font-family: Inter, sans-serif; font-size: 13px; min-width: 160px;">
                                 <b style="color: #dc2626; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br>
                                 <hr style="margin: 4px 0;">
-                                <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
-                                <b>Ward:</b> {row.get('Ward_Name', 'N/A')}<br>
+                                <b>Patient Name:</b> {row.get('Patient_Name', 'N/A')}<br>
+                                <b>Ward No:</b> {row.get('Ward_Name', 'N/A')}<br>
                                 <b>Status:</b> {row.get('Status', 'N/A')}
                             </div>
                             """
