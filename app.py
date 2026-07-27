@@ -519,52 +519,106 @@ if check_password():
                 elif cases < max_ward_cases * 0.7: return "#fc4e2a"  
                 else: return "#bd0026"
 
+            # ---------------------------------------------
+            # NEW FIX: Inject data into GeoJson for Tooltips
+            # ---------------------------------------------
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 clean_ward = clean_ward_str(raw_ward)
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                 ward_cases = clean_ward_counts.get(clean_ward, 0)
+                
+                # Colors
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
+                # Data fields for Tooltip
+                feature['properties']['clean_ward_name'] = clean_ward
+                feature['properties']['total_cases'] = ward_cases
 
+            # Map Layer: GeoJson Polygons with Tooltip
             folium.GeoJson(
                 geo_data,
-                style_function=lambda feature: {'color': '#444444', 'weight': 1, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.5},
-                highlight_function=lambda feature: {'weight': 2.5, 'fillOpacity': 0.8}
+                style_function=lambda feature: {
+                    'color': '#444444', 'weight': 1, 
+                    'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.5
+                },
+                highlight_function=lambda feature: {'weight': 2.5, 'fillOpacity': 0.8},
+                tooltip=folium.features.GeoJsonTooltip(
+                    fields=['clean_ward_name', 'total_cases'],
+                    aliases=['Ward:', 'Total Cases:'],
+                    style="background-color: white; color: #333333; font-family: arial; font-size: 13px; padding: 10px;"
+                )
             ).add_to(m)
 
+            # MODE 1: Patient Cluster View
             if map_mode == "Patient Cluster View":
                 marker_cluster = MarkerCluster().add_to(m)
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                            # FIX: Used CircleMarker instead of standard Marker to prevent broken image icon issue on reload
+                            
+                            # Creating detailed HTML popup
+                            popup_html = f"""
+                            <div style="font-family: Inter, sans-serif; font-size: 13px; min-width: 160px;">
+                                <b style="color: #1e3a8a; font-size: 14px;">Patient ID: {row.get('Patient_ID', 'N/A')}</b><br>
+                                <hr style="margin: 4px 0;">
+                                <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
+                                <b>Ward:</b> {row.get('Ward_Name', 'N/A')}<br>
+                                <b>Status:</b> {row.get('Status', 'N/A')}
+                            </div>
+                            """
+                            
                             folium.CircleMarker(
                                 location=[row['Lat'], row['Long']],
                                 radius=7,
                                 color='white',
                                 weight=1,
                                 fill=True,
-                                fill_color='#2563eb', # Professional Blue point
-                                fill_opacity=0.9
+                                fill_color='#2563eb', 
+                                fill_opacity=0.9,
+                                popup=folium.Popup(popup_html, max_width=250), # POPUP ADDED
+                                tooltip=str(row.get('Disease', 'Patient'))     # TOOLTIP ADDED
                             ).add_to(marker_cluster)
 
+            # MODE 2: Ward-wise Exact Count View
             elif map_mode == "Ward-wise Exact Count View":
                 for feature in geo_data['features']:
-                    ward_cases = clean_ward_counts.get(clean_ward_str(feature['properties'].get('name')), 0)
+                    ward_cases = feature['properties']['total_cases']
                     if ward_cases > 0:
                         try:
                             coords = feature['geometry']['coordinates']
                             ring = coords[0] if feature['geometry']['type'] == 'Polygon' else coords[0][0]
                             center_lat = sum([p[1] for p in ring]) / len(ring)
                             center_lon = sum([p[0] for p in ring]) / len(ring)
-                            badge = f'<div style="background-color:#e53e3e; color:white; border-radius:50%; width:24px; height:24px; text-align:center; line-height:24px; font-weight:bold; font-size:11px;">{ward_cases}</div>'
-                            folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge)).add_to(m)
+                            
+                            badge = f'<div style="background-color:#e53e3e; color:white; border-radius:50%; width:24px; height:24px; text-align:center; line-height:24px; font-weight:bold; font-size:11px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">{ward_cases}</div>'
+                            
+                            popup_html = f"<div style='font-family: Inter, sans-serif;'><b>Ward:</b> {feature['properties']['clean_ward_name']}<br><b>Total Cases:</b> {ward_cases}</div>"
+                            
+                            folium.Marker(
+                                location=[center_lat, center_lon], 
+                                icon=folium.DivIcon(html=badge),
+                                popup=folium.Popup(popup_html, max_width=200), # POPUP ADDED
+                                tooltip=f"{feature['properties']['clean_ward_name']} - Cases: {ward_cases}" # TOOLTIP ADDED
+                            ).add_to(m)
                         except: pass
 
+            # MODE 3: All Cases Points View
             elif map_mode == "All Cases Points View":
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
+                            
+                            # Creating detailed HTML popup
+                            popup_html = f"""
+                            <div style="font-family: Inter, sans-serif; font-size: 13px; min-width: 160px;">
+                                <b style="color: #dc2626; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br>
+                                <hr style="margin: 4px 0;">
+                                <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
+                                <b>Ward:</b> {row.get('Ward_Name', 'N/A')}<br>
+                                <b>Status:</b> {row.get('Status', 'N/A')}
+                            </div>
+                            """
+                            
                             folium.CircleMarker(
                                 location=[row['Lat'], row['Long']], 
                                 radius=5, 
@@ -572,7 +626,9 @@ if check_password():
                                 weight=1, 
                                 fill=True, 
                                 fill_color='#e53e3e', 
-                                fill_opacity=0.9
+                                fill_opacity=0.9,
+                                popup=folium.Popup(popup_html, max_width=250), # POPUP ADDED
+                                tooltip=str(row.get('Disease', 'Patient'))     # TOOLTIP ADDED
                             ).add_to(m)
                 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
