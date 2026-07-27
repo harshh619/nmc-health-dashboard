@@ -190,8 +190,8 @@ st.markdown("""
             color: #1e3a8a;
         }
 
-        /* Hide Leaflet map attribution footer / logo */
-        .leaflet-control-attribution {
+        /* Completely Hide Leaflet map attribution footer / logo */
+        .leaflet-control-attribution, .leaflet-control-attribution.leaflet-control {
             display: none !important;
         }
     </style>
