@@ -10,21 +10,16 @@ import requests
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (PREMIUM SIDEBAR TOGGLE) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (DYNAMIC AUTO-HIDE ARROWS) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* Global Font */
-        html, body, [class*="st-"], .stApp {
-            font-family: 'Inter', sans-serif !important;
+        /* 1. Global Font and Icon Protection */
+        html, body, [class*="st-"], .stApp { 
+            font-family: 'Inter', sans-serif !important; 
         }
-        
-        /* Protect Material Icons */
-        .material-symbols-rounded, 
-        .material-icons, 
-        [data-testid="stIconMaterial"], 
-        [class*="Icon"] {
+        .material-symbols-rounded, .material-icons, [data-testid="stIconMaterial"], [class*="Icon"] {
             font-family: 'Material Symbols Rounded', 'Material Icons' !important;
             font-weight: normal !important;
         }
@@ -34,24 +29,72 @@ st.markdown("""
             padding-bottom: 2rem !important;
         }
         
-        header[data-testid="stHeader"] {
-            background: transparent !important;
-        }
-        
-        /* --- PROFESSIONAL STYLING FOR SIDEBAR COLLAPSE / TOGGLE BUTTON --- */
-        [data-testid="collapsedControl"] {
+        /* 2. DYNAMIC AUTO-HIDE: Sidebar Close Arrow (<<) */
+        section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button {
+            opacity: 0 !important; /* Hidden by default */
+            transform: translateX(-10px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            
+            /* Premium Look */
             background-color: #ffffff !important;
             border: 1px solid #cbd5e1 !important;
             border-radius: 8px !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04) !important;
-            transition: all 0.2s ease-in-out !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
             color: #1e3a8a !important;
         }
+        
+        /* Show only when mouse is hovering over the Sidebar */
+        section[data-testid="stSidebar"]:hover [data-testid="stSidebarHeader"] button {
+            opacity: 1 !important;
+            transform: translateX(0);
+        }
+        
+        /* Hover Effect on the Button itself */
+        section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button:hover {
+            background-color: #1e3a8a !important;
+            color: #ffffff !important;
+        }
+
+        /* 3. DYNAMIC AUTO-HIDE: Sidebar Open Arrow (>) when collapsed */
+        [data-testid="collapsedControl"] {
+            opacity: 0.3 !important; /* Semi-transparent by default */
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            
+            /* Premium Look */
+            background-color: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+            color: #1e3a8a !important;
+            margin-top: 10px;
+            margin-left: 10px;
+            z-index: 99999 !important;
+        }
+
+        /* Fully visible when mouse enters the app area */
+        .stApp:hover [data-testid="collapsedControl"] {
+            opacity: 1 !important;
+        }
+
+        /* Hover Effect on the Button itself */
         [data-testid="collapsedControl"]:hover {
             background-color: #1e3a8a !important;
             color: #ffffff !important;
-            border-color: #1e3a8a !important;
-            transform: scale(1.05);
+            transform: scale(1.08) !important;
+        }
+
+        /* Make Header Background Transparent */
+        header[data-testid="stHeader"] {
+            background: transparent !important;
+        }
+
+        /* Top Right Menu (Three dots) auto-hide */
+        header[data-testid="stHeader"] .stAppToolbar {
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        header[data-testid="stHeader"]:hover .stAppToolbar {
+            opacity: 1;
         }
 
         .main {
@@ -62,7 +105,7 @@ st.markdown("""
             border-right: 1px solid #e2e8f0;
         }
         section[data-testid="stSidebar"] div.block-container {
-            padding-top: 2rem !important;
+            padding-top: 1rem !important;
             padding-bottom: 1rem !important;
         }
         
