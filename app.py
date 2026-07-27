@@ -10,23 +10,33 @@ import requests
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (CLEAN SIDEBAR TOGGLE FIX) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (TEXT GLITCH PERMANENT FIX) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        * {
+        /* 1. Dashboard ke liye global font apply karein (except icons) */
+        html, body, [class*="st-"], .stApp {
             font-family: 'Inter', sans-serif !important;
         }
+        
+        /* 2. CRITICAL FIX: Streamlit ke internal icons ko unka asli font wapas dein taaki text na dikhe */
+        .material-symbols-rounded, 
+        .material-icons, 
+        [data-testid="stIconMaterial"], 
+        [class*="Icon"] {
+            font-family: 'Material Symbols Rounded', 'Material Icons' !important;
+            font-weight: normal !important;
+        }
+
         .block-container {
             padding-top: 1.5rem !important;
             padding-bottom: 2rem !important;
         }
         
-        /* Restore header and make sidebar toggle button clean */
+        /* Clean Header Background */
         header[data-testid="stHeader"] {
             background: transparent !important;
-            visibility: visible !important;
         }
         
         .main {
