@@ -183,31 +183,33 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 1. PASSWORD PROTECTION ---
+# --- 1. PASSWORD PROTECTION FIX (NO GHOSTING) ---
 def check_password():
     def password_entered():
-        if st.session_state["password"] == "nagpurhealth": 
+        if st.session_state["login_password"] == "nagpurhealth": 
             st.session_state["password_correct"] = True
-            del st.session_state["password"]
+            del st.session_state["login_password"]
         else:
             st.session_state["password_correct"] = False
 
-    if "password_correct" not in st.session_state:
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
+    # Agar password pehle hi sahi hai, toh aage badho (UI turant load hoga)
+    if st.session_state.get("password_correct", False):
+        return True
+
+    # Empty container use kiya hai taaki login ke baad input field turant gayab ho jaye
+    login_placeholder = st.empty()
+    
+    with login_placeholder.container():
+        st.markdown("<br><br><br><br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.markdown("### 🔐 Nagpur Municipal Corporation - Health Portal")
-            st.text_input("Enter Dashboard Password", type="password", on_change=password_entered, key="password")
-        return False
-    elif not st.session_state["password_correct"]:
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.markdown("### 🔐 Nagpur Municipal Corporation - Health Portal")
-            st.text_input("Enter Dashboard Password", type="password", on_change=password_entered, key="password")
-            st.error("❌ Incorrect Password")
-        return False
-    return True
+            st.text_input("Enter Dashboard Password", type="password", on_change=password_entered, key="login_password")
+            
+            if "password_correct" in st.session_state and not st.session_state["password_correct"]:
+                st.error("❌ Incorrect Password")
+                
+    return False
 
 if check_password():
     # --- PROFESSIONAL HEADER BANNER WITH LOGO ---
