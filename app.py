@@ -1,22 +1,23 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import json
 import folium
 from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
+import plotly.graph_objects as go
 import requests
 
 # Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (GLOBAL HOVER ARROW SENSOR) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         
-        /* 1. Global Font and Icon Protection */
         html, body, [class*="st-"], .stApp { 
             font-family: 'Inter', sans-serif !important; 
         }
@@ -30,13 +31,10 @@ st.markdown("""
             padding-bottom: 2rem !important;
         }
         
-        /* 2. DYNAMIC ARROWS: Hide by default */
         [data-testid="stSidebarHeader"] button, 
         [data-testid="collapsedControl"] {
-            opacity: 0 !important; /* Invisible by default */
+            opacity: 0 !important;
             transition: opacity 0.3s ease-in-out, transform 0.2s ease !important;
-            
-            /* Premium Look */
             background-color: #ffffff !important;
             border: 1px solid #cbd5e1 !important;
             border-radius: 8px !important;
@@ -45,19 +43,16 @@ st.markdown("""
             z-index: 99999 !important;
         }
         
-        /* Set position for collapsed control to look good */
         [data-testid="collapsedControl"] {
             margin-top: 10px;
             margin-left: 10px;
         }
         
-        /* 3. SHOW ARROWS WHEN MOUSE IS ANYWHERE ON THE APP (Global Hover Sensor) */
         .stApp:hover [data-testid="stSidebarHeader"] button,
         .stApp:hover [data-testid="collapsedControl"] {
-            opacity: 1 !important; /* Visible jab mouse screen par ho */
+            opacity: 1 !important;
         }
         
-        /* 4. Hover Effect on the Button itself */
         [data-testid="stSidebarHeader"] button:hover,
         [data-testid="collapsedControl"]:hover {
             background-color: #1e3a8a !important;
@@ -65,23 +60,11 @@ st.markdown("""
             transform: scale(1.08) !important;
         }
 
-        /* Make Header Background Transparent */
-        header[data-testid="stHeader"] {
-            background: transparent !important;
-        }
+        header[data-testid="stHeader"] { background: transparent !important; }
+        header[data-testid="stHeader"] .stAppToolbar { opacity: 0; transition: opacity 0.3s ease; }
+        header[data-testid="stHeader"]:hover .stAppToolbar { opacity: 1; }
 
-        /* Top Right Menu (Three dots) auto-hide */
-        header[data-testid="stHeader"] .stAppToolbar {
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        header[data-testid="stHeader"]:hover .stAppToolbar {
-            opacity: 1;
-        }
-
-        .main {
-            background-color: #f8fafc;
-        }
+        .main { background-color: #f8fafc; }
         section[data-testid="stSidebar"] {
             background-color: #f1f5f9;
             border-right: 1px solid #e2e8f0;
@@ -91,7 +74,6 @@ st.markdown("""
             padding-bottom: 1rem !important;
         }
         
-        /* Compact & Sleek Metric Cards */
         div[data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
@@ -104,86 +86,60 @@ st.markdown("""
             box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.07);
             border-color: #cbd5e1;
         }
-        div[data-testid="stMetric"] label {
-            font-size: 13px !important;
-            color: #475569 !important;
-        }
+        div[data-testid="stMetric"] label { font-size: 13px !important; color: #475569 !important; }
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-            font-size: 24px !important;
-            font-weight: 700 !important;
-            color: #0f172a !important;
+            font-size: 24px !important; font-weight: 700 !important; color: #0f172a !important;
         }
 
         h3 {
-            color: #0f172a;
-            font-weight: 700;
-            font-size: 1.25rem;
-            letter-spacing: -0.025em;
-            margin-top: 1.5rem;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            color: #0f172a; font-weight: 700; font-size: 1.25rem;
+            letter-spacing: -0.025em; margin-top: 1.5rem; margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 8px;
         }
         .header-banner {
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            padding: 20px 24px;
-            border-radius: 12px;
-            color: white;
-            display: flex;
-            align-items: center;
-            gap: 18px;
+            padding: 20px 24px; border-radius: 12px; color: white;
+            display: flex; align-items: center; gap: 18px;
             box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);
             margin-bottom: 20px;
         }
         .header-banner h2 {
-            color: white !important;
-            margin: 0;
-            font-weight: 700;
-            font-size: 28px;
-            letter-spacing: -0.03em;
+            color: white !important; margin: 0; font-weight: 700;
+            font-size: 28px; letter-spacing: -0.03em;
         }
+        
         @keyframes pulse-alert {
             0% { background-color: #fef2f2; border-color: #fecaca; }
             50% { background-color: #fee2e2; border-color: #fca5a5; }
             100% { background-color: #fef2f2; border-color: #fecaca; }
         }
         .pulsing-alert {
-            padding: 12px 18px;
-            border-radius: 8px;
-            border: 1px solid #fecaca;
-            color: #991b1b;
-            font-weight: 600;
-            font-size: 14.5px;
+            padding: 12px 18px; border-radius: 8px; border: 1px solid #fecaca;
+            color: #991b1b; font-weight: 600; font-size: 14.5px;
             animation: pulse-alert 2s infinite ease-in-out;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            display: flex; align-items: center; gap: 10px;
         }
-        .vertical-divider {
-            border-left: 2px solid #e2e8f0;
-            height: 320px;
-            margin: auto;
+        
+        .ai-risk-panel {
+            background-color: #f0fdfa; border-left: 5px solid #0d9488;
+            padding: 16px 20px; border-radius: 0 8px 8px 0;
+            margin-top: 15px; margin-bottom: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
+        .ai-risk-title { color: #0f766e; font-weight: 700; font-size: 15px; margin-bottom: 5px; display:flex; align-items:center; gap:8px;}
+        .ai-risk-desc { color: #334155; font-size: 14px; margin: 0; }
+        
+        .vertical-divider { border-left: 2px solid #e2e8f0; height: 320px; margin: auto; }
         .footer-container {
-            margin-top: 40px;
-            padding: 20px;
-            border-top: 1px solid #e2e8f0;
-            background-color: #ffffff;
-            border-radius: 8px;
-            text-align: center;
-            color: #475569;
-            font-size: 13.5px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-        }
-        .footer-container b {
-            color: #1e3a8a;
+            margin-top: 40px; padding: 20px; border-top: 1px solid #e2e8f0;
+            background-color: #ffffff; border-radius: 8px; text-align: center;
+            color: #475569; font-size: 13.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 1. PASSWORD PROTECTION FIX (NO GHOSTING) ---
+# --- 1. PASSWORD PROTECTION FIX ---
 def check_password():
     def password_entered():
         if st.session_state["login_password"] == "nagpurhealth": 
@@ -192,13 +148,10 @@ def check_password():
         else:
             st.session_state["password_correct"] = False
 
-    # Agar password pehle hi sahi hai, toh aage badho (UI turant load hoga)
     if st.session_state.get("password_correct", False):
         return True
 
-    # Empty container use kiya hai taaki login ke baad input field turant gayab ho jaye
     login_placeholder = st.empty()
-    
     with login_placeholder.container():
         st.markdown("<br><br><br><br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 2, 1])
@@ -208,19 +161,18 @@ def check_password():
             
             if "password_correct" in st.session_state and not st.session_state["password_correct"]:
                 st.error("❌ Incorrect Password")
-                
     return False
 
 if check_password():
-    # --- PROFESSIONAL HEADER BANNER WITH LOGO ---
-    logo_html = ""
+    # --- HEADER ---
+    logo_html = '<div style="background: white; border-radius: 50%; padding: 8px; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px;"><span style="font-size: 26px;">🏥</span></div>'
     try:
         import base64
         with open("logo.png", "rb") as img_file:
             encoded_string = base64.b64encode(img_file.read()).decode()
             logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="52" style="background: white; border-radius: 50%; padding: 3px;" />'
     except:
-        logo_html = '<div style="background: white; border-radius: 50%; padding: 8px; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px;"><span style="font-size: 26px;">🏥</span></div>'
+        pass
 
     st.markdown(f"""
         <div class="header-banner">
@@ -232,7 +184,7 @@ if check_password():
         </div>
     """, unsafe_allow_html=True)
 
-    # --- REAL-TIME WEATHER & ENVIRONMENTAL CORRELATION WIDGET ---
+    # --- WEATHER WIDGET ---
     @st.cache_data(ttl=600)
     def get_nagpur_weather():
         try:
@@ -249,14 +201,9 @@ if check_password():
     temp, humidity, rainfall = get_nagpur_weather()
     
     w_col1, w_col2, w_col3 = st.columns(3)
-    with w_col1:
-        st.metric("🌡️ Nagpur Temperature", f"{temp} °C", delta="Live Weather")
-    with w_col2:
-        st.metric("💧 Relative Humidity", f"{humidity} %", delta="Vector-Borne Risk Factor")
-    with w_col3:
-        st.metric("🌧️ Precipitation / Rainfall", f"{rainfall} mm", delta="Waterlogging Index")
-
-    st.markdown("<br>", unsafe_allow_html=True)
+    with w_col1: st.metric("🌡️ Nagpur Temperature", f"{temp} °C", delta="Live Weather")
+    with w_col2: st.metric("💧 Relative Humidity", f"{humidity} %", delta="Vector-Borne Risk Factor")
+    with w_col3: st.metric("🌧️ Precipitation / Rainfall", f"{rainfall} mm", delta="Waterlogging Index")
 
     # --- 2. DATA LOAD & MERGE ---
     @st.cache_data(ttl=30)
@@ -264,28 +211,22 @@ if check_password():
         try:
             mapping_df = pd.read_excel('Table.xlsx')
             mapping_df.rename(columns={'name': 'Ward_Name', 'description': 'Zone'}, inplace=True)
-        except Exception as e:
-            st.error("Table.xlsx file nahi mili ya format galat hai.")
+        except:
             return None, None, None
 
         google_sheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv" 
-        
         try:
             patient_df = pd.read_csv(google_sheet_url)
-            
             if 'Date' in patient_df.columns:
                 patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
-                
             patient_df = pd.merge(patient_df, mapping_df, on='Ward_Name', how='left')
         except:
-            st.warning("Google Sheet link update nahi hua hai. Dummy data load ho raha hai.")
             patient_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
 
         try:
             with open('wards.geojson', encoding='utf-8') as f:
                 geo_data = json.load(f)
         except:
-            st.error("wards.geojson file load nahi ho payi.")
             geo_data = None
             
         return patient_df, mapping_df, geo_data
@@ -293,19 +234,15 @@ if check_password():
     patient_df, mapping_df, geo_data = load_all_data()
 
     if patient_df is not None:
-        
         def clean_zone_name(val):
             if pd.isna(val): return "Unknown"
             val = str(val)
             for prefix in ["Zone No. ", "Zone No ", "Zone No."]:
-                if val.startswith(prefix):
-                    val = val[len(prefix):]
+                if val.startswith(prefix): val = val[len(prefix):]
             return val.strip()
 
-        if 'Zone' in mapping_df.columns:
-            mapping_df['Zone'] = mapping_df['Zone'].apply(clean_zone_name)
-        if 'Zone' in patient_df.columns:
-            patient_df['Zone'] = patient_df['Zone'].apply(clean_zone_name)
+        if 'Zone' in mapping_df.columns: mapping_df['Zone'] = mapping_df['Zone'].apply(clean_zone_name)
+        if 'Zone' in patient_df.columns: patient_df['Zone'] = patient_df['Zone'].apply(clean_zone_name)
 
         min_date, max_date = None, None
         if 'Date' in patient_df.columns and not patient_df['Date'].dropna().empty:
@@ -323,46 +260,25 @@ if check_password():
 
         # --- 3. SIDEBAR SMART FILTERS ---
         col_header, col_reset = st.sidebar.columns([5, 3])
-        with col_header:
-            st.markdown("### Filters 🔍")
-        with col_reset:
-            st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
+        with col_header: st.markdown("### Filters 🔍")
+        with col_reset: st.button("Reset", on_click=clear_filters, use_container_width=True)
         
         filtered_df = patient_df.copy()
         
         if min_date and max_date:
             st.sidebar.markdown("**Date Window (DD/MM/YYYY)**")
-            
             col1, col2 = st.sidebar.columns(2)
-            
-            with col1:
-                start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
-                
-            with col2:
-                end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
-            
-            if start_date > end_date:
-                st.sidebar.error("Error: 'To' date 'From' date se aage ki honi chahiye.")
-            else:
+            with col1: start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
+            with col2: end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
+            if start_date <= end_date:
                 filtered_df = filtered_df[(filtered_df['Date'].dt.date >= start_date) & (filtered_df['Date'].dt.date <= end_date)]
-        else:
-            st.sidebar.warning("Data me valid 'Date' column nahi hai.")
 
-        if 'Disease' in filtered_df.columns:
-            raw_diseases = filtered_df['Disease'].dropna().unique()
-            disease_options = ["All"] + sorted([str(x) for x in raw_diseases])
-        else:
-            disease_options = ["All"]
-            st.sidebar.warning("Sheet me 'Disease' column add nahi hua hai.")
-            
+        disease_options = ["All"] + sorted([str(x) for x in filtered_df['Disease'].dropna().unique()]) if 'Disease' in filtered_df.columns else ["All"]
         selected_disease = st.sidebar.selectbox("Select Disease", disease_options, key="disease_filter")
-        
-        if selected_disease != "All":
-            filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
+        if selected_disease != "All": filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
 
         raw_zones = mapping_df['Zone'].dropna().unique()
         zones_list = ["All"] + sorted([str(x) for x in raw_zones], key=lambda x: int(''.join(filter(str.isdigit, str(x))) or 0))
-        
         selected_zone = st.sidebar.selectbox("Select Zone", zones_list, key="zone_filter")
 
         if selected_zone != "All":
@@ -372,110 +288,79 @@ if check_password():
             raw_wards = mapping_df['Ward_Name'].dropna().unique()
             
         wards_list = ["All"] + sorted([str(x) for x in raw_wards])
-
         selected_ward = st.sidebar.selectbox("Select Ward", wards_list, key="ward_filter")
-        
-        if selected_ward != "All":
-            filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
+        if selected_ward != "All": filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
 
-        # --- PATIENT STATUS FILTER ---
-        if 'Status' in filtered_df.columns:
-            raw_statuses = filtered_df['Status'].dropna().unique()
-            status_options = ["All"] + sorted([str(x) for x in raw_statuses])
-        else:
-            status_options = ["All"]
-            
+        status_options = ["All"] + sorted([str(x) for x in filtered_df['Status'].dropna().unique()]) if 'Status' in filtered_df.columns else ["All"]
         selected_status = st.sidebar.selectbox("Select Patient Status", status_options, key="status_filter")
-        
-        if selected_status != "All":
-            filtered_df = filtered_df[filtered_df['Status'] == selected_status]
+        if selected_status != "All": filtered_df = filtered_df[filtered_df['Status'] == selected_status]
 
-        # --- ZONE-WISE SUMMARY TABLE ---
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("### 📊 Zone-wise Cases")
-        
-        if not filtered_df.empty and 'Zone' in filtered_df.columns:
-            zone_summary = filtered_df['Zone'].value_counts().reset_index()
-            zone_summary.columns = ['Zone', 'Cases']
+        # --- SMART AI EPIDEMIOLOGICAL RISK ALERT (LEVEL 2 FORECASTING) ---
+        def generate_ai_risk_alert(df, current_humidity, current_rain):
+            if df.empty or 'Disease' not in df.columns:
+                return "🟢 Stable Environmental Conditions", "Insufficient disease data to formulate a localized risk correlation.", "#f0fdfa", "#0d9488"
+                
+            vector_diseases = ['Dengue', 'Malaria', 'Chikungunya']
+            # Using case-insensitive matching for robustness
+            vector_cases_count = df[df['Disease'].str.lower().isin([x.lower() for x in vector_diseases])].shape[0]
             
-            st.sidebar.dataframe(
-                zone_summary, 
-                hide_index=True, 
-                use_container_width=True,
-                height=395
-            )
-        else:
-            st.sidebar.info("No data available for summary.")
+            if current_humidity >= 75 or current_rain > 2.0:
+                if vector_cases_count >= 15:
+                    return "🔴 Critical Outbreak Risk Predicted", f"High humidity ({current_humidity}%) combined with {vector_cases_count} active vector-borne cases suggests a strong probability of localized outbreak multiplication in the next 7-10 days. Intensive fogging recommended in affected zones.", "#fef2f2", "#b91c1c"
+                elif vector_cases_count > 0:
+                    return "🟠 Elevated Epidemiological Alert", f"Favorable mosquito breeding weather detected. With {vector_cases_count} existing cases, there is an elevated risk of transmission. Pre-emptive clearing of stagnant water advised.", "#fff7ed", "#c2410c"
+                else:
+                    return "🟡 Pre-emptive Environmental Alert", "Current weather conditions are highly favorable for vector-borne disease transmission. Monitor surveillance data closely.", "#fefce8", "#a16207"
+            else:
+                return "🟢 Normal Risk Profile", "Current climatic conditions and case velocities do not indicate an immediate surge in vector-borne transmission rates.", "#f0fdfa", "#0d9488"
 
-        # --- 4. DASHBOARD METRICS & PULSATING HIGH-RISK HOTSPOT ALERT ---
-        st.markdown(f"**Active View:** `{selected_zone} Zone` ➔ `{selected_ward}`")
+        alert_title, alert_desc, alert_bg, alert_color = generate_ai_risk_alert(filtered_df, humidity, rainfall)
         
+        st.markdown(f"""
+            <div class="ai-risk-panel" style="background-color: {alert_bg}; border-left-color: {alert_color};">
+                <div class="ai-risk-title" style="color: {alert_color};">
+                    <span class="material-symbols-rounded" style="font-size: 20px;">insights</span> 
+                    AI System Alert: {alert_title}
+                </div>
+                <p class="ai-risk-desc">{alert_desc}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+
+        # --- 4. DASHBOARD METRICS ---
+        st.markdown(f"**Active View:** `{selected_zone} Zone` ➔ `{selected_ward}`")
         col_m1, col_m2 = st.columns([1, 2])
         with col_m1:
-            total_cases = len(filtered_df)
-            st.metric("Total Cases in Selected Window", total_cases, delta="Live Data")
-            
+            st.metric("Total Cases in Selected Window", len(filtered_df), delta="Live Data")
         with col_m2:
             if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
                 top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
                 top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
-                
                 st.markdown(f"""
                     <div class="pulsing-alert">
                         <span>🚨</span>
                         <div><b>High-Risk Hotspot Alert:</b> {top_ward} is currently the most affected area with <b>{top_ward_cases} cases</b>!</div>
                     </div>
                 """, unsafe_allow_html=True)
-            else:
-                st.info("Hotspot data ke liye sufficient records nahi hain.")
 
-        # --- PATIENT STATUS TRACKING SUMMARY METRICS WITH INDICATOR DOTS ---
         if 'Status' in filtered_df.columns and not filtered_df['Status'].dropna().empty:
             st.markdown("### 🏥 Patient Status Breakdown")
             status_counts = filtered_df['Status'].value_counts()
             status_cols = st.columns(len(status_counts) if len(status_counts) > 0 else 1)
-            
             for idx, (status_name, count_val) in enumerate(status_counts.items()):
                 with status_cols[idx % len(status_cols)]:
-                    st.metric(
-                        label=f"● Status: {status_name}", 
-                        value=count_val
-                    )
+                    st.metric(label=f"● Status: {status_name}", value=count_val)
 
-        # --- 4.1 ANALYTICAL CHARTS (BEAUTIFIED PIE, DIVIDER & DARK BOLD BAR CHART) ---
+        # --- 4.1 ANALYTICAL CHARTS ---
         col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
-        
         with col_chart1:
-            st.markdown("### 🦠 Disease Distribution (Pie Chart)")
+            st.markdown("### 🦠 Disease Distribution")
             if 'Disease' in filtered_df.columns and not filtered_df['Disease'].dropna().empty:
                 disease_df = filtered_df['Disease'].value_counts().reset_index()
                 disease_df.columns = ['Disease', 'Count']
-                
-                fig_pie = px.pie(
-                    disease_df, 
-                    names='Disease', 
-                    values='Count', 
-                    hole=0.45,
-                    color_discrete_sequence=px.colors.qualitative.Bold
-                )
-                fig_pie.update_traces(
-                    textinfo='percent', 
-                    textfont_size=13, 
-                    textfont_color='white',
-                    marker=dict(line=dict(color='#ffffff', width=2))
-                )
-                fig_pie.update_layout(
-                    margin=dict(t=10, b=10, l=10, r=10), 
-                    height=300,
-                    legend=dict(
-                        orientation="v",
-                        yanchor="middle",
-                        y=0.5,
-                        xanchor="left",
-                        x=0.82,
-                        font=dict(size=12, color="#111827", family="Inter")
-                    )
-                )
+                fig_pie = px.pie(disease_df, names='Disease', values='Count', hole=0.45, color_discrete_sequence=px.colors.qualitative.Bold)
+                fig_pie.update_traces(textinfo='percent', textfont_size=13, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
+                fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300, legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.82))
                 st.plotly_chart(fig_pie, use_container_width=True)
             else:
                 st.info("Disease data available nahi hai.")
@@ -488,311 +373,164 @@ if check_password():
             if 'Ward_Name' in filtered_df.columns and not filtered_df['Ward_Name'].dropna().empty:
                 ward_df = filtered_df['Ward_Name'].value_counts().head(8).reset_index()
                 ward_df.columns = ['Ward', 'Cases']
-                max_cases_val = ward_df['Cases'].max() if not ward_df.empty else 10
-                
-                fig_bar = px.bar(
-                    ward_df,
-                    x='Ward',
-                    y='Cases',
-                    text='Cases',
-                    color='Cases',
-                    color_continuous_scale=['#fca5a5', '#dc2626', '#991b1b']
-                )
-                fig_bar.update_traces(
-                    textposition='outside',
-                    textfont=dict(size=12, color='#111827', family="Inter"),
-                    marker_cornerradius=6
-                )
-                fig_bar.update_layout(
-                    margin=dict(t=25, b=10, l=10, r=10),
-                    height=300,
-                    xaxis=dict(title='', tickangle=-25, tickfont=dict(size=11, color='#111827', family="Inter")),
-                    yaxis=dict(title='Cases Count', showgrid=True, gridcolor='#f1f5f9', range=[0, max_cases_val * 1.2], tickfont=dict(size=11, color='#111827', family="Inter")),
-                    coloraxis_showscale=False,
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)'
-                )
+                fig_bar = px.bar(ward_df, x='Ward', y='Cases', text='Cases', color='Cases', color_continuous_scale=['#fca5a5', '#dc2626', '#991b1b'])
+                fig_bar.update_traces(textposition='outside', marker_cornerradius=6)
+                fig_bar.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=300, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
                 st.plotly_chart(fig_bar, use_container_width=True)
             else:
                 st.info("Ward data available nahi hai.")
 
-        # --- ADVANCED BEAUTIFIED DATE TREND / TIMELINE AREA CHART ---
-        st.markdown("### 📈 Date Trend / Timeline Analysis")
+        # --- LEVEL 1 FORECASTING: ADVANCED AI TREND PROJECTION CHART ---
+        st.markdown("### 📈 AI Outbreak Forecasting & Trajectory Projection")
         if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
             timeline_df = filtered_df.dropna(subset=['Date']).copy()
             timeline_df['DateOnly'] = timeline_df['Date'].dt.date
             timeline_counts = timeline_df['DateOnly'].value_counts().sort_index().reset_index()
             timeline_counts.columns = ['Date', 'Cases']
             
-            fig_timeline = px.area(
-                timeline_counts,
-                x='Date',
-                y='Cases',
-                markers=True,
-                color_discrete_sequence=['#1e3a8a']
+            # Calculate 7-Day Moving Average
+            timeline_counts['7-Day Trend'] = timeline_counts['Cases'].rolling(window=7, min_periods=1).mean()
+            
+            # Linear Projection Math
+            if len(timeline_counts) > 3:
+                last_date = timeline_counts['Date'].max()
+                recent_data = timeline_counts.tail(14).copy()
+                recent_data['Days_Numeric'] = (pd.to_datetime(recent_data['Date']) - pd.to_datetime(recent_data['Date'].min())).dt.days
+                
+                # Numpy polyfit for trend extraction
+                z = np.polyfit(recent_data['Days_Numeric'], recent_data['7-Day Trend'], 1)
+                p = np.poly1d(z)
+                
+                future_dates = [last_date + datetime.timedelta(days=i) for i in range(1, 8)]
+                last_day_numeric = recent_data['Days_Numeric'].max()
+                future_numeric = [last_day_numeric + i for i in range(1, 8)]
+                future_trend = p(future_numeric)
+                future_trend = [max(0, val) for val in future_trend] # Prevent negative cases
+                
+                future_df = pd.DataFrame({'Date': future_dates, 'Cases': [None]*7, '7-Day Trend': future_trend, 'Type': ['Forecast']*7})
+                timeline_counts['Type'] = 'Historical'
+                forecast_df = pd.concat([timeline_counts, future_df], ignore_index=True)
+            else:
+                forecast_df = timeline_counts.copy()
+                forecast_df['Type'] = 'Historical'
+            
+            fig_forecast = go.Figure()
+
+            # Area Plot for Actual Cases
+            historical = forecast_df[forecast_df['Type'] == 'Historical']
+            fig_forecast.add_trace(go.Scatter(
+                x=historical['Date'], y=historical['Cases'],
+                mode='lines+markers', name='Actual Daily Cases',
+                line=dict(width=2, color='rgba(30, 58, 138, 0.4)'),
+                marker=dict(size=5, color='#1e3a8a'), fill='tozeroy', fillcolor='rgba(30, 58, 138, 0.1)'
+            ))
+
+            # Solid Red Line for Historical Trend
+            fig_forecast.add_trace(go.Scatter(
+                x=historical['Date'], y=historical['7-Day Trend'],
+                mode='lines', name='Historical Trend (Smoothed)',
+                line=dict(width=3, color='#dc2626')
+            ))
+
+            # Dotted Red Line for Future Prediction
+            future = forecast_df[forecast_df['Type'] == 'Forecast']
+            if not future.empty:
+                connection_point = historical.iloc[-1:]
+                future_connected = pd.concat([connection_point, future])
+                fig_forecast.add_trace(go.Scatter(
+                    x=future_connected['Date'], y=future_connected['7-Day Trend'],
+                    mode='lines+markers', name='7-Day AI Projection',
+                    line=dict(width=3, color='#dc2626', dash='dot'),
+                    marker=dict(size=7, color='#dc2626', symbol='cross')
+                ))
+
+            fig_forecast.update_layout(
+                margin=dict(t=10, b=10, l=10, r=10), height=320,
+                xaxis=dict(showgrid=False), yaxis=dict(title='Cases Count', showgrid=True, gridcolor='#f1f5f9'),
+                plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
+                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
             )
-            fig_timeline.update_traces(
-                line=dict(width=3, color='#1e3a8a'),
-                marker=dict(size=6, color='#1e3a8a', line=dict(width=2, color='white')),
-                fill='tozeroy',
-                fillcolor='rgba(30, 58, 138, 0.12)'
-            )
-            fig_timeline.update_layout(
-                margin=dict(t=10, b=10, l=10, r=10),
-                height=280,
-                xaxis=dict(title='', showgrid=False, tickfont=dict(size=11, color='#111827', family="Inter")),
-                yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9', tickfont=dict(size=11, color='#111827', family="Inter")),
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)'
-            )
-            st.plotly_chart(fig_timeline, use_container_width=True)
+            st.plotly_chart(fig_forecast, use_container_width=True)
         else:
-            st.info("Timeline ke liye valid Date data available nahi hai.")
-        
-        # --- 5. MAP VIEW SWITCHER (3 MODES WITH ALL MAP LAYERS) ---
+            st.info("Timeline/Forecasting ke liye valid Date data available nahi hai.")
+
+        # --- 5. MAP VIEW SWITCHER (3 MODES) ---
         st.markdown("### 📍 Patients Map View")
-        
-        map_mode = st.radio(
-            "Select Map View Mode",
-            ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"],
-            horizontal=True,
-            label_visibility="collapsed"
-        )
+        map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
         
         if geo_data:
-            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None)
-            
-            folium.TileLayer(
-                'CartoDB Positron', 
-                name='Clean B&W Map',
-                control=True
-            ).add_to(m)
-
-            folium.TileLayer(
-                'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
-                attr='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                name='Clean No-Labels Map',
-                control=True
-            ).add_to(m)
-
-            folium.TileLayer(
-                'OpenStreetMap', 
-                name='Default Map',
-                control=True
-            ).add_to(m)
+            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles='CartoDB Positron')
             
             def clean_ward_str(val):
                 if pd.isna(val): return "Unknown"
                 val = str(val)
                 if val.endswith('.0'): val = val[:-2]
-                for remove_word in ["Prabhag No. ", "Prabhag No.", "Prabhag No "]:
-                    val = val.replace(remove_word, "")
+                for remove_word in ["Prabhag No. ", "Prabhag No.", "Prabhag No "]: val = val.replace(remove_word, "")
                 return val.strip()
 
             zone_dict = {clean_ward_str(w): str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
-            
             clean_ward_counts = {}
             if not filtered_df.empty:
                 for w, count in filtered_df['Ward_Name'].value_counts().items():
                     clean_w = clean_ward_str(w)
                     clean_ward_counts[clean_w] = clean_ward_counts.get(clean_w, 0) + count
-                
-            clean_zone_counts = {}
-            if not filtered_df.empty:
-                for z, count in filtered_df['Zone'].value_counts().items():
-                    clean_z = str(z)
-                    clean_zone_counts[clean_z] = clean_zone_counts.get(clean_z, 0) + count
 
             max_ward_cases = max(clean_ward_counts.values()) if clean_ward_counts else 1
-
             def get_density_color(cases):
-                if cases == 0:
-                    return "#ebedef"  
-                elif cases < max_ward_cases * 0.2:
-                    return "#ffeda0"  
-                elif cases < max_ward_cases * 0.4:
-                    return "#feb24c"  
-                elif cases < max_ward_cases * 0.7:
-                    return "#fc4e2a"  
-                else:
-                    return "#bd0026"
+                if cases == 0: return "#ebedef"  
+                elif cases < max_ward_cases * 0.2: return "#ffeda0"  
+                elif cases < max_ward_cases * 0.4: return "#feb24c"  
+                elif cases < max_ward_cases * 0.7: return "#fc4e2a"  
+                else: return "#bd0026"
 
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 clean_ward = clean_ward_str(raw_ward)
                 zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
-                
                 ward_cases = clean_ward_counts.get(clean_ward, 0)
-                
-                feature['properties']['Clean_Ward'] = clean_ward 
-                feature['properties']['Clean_Zone'] = zone_name
-                feature['properties']['Ward_Cases'] = ward_cases
-                feature['properties']['Zone_Cases'] = clean_zone_counts.get(zone_name, 0)
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
-
-            popup_styling = """
-            <style>
-                .leaflet-popup-content table {
-                    width: 100%;
-                }
-                .leaflet-popup-content tr {
-                    line-height: 1.3;
-                }
-                .leaflet-popup-content td, .leaflet-popup-content th {
-                    padding: 6px 10px !important;
-                    vertical-align: middle !important;
-                    white-space: nowrap !important;
-                }
-            </style>
-            """
-            m.get_root().html.add_child(folium.Element(popup_styling))
 
             folium.GeoJson(
                 geo_data,
-                style_function=lambda feature: {
-                    'color': '#444444',
-                    'weight': 1,
-                    'fillColor': feature['properties']['fill_color'],
-                    'fillOpacity': 0.60
-                },
-                highlight_function=lambda feature: {
-                    'color': '#000000',
-                    'weight': 2.5,
-                    'fillColor': feature['properties']['fill_color'],
-                    'fillOpacity': 0.80
-                },
-                popup=folium.features.GeoJsonPopup(
-                    fields=['Clean_Zone', 'Clean_Ward', 'Ward_Cases', 'Zone_Cases'],
-                    aliases=['📍 Zone:', '🏢 Prabhag:', '📈 Prabhag Cases:', '📊 Zone Cases:'],
-                    labels=True,
-                    style="font-family: Inter; font-size: 13px; font-weight: bold;"
-                )
+                style_function=lambda feature: {'color': '#444444', 'weight': 1, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.5},
+                highlight_function=lambda feature: {'weight': 2.5, 'fillOpacity': 0.8}
             ).add_to(m)
 
             if map_mode == "Patient Cluster View":
                 marker_cluster = MarkerCluster().add_to(m)
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
-                        date_str = "N/A"
-                        if pd.notna(row.get('Date')):
-                            date_str = row['Date'].strftime('%d/%m/%Y') 
-
-                        popup_text = f"""
-                        <b>Date:</b> {date_str}<br>
-                        <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
-                        <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
-                        <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
-                        <b>Status:</b> {row.get('Status', 'N/A')}<br>
-                        <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
-                        """
-                        
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                            folium.Marker(
-                                location=[row['Lat'], row['Long']],
-                                popup=folium.Popup(popup_text, max_width=300),
-                                icon=folium.Icon(color="red", icon="info-sign")
-                            ).add_to(marker_cluster)
+                            folium.Marker(location=[row['Lat'], row['Long']]).add_to(marker_cluster)
 
             elif map_mode == "Ward-wise Exact Count View":
                 for feature in geo_data['features']:
-                    ward_cases = feature['properties']['Ward_Cases']
-                    
+                    ward_cases = clean_ward_counts.get(clean_ward_str(feature['properties'].get('name')), 0)
                     if ward_cases > 0:
-                        geom = feature.get('geometry')
-                        if geom:
-                            try:
-                                coords = geom.get('coordinates')
-                                if geom['type'] == 'Polygon':
-                                    ring = coords[0]
-                                elif geom['type'] == 'MultiPolygon':
-                                    ring = coords[0][0]
-                                else:
-                                    ring = None
-                                
-                                if ring:
-                                    lons = [p[0] for p in ring]
-                                    lats = [p[1] for p in ring]
-                                    center_lat = sum(lats) / len(lats)
-                                    center_lon = sum(lons) / len(lons)
-                                    
-                                    badge_html = f"""
-                                    <div style="
-                                        background-color: #e53e3e; 
-                                        border: 2px solid #ffffff; 
-                                        color: #ffffff; 
-                                        font-weight: bold; 
-                                        font-size: 11px; 
-                                        width: 24px; 
-                                        height: 24px; 
-                                        line-height: 20px; 
-                                        border-radius: 50%; 
-                                        text-align: center; 
-                                        box-shadow: 0 2px 5px rgba(0,0,0,0.4);
-                                        transform: translate(-50%, -50%);">
-                                        {ward_cases}
-                                    </div>
-                                    """
-                                    folium.Marker(
-                                        location=[center_lat, center_lon],
-                                        icon=folium.DivIcon(html=badge_html)
-                                    ).add_to(m)
-                            except Exception:
-                                pass
+                        try:
+                            coords = feature['geometry']['coordinates']
+                            ring = coords[0] if feature['geometry']['type'] == 'Polygon' else coords[0][0]
+                            center_lat = sum([p[1] for p in ring]) / len(ring)
+                            center_lon = sum([p[0] for p in ring]) / len(ring)
+                            badge = f'<div style="background-color:#e53e3e; color:white; border-radius:50%; width:24px; height:24px; text-align:center; line-height:24px; font-weight:bold; font-size:11px;">{ward_cases}</div>'
+                            folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge)).add_to(m)
+                        except: pass
 
             elif map_mode == "All Cases Points View":
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
-                        date_str = "N/A"
-                        if pd.notna(row.get('Date')):
-                            date_str = row['Date'].strftime('%d/%m/%Y') 
-
-                        popup_text = f"""
-                        <b>Date:</b> {date_str}<br>
-                        <b>Patient ID:</b> {row.get('Patient_ID', 'N/A')}<br>
-                        <b>Name:</b> {row.get('Patient_Name', 'N/A')}<br>
-                        <b>Disease:</b> {row.get('Disease', 'N/A')}<br>
-                        <b>Status:</b> {row.get('Status', 'N/A')}<br>
-                        <b>Ward:</b> {row.get('Ward_Name', 'N/A')}
-                        """
-                        
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                            folium.CircleMarker(
-                                location=[row['Lat'], row['Long']],
-                                radius=5,
-                                popup=folium.Popup(popup_text, max_width=300),
-                                color='#ffffff',
-                                weight=1,
-                                fill=True,
-                                fill_color='#e53e3e',
-                                fill_opacity=0.9
-                            ).add_to(m)
+                            folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, color='#ffffff', weight=1, fill=True, fill_color='#e53e3e', fill_opacity=0.9).add_to(m)
                 
-            folium.LayerControl().add_to(m)
-            st_folium(m, height=750, use_container_width=True, returned_objects=[])
+            st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
             st.info("Geojson data available nahi hai.")
 
-        # --- 6. DATA TABLE WITH EXPORT BUTTON ---
-        col_t1, col_t2 = st.columns([8, 2], vertical_alignment="bottom")
-        with col_t1:
-            st.markdown("### 📋 Patient Details")
-        with col_t2:
-            csv_data = filtered_df.to_csv(index=False).encode('utf-8')
-            st.download_button(
-                label="📥 Export CSV",
-                data=csv_data,
-                file_name="NMC_Health_Report.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
+        # --- 6. DATA TABLE ---
+        st.markdown("### 📋 Patient Details")
+        st.dataframe(filtered_df, use_container_width=True)
 
-        display_df = filtered_df.copy()
-        if 'Date' in display_df.columns:
-            display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
-            
-        st.dataframe(display_df, use_container_width=True)
-
-        # --- PROFESSIONAL FOOTER ---
+        # --- FOOTER ---
         st.markdown("""
             <div class="footer-container">
                 <div><b>Nagpur Municipal Corporation (NMC)</b> - Public Health Intelligence & Disease Surveillance Portal</div>
