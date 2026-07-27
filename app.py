@@ -11,7 +11,7 @@ import requests
 # Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (ULTRA-COMPACT VIEW) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (INTER FONT ENFORCED) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -554,7 +554,6 @@ if check_password():
         )
         
         if geo_data:
-            # Base Map with Tile Layers (Map Layers Toggle)
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None)
             
             folium.TileLayer(
@@ -621,7 +620,18 @@ if check_password():
                 feature['properties']['Zone_Cases'] = zone_cases
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
 
-            # Background Boundary Layer with Popup: Ward No : X, Total Cases : X, Zone No: X, Total Cases: X
+            # Custom CSS injected into map to enforce 'Inter' font across ALL popups uniformly
+            popup_font_injection = """
+            <style>
+                .leaflet-popup-content, .leaflet-popup-content-wrapper {
+                    font-family: 'Inter', sans-serif !important;
+                    font-size: 13px !important;
+                }
+            </style>
+            """
+            m.get_root().html.add_child(folium.Element(popup_font_injection))
+
+            # Background Boundary Layer with Unified Inter Font Popup
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -640,7 +650,7 @@ if check_password():
                     fields=['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases'],
                     aliases=['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :'],
                     labels=True,
-                    style="font-family: Inter; font-size: 13px;"
+                    style="font-family: 'Inter', sans-serif; font-size: 13px;"
                 )
             ).add_to(m)
 
@@ -653,7 +663,7 @@ if check_password():
                             date_str = row['Date'].strftime('%d/%m/%Y') 
 
                         popup_text = f"""
-                        <div style="font-family: Inter, sans-serif; font-size: 13px; min-width: 160px;">
+                        <div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
                             <b style="color: #1e3a8a; font-size: 14px;">Patient ID: {row.get('Patient_ID', 'N/A')}</b><br>
                             <hr style="margin: 4px 0;">
                             <b>Date:</b> {date_str}<br>
@@ -708,7 +718,7 @@ if check_password():
                                 </div>
                                 """
                                 popup_html = f"""
-                                <div style='font-family: Inter, sans-serif; font-size: 13px;'>
+                                <div style="font-family: 'Inter', sans-serif; font-size: 13px;">
                                     <b>Ward No :</b> {feature['properties']['Clean_Ward']}<br>
                                     <b>Total Cases :</b> {ward_cases}<br>
                                     <b>Zone No :</b> {feature['properties']['Clean_Zone']}<br>
@@ -727,7 +737,7 @@ if check_password():
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
                         popup_text = f"""
-                        <div style="font-family: Inter, sans-serif; font-size: 13px; min-width: 160px;">
+                        <div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
                             <b style="color: #dc2626; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br>
                             <hr style="margin: 4px 0;">
                             <b>Patient Name:</b> {row.get('Patient_Name', 'N/A')}<br>
@@ -747,7 +757,6 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # Map Layer Control Box (Top Right)
             folium.LayerControl().add_to(m)
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
