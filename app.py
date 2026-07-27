@@ -8,9 +8,10 @@ import datetime
 import plotly.express as px
 import requests
 
+# Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (DYNAMIC AUTO-HIDE ARROWS) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (GLOBAL HOVER ARROW SENSOR) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -29,36 +30,11 @@ st.markdown("""
             padding-bottom: 2rem !important;
         }
         
-        /* 2. DYNAMIC AUTO-HIDE: Sidebar Close Arrow (<<) */
-        section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button {
-            opacity: 0 !important; /* Hidden by default */
-            transform: translateX(-10px);
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            
-            /* Premium Look */
-            background-color: #ffffff !important;
-            border: 1px solid #cbd5e1 !important;
-            border-radius: 8px !important;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
-            color: #1e3a8a !important;
-        }
-        
-        /* Show only when mouse is hovering over the Sidebar */
-        section[data-testid="stSidebar"]:hover [data-testid="stSidebarHeader"] button {
-            opacity: 1 !important;
-            transform: translateX(0);
-        }
-        
-        /* Hover Effect on the Button itself */
-        section[data-testid="stSidebar"] [data-testid="stSidebarHeader"] button:hover {
-            background-color: #1e3a8a !important;
-            color: #ffffff !important;
-        }
-
-        /* 3. DYNAMIC AUTO-HIDE: Sidebar Open Arrow (>) when collapsed */
+        /* 2. DYNAMIC ARROWS: Hide by default */
+        [data-testid="stSidebarHeader"] button, 
         [data-testid="collapsedControl"] {
-            opacity: 0.3 !important; /* Semi-transparent by default */
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            opacity: 0 !important; /* Invisible by default */
+            transition: opacity 0.3s ease-in-out, transform 0.2s ease !important;
             
             /* Premium Look */
             background-color: #ffffff !important;
@@ -66,17 +42,23 @@ st.markdown("""
             border-radius: 8px !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
             color: #1e3a8a !important;
-            margin-top: 10px;
-            margin-left: 10px;
             z-index: 99999 !important;
         }
-
-        /* Fully visible when mouse enters the app area */
-        .stApp:hover [data-testid="collapsedControl"] {
-            opacity: 1 !important;
+        
+        /* Set position for collapsed control to look good */
+        [data-testid="collapsedControl"] {
+            margin-top: 10px;
+            margin-left: 10px;
         }
-
-        /* Hover Effect on the Button itself */
+        
+        /* 3. SHOW ARROWS WHEN MOUSE IS ANYWHERE ON THE APP (Global Hover Sensor) */
+        .stApp:hover [data-testid="stSidebarHeader"] button,
+        .stApp:hover [data-testid="collapsedControl"] {
+            opacity: 1 !important; /* Visible jab mouse screen par ho */
+        }
+        
+        /* 4. Hover Effect on the Button itself */
+        [data-testid="stSidebarHeader"] button:hover,
         [data-testid="collapsedControl"]:hover {
             background-color: #1e3a8a !important;
             color: #ffffff !important;
