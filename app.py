@@ -193,8 +193,7 @@ def check_password():
     return False
 
 if check_password():
-    # --- HEADER (INCREASED LOGO SIZE) ---
-    # Width and height increased to 60px for a prominent look
+    # --- HEADER ---
     logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px;"><span style="font-size: 32px;">🏥</span></div>'
     try:
         import base64
@@ -538,7 +537,16 @@ if check_password():
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                            folium.Marker(location=[row['Lat'], row['Long']]).add_to(marker_cluster)
+                            # FIX: Used CircleMarker instead of standard Marker to prevent broken image icon issue on reload
+                            folium.CircleMarker(
+                                location=[row['Lat'], row['Long']],
+                                radius=7,
+                                color='white',
+                                weight=1,
+                                fill=True,
+                                fill_color='#2563eb', # Professional Blue point
+                                fill_opacity=0.9
+                            ).add_to(marker_cluster)
 
             elif map_mode == "Ward-wise Exact Count View":
                 for feature in geo_data['features']:
@@ -557,7 +565,15 @@ if check_password():
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                            folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, color='#ffffff', weight=1, fill=True, fill_color='#e53e3e', fill_opacity=0.9).add_to(m)
+                            folium.CircleMarker(
+                                location=[row['Lat'], row['Long']], 
+                                radius=5, 
+                                color='#ffffff', 
+                                weight=1, 
+                                fill=True, 
+                                fill_color='#e53e3e', 
+                                fill_opacity=0.9
+                            ).add_to(m)
                 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
