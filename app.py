@@ -10,7 +10,7 @@ import requests
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (COMPACT METRIC CARDS) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -44,18 +44,30 @@ st.markdown("""
             padding-top: 2rem !important;
             padding-bottom: 1rem !important;
         }
+        
+        /* Compact & Sleek Metric Cards */
         div[data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
-            padding: 16px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            padding: 10px 16px !important;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.04);
             transition: all 0.3s ease;
         }
         div[data-testid="stMetric"]:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.07);
             border-color: #cbd5e1;
         }
+        div[data-testid="stMetric"] label {
+            font-size: 13px !important;
+            color: #475569 !important;
+        }
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+            font-size: 24px !important;
+            font-weight: 700 !important;
+            color: #0f172a !important;
+        }
+
         h3 {
             color: #0f172a;
             font-weight: 700;
@@ -91,17 +103,17 @@ st.markdown("""
             100% { background-color: #fef2f2; border-color: #fecaca; }
         }
         .pulsing-alert {
-            padding: 18px 22px;
-            border-radius: 10px;
+            padding: 12px 18px;
+            border-radius: 8px;
             border: 1px solid #fecaca;
             color: #991b1b;
             font-weight: 600;
-            font-size: 15px;
+            font-size: 14.5px;
             animation: pulse-alert 2s infinite ease-in-out;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 10px;
         }
         .vertical-divider {
             border-left: 2px solid #e2e8f0;
@@ -172,7 +184,7 @@ if check_password():
         </div>
     """, unsafe_allow_html=True)
 
-    # --- REAL-TIME WEATHER & ENVIRONMENTAL CORRELATION WIDGET (ROBUST API HANDLING) ---
+    # --- REAL-TIME WEATHER & ENVIRONMENTAL CORRELATION WIDGET ---
     @st.cache_data(ttl=600)
     def get_nagpur_weather():
         try:
@@ -184,7 +196,7 @@ if check_password():
                 return curr.get('temperature_2m', 32), curr.get('relative_humidity_2m', 65), curr.get('precipitation', 0.0)
         except:
             pass
-        return 32.5, 68.0, 0.0  # Fallback realistic Nagpur weather values if API blocks
+        return 32.5, 68.0, 0.0
 
     temp, humidity, rainfall = get_nagpur_weather()
     
