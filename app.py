@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import json
 import folium
-from folium.plugins import MarkerCluster, LayerControl
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
@@ -621,7 +621,7 @@ if check_password():
                         ).add_to(layer_points)
             layer_points.add_to(m)
 
-            # Add Layer Control Box on top right of map
+            # Add Layer Control Box using folium.LayerControl correctly
             folium.LayerControl(collapsed=False).add_to(m)
                 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
