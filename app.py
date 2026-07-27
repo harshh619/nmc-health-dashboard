@@ -65,41 +65,39 @@ st.markdown("""
         header[data-testid="stHeader"] .stAppToolbar { opacity: 0; transition: opacity 0.3s ease; }
         header[data-testid="stHeader"]:hover .stAppToolbar { opacity: 1; }
 
-        /* Unified Color Palette: Main is white, Sidebar is soft gray */
-        .main { background-color: #ffffff !important; }
+        .main { background-color: #f8fafc; }
         
+        /* SIDEBAR ULTRA-COMPACT STYLING */
         section[data-testid="stSidebar"] {
-            background-color: #f8fafc !important; /* Soft Slate-50 to match dataframe headers */
-            border-right: 1px solid #e2e8f0 !important;
+            background-color: #f1f5f9;
+            border-right: 1px solid #e2e8f0;
         }
         section[data-testid="stSidebar"] div.block-container {
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
-            gap: 0.2rem !important; 
+            gap: 0.2rem !important; /* Streamlit 1.30+ variable for widget gaps */
         }
+        /* Target specifically vertical blocks inside sidebar to reduce spacing */
         section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
             gap: 0.4rem !important;
         }
         section[data-testid="stSidebar"] label {
             font-size: 13px !important;
             margin-bottom: -5px !important;
-            font-weight: 500 !important;
-            color: #334155 !important;
         }
         
         /* 2. Compact Metric Cards */
         div[data-testid="stMetric"] {
-            background-color: #f8fafc;
+            background-color: #ffffff;
             border: 1px solid #e2e8f0;
             padding: 8px 12px !important; 
             border-radius: 8px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.04);
             transition: all 0.3s ease;
         }
         div[data-testid="stMetric"]:hover {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.07);
             border-color: #cbd5e1;
-            background-color: #ffffff;
         }
         div[data-testid="stMetric"] label { font-size: 12px !important; color: #475569 !important; margin-bottom: 2px !important;}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
@@ -119,20 +117,17 @@ st.markdown("""
         /* 4. Ultra-Compact Header Banner */
         .header-banner {
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            padding: 10px 18px; 
+            padding: 8px 16px; 
             border-radius: 8px; color: white;
-            display: flex; align-items: center; gap: 16px;
+            display: flex; align-items: center; gap: 12px;
             box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);
-            margin-bottom: 12px; 
+            margin-bottom: 10px; 
             margin-top: 0px;
         }
         .header-banner h2 {
             color: white !important; margin: 0; font-weight: 700;
-            font-size: 22px; 
+            font-size: 20px; 
             letter-spacing: -0.02em;
-        }
-        .header-banner-subtitle {
-            font-size: 13px; opacity: 0.9; font-weight: 500; margin-top: 2px;
         }
         
         @keyframes pulse-alert {
@@ -194,12 +189,12 @@ def check_password():
 
 if check_password():
     # --- HEADER ---
-    logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px;"><span style="font-size: 32px;">🏥</span></div>'
+    logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px;"><span style="font-size: 18px;">🏥</span></div>'
     try:
         import base64
         with open("logo.png", "rb") as img_file:
             encoded_string = base64.b64encode(img_file.read()).decode()
-            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="60" style="background: white; border-radius: 50%; padding: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" />'
+            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="36" style="background: white; border-radius: 50%; padding: 2px;" />'
     except:
         pass
 
@@ -208,7 +203,7 @@ if check_password():
             {logo_html}
             <div>
                 <h2>Nagpur Municipal Corporation - Health Dashboard</h2>
-                <div class="header-banner-subtitle">Public Health Intelligence & Disease Surveillance Portal</div>
+                <div style="font-size: 12px; opacity: 0.9; font-weight: 500; margin-top: 1px;">Public Health Intelligence & Disease Surveillance Portal</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -295,7 +290,7 @@ if check_password():
         filtered_df = patient_df.copy()
         
         if min_date and max_date:
-            st.sidebar.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
+            st.sidebar.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px;'>Date Window</div>", unsafe_allow_html=True)
             col1, col2 = st.sidebar.columns(2)
             with col1: start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
             with col2: end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
@@ -324,13 +319,14 @@ if check_password():
         selected_status = st.sidebar.selectbox("Select Patient Status", status_options, key="status_filter")
         if selected_status != "All": filtered_df = filtered_df[filtered_df['Status'] == selected_status]
 
-        # --- ZONE-WISE SUMMARY TABLE ---
+        # --- ZONE-WISE SUMMARY TABLE (RESTORED & COMPACT) ---
         st.sidebar.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
         st.sidebar.markdown("<h3 style='margin-top:0px; margin-bottom: 5px; font-size: 15px;'>📊 Zone-wise Cases</h3>", unsafe_allow_html=True)
         if not filtered_df.empty and 'Zone' in filtered_df.columns:
             zone_summary = filtered_df['Zone'].value_counts().reset_index()
             zone_summary.columns = ['Zone', 'Cases']
-            st.sidebar.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
+            # Height reduced to 210 to fit 10 zones without large scrollbars
+            st.sidebar.dataframe(zone_summary, hide_index=True, use_container_width=True, height=210)
 
         # --- SMART AI EPIDEMIOLOGICAL RISK ALERT (LEVEL 2 FORECASTING) ---
         def generate_ai_risk_alert(df, current_humidity, current_rain):
@@ -537,16 +533,7 @@ if check_password():
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                            # FIX: Used CircleMarker instead of standard Marker to prevent broken image icon issue on reload
-                            folium.CircleMarker(
-                                location=[row['Lat'], row['Long']],
-                                radius=7,
-                                color='white',
-                                weight=1,
-                                fill=True,
-                                fill_color='#2563eb', # Professional Blue point
-                                fill_opacity=0.9
-                            ).add_to(marker_cluster)
+                            folium.Marker(location=[row['Lat'], row['Long']]).add_to(marker_cluster)
 
             elif map_mode == "Ward-wise Exact Count View":
                 for feature in geo_data['features']:
@@ -565,15 +552,7 @@ if check_password():
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
                         if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                            folium.CircleMarker(
-                                location=[row['Lat'], row['Long']], 
-                                radius=5, 
-                                color='#ffffff', 
-                                weight=1, 
-                                fill=True, 
-                                fill_color='#e53e3e', 
-                                fill_opacity=0.9
-                            ).add_to(m)
+                            folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, color='#ffffff', weight=1, fill=True, fill_color='#e53e3e', fill_opacity=0.9).add_to(m)
                 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
