@@ -13,7 +13,7 @@ import requests
 # Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (COMPACT VIEW) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -26,9 +26,10 @@ st.markdown("""
             font-weight: normal !important;
         }
 
+        /* 1. Reduce overall app padding */
         .block-container {
-            padding-top: 1.5rem !important;
-            padding-bottom: 2rem !important;
+            padding-top: 1rem !important;
+            padding-bottom: 1rem !important;
         }
         
         [data-testid="stSidebarHeader"] button, 
@@ -74,10 +75,11 @@ st.markdown("""
             padding-bottom: 1rem !important;
         }
         
+        /* 2. Compact Metric Cards */
         div[data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
-            padding: 10px 16px !important;
+            padding: 8px 12px !important; /* Reduced padding */
             border-radius: 8px;
             box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.04);
             transition: all 0.3s ease;
@@ -86,26 +88,34 @@ st.markdown("""
             box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.07);
             border-color: #cbd5e1;
         }
-        div[data-testid="stMetric"] label { font-size: 13px !important; color: #475569 !important; }
+        div[data-testid="stMetric"] label { font-size: 12px !important; color: #475569 !important; margin-bottom: 2px !important;}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-            font-size: 24px !important; font-weight: 700 !important; color: #0f172a !important;
+            font-size: 20px !important; /* Smaller value font */
+            font-weight: 700 !important; color: #0f172a !important;
         }
 
+        /* 3. Compact Headings */
         h3 {
-            color: #0f172a; font-weight: 700; font-size: 1.25rem;
-            letter-spacing: -0.025em; margin-top: 1.5rem; margin-bottom: 1rem;
+            color: #0f172a; font-weight: 700; font-size: 1.15rem; /* Smaller H3 */
+            letter-spacing: -0.025em; 
+            margin-top: 0.75rem; /* Tighter margins */
+            margin-bottom: 0.5rem;
             display: flex; align-items: center; gap: 8px;
         }
+        
+        /* 4. Compact Header Banner */
         .header-banner {
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            padding: 20px 24px; border-radius: 12px; color: white;
-            display: flex; align-items: center; gap: 18px;
+            padding: 12px 20px; /* Reduced padding */
+            border-radius: 10px; color: white;
+            display: flex; align-items: center; gap: 15px;
             box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);
-            margin-bottom: 20px;
+            margin-bottom: 12px; /* Reduced bottom gap */
         }
         .header-banner h2 {
             color: white !important; margin: 0; font-weight: 700;
-            font-size: 28px; letter-spacing: -0.03em;
+            font-size: 24px; /* Slightly smaller header text */
+            letter-spacing: -0.03em;
         }
         
         @keyframes pulse-alert {
@@ -113,9 +123,11 @@ st.markdown("""
             50% { background-color: #fee2e2; border-color: #fca5a5; }
             100% { background-color: #fef2f2; border-color: #fecaca; }
         }
+        
+        /* 5. Compact Alerts */
         .pulsing-alert {
-            padding: 12px 18px; border-radius: 8px; border: 1px solid #fecaca;
-            color: #991b1b; font-weight: 600; font-size: 14.5px;
+            padding: 8px 12px; border-radius: 6px; border: 1px solid #fecaca;
+            color: #991b1b; font-weight: 600; font-size: 13.5px;
             animation: pulse-alert 2s infinite ease-in-out;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
             display: flex; align-items: center; gap: 10px;
@@ -123,18 +135,18 @@ st.markdown("""
         
         .ai-risk-panel {
             background-color: #f0fdfa; border-left: 5px solid #0d9488;
-            padding: 16px 20px; border-radius: 0 8px 8px 0;
-            margin-top: 15px; margin-bottom: 15px;
+            padding: 12px 16px; border-radius: 0 8px 8px 0; /* Reduced padding */
+            margin-top: 8px; margin-bottom: 12px; /* Tighter margins */
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-        .ai-risk-title { color: #0f766e; font-weight: 700; font-size: 15px; margin-bottom: 5px; display:flex; align-items:center; gap:8px;}
-        .ai-risk-desc { color: #334155; font-size: 14px; margin: 0; }
+        .ai-risk-title { color: #0f766e; font-weight: 700; font-size: 14px; margin-bottom: 4px; display:flex; align-items:center; gap:6px;}
+        .ai-risk-desc { color: #334155; font-size: 13.5px; margin: 0; line-height: 1.4;}
         
         .vertical-divider { border-left: 2px solid #e2e8f0; height: 320px; margin: auto; }
         .footer-container {
-            margin-top: 40px; padding: 20px; border-top: 1px solid #e2e8f0;
+            margin-top: 30px; padding: 15px; border-top: 1px solid #e2e8f0;
             background-color: #ffffff; border-radius: 8px; text-align: center;
-            color: #475569; font-size: 13.5px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            color: #475569; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
     </style>
 """, unsafe_allow_html=True)
@@ -165,12 +177,12 @@ def check_password():
 
 if check_password():
     # --- HEADER ---
-    logo_html = '<div style="background: white; border-radius: 50%; padding: 8px; display: flex; align-items: center; justify-content: center; width: 48px; height: 48px;"><span style="font-size: 26px;">🏥</span></div>'
+    logo_html = '<div style="background: white; border-radius: 50%; padding: 6px; display: flex; align-items: center; justify-content: center; width: 42px; height: 42px;"><span style="font-size: 22px;">🏥</span></div>'
     try:
         import base64
         with open("logo.png", "rb") as img_file:
             encoded_string = base64.b64encode(img_file.read()).decode()
-            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="52" style="background: white; border-radius: 50%; padding: 3px;" />'
+            logo_html = f'<img src="data:image/png;base64,{encoded_string}" width="42" style="background: white; border-radius: 50%; padding: 3px;" />'
     except:
         pass
 
@@ -179,7 +191,7 @@ if check_password():
             {logo_html}
             <div>
                 <h2>Nagpur Municipal Corporation - Health Dashboard</h2>
-                <div style="font-size: 13.5px; opacity: 0.9; font-weight: 500; margin-top: 3px;">Public Health Intelligence & Disease Surveillance Portal</div>
+                <div style="font-size: 13px; opacity: 0.9; font-weight: 500; margin-top: 2px;">Public Health Intelligence & Disease Surveillance Portal</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -301,7 +313,6 @@ if check_password():
                 return "🟢 Stable Environmental Conditions", "Insufficient disease data to formulate a localized risk correlation.", "#f0fdfa", "#0d9488"
                 
             vector_diseases = ['Dengue', 'Malaria', 'Chikungunya']
-            # Using case-insensitive matching for robustness
             vector_cases_count = df[df['Disease'].str.lower().isin([x.lower() for x in vector_diseases])].shape[0]
             
             if current_humidity >= 75 or current_rain > 2.0:
@@ -319,7 +330,7 @@ if check_password():
         st.markdown(f"""
             <div class="ai-risk-panel" style="background-color: {alert_bg}; border-left-color: {alert_color};">
                 <div class="ai-risk-title" style="color: {alert_color};">
-                    <span class="material-symbols-rounded" style="font-size: 20px;">insights</span> 
+                    <span class="material-symbols-rounded" style="font-size: 18px;">insights</span> 
                     AI System Alert: {alert_title}
                 </div>
                 <p class="ai-risk-desc">{alert_desc}</p>
@@ -359,8 +370,8 @@ if check_password():
                 disease_df = filtered_df['Disease'].value_counts().reset_index()
                 disease_df.columns = ['Disease', 'Count']
                 fig_pie = px.pie(disease_df, names='Disease', values='Count', hole=0.45, color_discrete_sequence=px.colors.qualitative.Bold)
-                fig_pie.update_traces(textinfo='percent', textfont_size=13, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
-                fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=300, legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.82))
+                fig_pie.update_traces(textinfo='percent', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
+                fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.82))
                 st.plotly_chart(fig_pie, use_container_width=True)
             else:
                 st.info("Disease data available nahi hai.")
@@ -375,7 +386,7 @@ if check_password():
                 ward_df.columns = ['Ward', 'Cases']
                 fig_bar = px.bar(ward_df, x='Ward', y='Cases', text='Cases', color='Cases', color_continuous_scale=['#fca5a5', '#dc2626', '#991b1b'])
                 fig_bar.update_traces(textposition='outside', marker_cornerradius=6)
-                fig_bar.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=300, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
+                fig_bar.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=280, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
                 st.plotly_chart(fig_bar, use_container_width=True)
             else:
                 st.info("Ward data available nahi hai.")
@@ -445,7 +456,7 @@ if check_password():
                 ))
 
             fig_forecast.update_layout(
-                margin=dict(t=10, b=10, l=10, r=10), height=320,
+                margin=dict(t=10, b=10, l=10, r=10), height=300,
                 xaxis=dict(showgrid=False), yaxis=dict(title='Cases Count', showgrid=True, gridcolor='#f1f5f9'),
                 plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)',
                 legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
