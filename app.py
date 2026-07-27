@@ -67,10 +67,10 @@ st.markdown("""
 
         .main { background-color: #f8fafc; }
         
-        /* SIDEBAR ULTRA-COMPACT STYLING */
+        /* SIDEBAR ULTRA-COMPACT STYLING & VISUAL MATCHING */
         section[data-testid="stSidebar"] {
-            background-color: #f1f5f9;
-            border-right: 1px solid #e2e8f0;
+            background-color: #ffffff !important; /* Changed to white to blend with table */
+            border-right: 1px solid #e2e8f0 !important;
         }
         section[data-testid="stSidebar"] div.block-container {
             padding-top: 1rem !important;
@@ -83,6 +83,20 @@ st.markdown("""
         section[data-testid="stSidebar"] label {
             font-size: 13px !important;
             margin-bottom: -5px !important;
+        }
+        
+        /* Dropdowns and Date inputs styling to match metric cards */
+        div[data-baseweb="select"] > div, 
+        input[data-baseweb="base-input"] {
+            background-color: #f8fafc !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 6px !important;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02) !important;
+        }
+        div[data-baseweb="select"] > div:hover, 
+        input[data-baseweb="base-input"]:hover {
+            border-color: #cbd5e1 !important;
+            background-color: #ffffff !important;
         }
         
         /* 2. Compact Metric Cards */
