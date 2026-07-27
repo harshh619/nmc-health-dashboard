@@ -9,7 +9,7 @@ import plotly.express as px
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING (ICON TEXT GLITCH FIXED) ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -21,13 +21,9 @@ st.markdown("""
             padding-top: 1.5rem !important;
             padding-bottom: 2rem !important;
         }
-        
-        /* Fix header and sidebar toggle button icon display */
         header[data-testid="stHeader"] {
             background: transparent !important;
         }
-        
-        /* Clean up raw material icon text glitch */
         button[kind="header"] {
             color: transparent !important;
         }
@@ -36,12 +32,9 @@ st.markdown("""
             width: 22px !important;
             height: 22px !important;
         }
-        
         .main {
             background-color: #f8fafc;
         }
-        
-        /* Standard Professional Sidebar Styling */
         section[data-testid="stSidebar"] {
             background-color: #f1f5f9;
             border-right: 1px solid #e2e8f0;
@@ -50,8 +43,6 @@ st.markdown("""
             padding-top: 2rem !important;
             padding-bottom: 1rem !important;
         }
-        
-        /* Modern Metric Cards with Soft Shadows */
         div[data-testid="stMetric"] {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
@@ -64,8 +55,6 @@ st.markdown("""
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08);
             border-color: #cbd5e1;
         }
-        
-        /* Section Headings with Accent Bar */
         h3 {
             color: #0f172a;
             font-weight: 700;
@@ -77,8 +66,6 @@ st.markdown("""
             align-items: center;
             gap: 8px;
         }
-        
-        /* Professional Municipal Header Banner */
         .header-banner {
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
             padding: 20px 24px;
@@ -97,8 +84,6 @@ st.markdown("""
             font-size: 28px;
             letter-spacing: -0.03em;
         }
-        
-        /* Pulsating Animation for High-Risk Alert Box */
         @keyframes pulse-alert {
             0% { background-color: #fef2f2; border-color: #fecaca; }
             50% { background-color: #fee2e2; border-color: #fca5a5; }
@@ -117,15 +102,11 @@ st.markdown("""
             align-items: center;
             gap: 12px;
         }
-        
-        /* Vertical Divider Line between Charts */
         .vertical-divider {
             border-left: 2px solid #e2e8f0;
             height: 320px;
             margin: auto;
         }
-
-        /* Professional Footer Styling */
         .footer-container {
             margin-top: 40px;
             padding: 20px;
@@ -190,8 +171,8 @@ if check_password():
         </div>
     """, unsafe_allow_html=True)
 
-    # --- 2. DATA LOAD & MERGE ---
-    @st.cache_data(ttl=600)
+    # --- 2. DATA LOAD & MERGE (TTL reduced to 30 seconds for quick updates) ---
+    @st.cache_data(ttl=30)
     def load_all_data():
         try:
             mapping_df = pd.read_excel('Table.xlsx')
