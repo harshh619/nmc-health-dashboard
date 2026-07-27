@@ -6,6 +6,7 @@ from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
+import requests
 
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
@@ -75,7 +76,7 @@ st.markdown("""
             align-items: center;
             gap: 18px;
             box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
         .header-banner h2 {
             color: white !important;
@@ -171,7 +172,30 @@ if check_password():
         </div>
     """, unsafe_allow_html=True)
 
-    # --- 2. DATA LOAD & MERGE (TTL reduced to 30 seconds for quick updates) ---
+    # --- REAL-TIME WEATHER & ENVIRONMENTAL CORRELATION WIDGET ---
+    @st.cache_data(ttl=1800)
+    def get_nagpur_weather():
+        try:
+            url = "https://api.open-meteo.com/v1/forecast?latitude=21.1458&current=temperature_2m,relative_humidity_2m,precipitation&timezone=Asia%2FKolkata"
+            res = requests.get(url, timeout=5).json()
+            curr = res.get('current', {})
+            return curr.get('temperature_2m', 'N/A'), curr.get('relative_humidity_2m', 'N/A'), curr.get('precipitation', 'N/A')
+        except:
+            return "N/A", "N/A", "N/A"
+
+    temp, humidity, rainfall = get_nagpur_weather()
+    
+    w_col1, w_col2, w_col3 = st.columns(3)
+    with w_col1:
+        st.metric("🌡️ Nagpur Temperature", f"{temp} °C" if temp != "N/A" else "N/A", delta="Live Weather")
+    with w_col2:
+        st.metric("💧 Relative Humidity", f"{humidity} %" if humidity != "N/A" else "N/A", delta="Vector-Borne Risk Factor")
+    with w_col3:
+        st.metric("🌧️ Precipitation / Rainfall", f"{rainfall} mm" if rainfall != "N/A" else "N/A", delta="Waterlogging Index")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # --- 2. DATA LOAD & MERGE ---
     @st.cache_data(ttl=30)
     def load_all_data():
         try:
