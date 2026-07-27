@@ -192,7 +192,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- 1. PASSWORD PROTECTION FIX (NO GHOSTING) ---
+# --- 1. PASSWORD PROTECTION FIX ---
 def check_password():
     def password_entered():
         if st.session_state["login_password"] == "nagpurhealth": 
@@ -219,7 +219,7 @@ def check_password():
     return False
 
 if check_password():
-    # --- PROFESSIONAL HEADER BANNER WITH LARGER LOGO ---
+    # --- HEADER BANNER ---
     logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px;"><span style="font-size: 32px;">🏥</span></div>'
     try:
         import base64
@@ -239,7 +239,7 @@ if check_password():
         </div>
     """, unsafe_allow_html=True)
 
-    # --- REAL-TIME WEATHER & ENVIRONMENTAL CORRELATION WIDGET ---
+    # --- WEATHER WIDGET ---
     @st.cache_data(ttl=600)
     def get_nagpur_weather():
         try:
@@ -411,7 +411,7 @@ if check_password():
         else:
             st.sidebar.info("No data available for summary.")
 
-        # --- 4. DASHBOARD METRICS & PULSATING HIGH-RISK HOTSPOT ALERT ---
+        # --- 4. DASHBOARD METRICS ---
         st.markdown(f"**Active View:** `{selected_zone} Zone` ➔ `{selected_ward}`")
         
         col_m1, col_m2 = st.columns([1, 2])
@@ -430,10 +430,7 @@ if check_password():
                         <div><b>High-Risk Hotspot Alert:</b> {top_ward} is currently the most affected area with <b>{top_ward_cases} cases</b>!</div>
                     </div>
                 """, unsafe_allow_html=True)
-            else:
-                st.info("Hotspot data ke liye sufficient records nahi hain.")
 
-        # --- PATIENT STATUS TRACKING SUMMARY METRICS WITH INDICATOR DOTS ---
         if 'Status' in filtered_df.columns and not filtered_df['Status'].dropna().empty:
             st.markdown("### 🏥 Patient Status Breakdown")
             status_counts = filtered_df['Status'].value_counts()
@@ -441,10 +438,7 @@ if check_password():
             
             for idx, (status_name, count_val) in enumerate(status_counts.items()):
                 with status_cols[idx % len(status_cols)]:
-                    st.metric(
-                        label=f"● Status: {status_name}", 
-                        value=count_val
-                    )
+                    st.metric(label=f"● Status: {status_name}", value=count_val)
 
         # --- 4.1 ANALYTICAL CHARTS ---
         col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
@@ -549,7 +543,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (3 MODES WITH RADIO BUTTON) ---
+        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + MAP LAYERS) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -560,7 +554,27 @@ if check_password():
         )
         
         if geo_data:
-            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles='CartoDB Positron')
+            # Base Map with Tile Layers (Map Layers Toggle)
+            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None)
+            
+            folium.TileLayer(
+                'CartoDB Positron', 
+                name='Clean B&W Map',
+                control=True
+            ).add_to(m)
+
+            folium.TileLayer(
+                'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
+                attr='&copy; OpenStreetMap & CARTO',
+                name='Clean No-Labels Map',
+                control=True
+            ).add_to(m)
+
+            folium.TileLayer(
+                'OpenStreetMap', 
+                name='Default Map',
+                control=True
+            ).add_to(m)
             
             def clean_ward_str(val):
                 if pd.isna(val): return "Unknown"
@@ -607,7 +621,7 @@ if check_password():
                 feature['properties']['Zone_Cases'] = zone_cases
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
 
-            # Background Boundary Layer with Popup Format: Ward No : X, Total Cases : X, Zone No: X, Total Cases: X
+            # Background Boundary Layer with Popup: Ward No : X, Total Cases : X, Zone No: X, Total Cases: X
             folium.GeoJson(
                 geo_data,
                 style_function=lambda feature: {
@@ -733,6 +747,8 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
+            # Map Layer Control Box (Top Right)
+            folium.LayerControl().add_to(m)
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
             st.info("Geojson data available nahi hai.")
