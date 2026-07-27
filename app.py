@@ -189,11 +189,6 @@ st.markdown("""
         .footer-container b {
             color: #1e3a8a;
         }
-
-        /* Completely Hide Leaflet map attribution footer / logo */
-        .leaflet-control-attribution, .leaflet-control-attribution.leaflet-control {
-            display: none !important;
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -559,7 +554,8 @@ if check_password():
         )
         
         if geo_data:
-            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None)
+            # Added attribution_control=False to completely disable the Leaflet/OSM attribution footer
+            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, attribution_control=False)
             
             folium.TileLayer(
                 'CartoDB Positron', 
