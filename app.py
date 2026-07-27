@@ -504,11 +504,18 @@ if check_password():
                 return val.strip()
 
             zone_dict = {clean_ward_str(w): str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
+            
+            # Cases Calculation for both Ward and Zone
             clean_ward_counts = {}
+            clean_zone_counts = {}
             if not filtered_df.empty:
                 for w, count in filtered_df['Ward_Name'].value_counts().items():
                     clean_w = clean_ward_str(w)
                     clean_ward_counts[clean_w] = clean_ward_counts.get(clean_w, 0) + count
+                    
+                if 'Zone' in filtered_df.columns:
+                    for z, count in filtered_df['Zone'].value_counts().items():
+                        clean_zone_counts[str(z)] = clean_zone_counts.get(str(z), 0) + count
 
             max_ward_cases = max(clean_ward_counts.values()) if clean_ward_counts else 1
             def get_density_color(cases):
@@ -521,15 +528,20 @@ if check_password():
             for feature in geo_data['features']:
                 raw_ward = feature['properties'].get('name', 'Unknown')
                 clean_ward = clean_ward_str(raw_ward)
+                zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
+                
                 ward_cases = clean_ward_counts.get(clean_ward, 0)
+                zone_cases = clean_zone_counts.get(zone_name, 0)
                 
                 # Colors & Data injection for Popup
                 feature['properties']['fill_color'] = get_density_color(ward_cases)
                 feature['properties']['clean_ward_name'] = clean_ward
-                feature['properties']['total_cases'] = ward_cases
+                feature['properties']['ward_cases'] = ward_cases
+                feature['properties']['zone_name'] = zone_name
+                feature['properties']['zone_cases'] = zone_cases
 
             # ---------------------------------------------
-            # CLICK-ONLY POPUP FOR WARD BOUNDARIES (No Hover Tooltip)
+            # CLICK-ONLY POPUP FOR WARD BOUNDARIES (Updated Format)
             # ---------------------------------------------
             folium.GeoJson(
                 geo_data,
@@ -539,8 +551,8 @@ if check_password():
                 },
                 highlight_function=lambda feature: {'weight': 2.5, 'fillOpacity': 0.8},
                 popup=folium.GeoJsonPopup(
-                    fields=['clean_ward_name', 'total_cases'],
-                    aliases=['Ward:', 'Total Cases:'],
+                    fields=['clean_ward_name', 'ward_cases', 'zone_name', 'zone_cases'],
+                    aliases=['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :'],
                     style="background-color: white; color: #333333; font-family: Inter, sans-serif; font-size: 13px; padding: 10px;"
                 )
             ).add_to(m)
@@ -570,13 +582,15 @@ if check_password():
                                 fill=True,
                                 fill_color='#2563eb', 
                                 fill_opacity=0.9,
-                                popup=folium.Popup(popup_html, max_width=250) # ONLY POPUP, NO TOOLTIP
+                                popup=folium.Popup(popup_html, max_width=250)
                             ).add_to(marker_cluster)
 
             # MODE 2: Ward-wise Exact Count View
             elif map_mode == "Ward-wise Exact Count View":
                 for feature in geo_data['features']:
-                    ward_cases = feature['properties']['total_cases']
+                    ward_cases = feature['properties']['ward_cases']
+                    zone_cases = feature['properties']['zone_cases']
+                    
                     if ward_cases > 0:
                         try:
                             coords = feature['geometry']['coordinates']
@@ -586,12 +600,20 @@ if check_password():
                             
                             badge = f'<div style="background-color:#e53e3e; color:white; border-radius:50%; width:24px; height:24px; text-align:center; line-height:24px; font-weight:bold; font-size:11px; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">{ward_cases}</div>'
                             
-                            popup_html = f"<div style='font-family: Inter, sans-serif;'><b>Ward:</b> {feature['properties']['clean_ward_name']}<br><b>Total Cases:</b> {ward_cases}</div>"
+                            # Updated Popup Format for exact count view as well
+                            popup_html = f"""
+                            <div style='font-family: Inter, sans-serif; font-size: 13px;'>
+                                <b>Ward No :</b> {feature['properties']['clean_ward_name']}<br>
+                                <b>Total Cases :</b> {ward_cases}<br>
+                                <b>Zone No :</b> {feature['properties']['zone_name']}<br>
+                                <b>Total Cases :</b> {zone_cases}
+                            </div>
+                            """
                             
                             folium.Marker(
                                 location=[center_lat, center_lon], 
                                 icon=folium.DivIcon(html=badge),
-                                popup=folium.Popup(popup_html, max_width=200) # ONLY POPUP, NO TOOLTIP
+                                popup=folium.Popup(popup_html, max_width=200)
                             ).add_to(m)
                         except: pass
 
@@ -619,7 +641,7 @@ if check_password():
                                 fill=True, 
                                 fill_color='#e53e3e', 
                                 fill_opacity=0.9,
-                                popup=folium.Popup(popup_html, max_width=250) # ONLY POPUP, NO TOOLTIP
+                                popup=folium.Popup(popup_html, max_width=250)
                             ).add_to(m)
                 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
