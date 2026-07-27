@@ -65,11 +65,11 @@ st.markdown("""
         header[data-testid="stHeader"] .stAppToolbar { opacity: 0; transition: opacity 0.3s ease; }
         header[data-testid="stHeader"]:hover .stAppToolbar { opacity: 1; }
 
-        .main { background-color: #f8fafc; }
+        /* Unified Color Palette: Main is white, Sidebar is soft gray */
+        .main { background-color: #ffffff !important; }
         
-        /* SIDEBAR ULTRA-COMPACT STYLING & VISUAL MATCHING */
         section[data-testid="stSidebar"] {
-            background-color: #ffffff !important; /* Changed to white to blend with table */
+            background-color: #f8fafc !important; /* Soft Slate-50 to match dataframe headers */
             border-right: 1px solid #e2e8f0 !important;
         }
         section[data-testid="stSidebar"] div.block-container {
@@ -83,34 +83,23 @@ st.markdown("""
         section[data-testid="stSidebar"] label {
             font-size: 13px !important;
             margin-bottom: -5px !important;
-        }
-        
-        /* Dropdowns and Date inputs styling to match metric cards */
-        div[data-baseweb="select"] > div, 
-        input[data-baseweb="base-input"] {
-            background-color: #f8fafc !important;
-            border: 1px solid #e2e8f0 !important;
-            border-radius: 6px !important;
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02) !important;
-        }
-        div[data-baseweb="select"] > div:hover, 
-        input[data-baseweb="base-input"]:hover {
-            border-color: #cbd5e1 !important;
-            background-color: #ffffff !important;
+            font-weight: 500 !important;
+            color: #334155 !important;
         }
         
         /* 2. Compact Metric Cards */
         div[data-testid="stMetric"] {
-            background-color: #ffffff;
+            background-color: #f8fafc;
             border: 1px solid #e2e8f0;
             padding: 8px 12px !important; 
             border-radius: 8px;
-            box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
             transition: all 0.3s ease;
         }
         div[data-testid="stMetric"]:hover {
-            box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.07);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
             border-color: #cbd5e1;
+            background-color: #ffffff;
         }
         div[data-testid="stMetric"] label { font-size: 12px !important; color: #475569 !important; margin-bottom: 2px !important;}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
@@ -303,7 +292,7 @@ if check_password():
         filtered_df = patient_df.copy()
         
         if min_date and max_date:
-            st.sidebar.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px;'>Date Window</div>", unsafe_allow_html=True)
+            st.sidebar.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
             col1, col2 = st.sidebar.columns(2)
             with col1: start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
             with col2: end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
@@ -332,13 +321,12 @@ if check_password():
         selected_status = st.sidebar.selectbox("Select Patient Status", status_options, key="status_filter")
         if selected_status != "All": filtered_df = filtered_df[filtered_df['Status'] == selected_status]
 
-        # --- ZONE-WISE SUMMARY TABLE (RESTORED & HEIGHT INCREASED) ---
+        # --- ZONE-WISE SUMMARY TABLE ---
         st.sidebar.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
         st.sidebar.markdown("<h3 style='margin-top:0px; margin-bottom: 5px; font-size: 15px;'>📊 Zone-wise Cases</h3>", unsafe_allow_html=True)
         if not filtered_df.empty and 'Zone' in filtered_df.columns:
             zone_summary = filtered_df['Zone'].value_counts().reset_index()
             zone_summary.columns = ['Zone', 'Cases']
-            # Height increased to 450 to comfortably fit all 10 zones in the empty space
             st.sidebar.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
 
         # --- SMART AI EPIDEMIOLOGICAL RISK ALERT (LEVEL 2 FORECASTING) ---
