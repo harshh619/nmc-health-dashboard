@@ -28,7 +28,7 @@ st.markdown("""
 
         /* 1. Eliminate Top Padding to stick banner to the top */
         .block-container {
-            padding-top: 0.1rem !important; /* Almost zero top padding */
+            padding-top: 0.1rem !important; 
             padding-bottom: 1rem !important;
         }
         
@@ -66,6 +66,8 @@ st.markdown("""
         header[data-testid="stHeader"]:hover .stAppToolbar { opacity: 1; }
 
         .main { background-color: #f8fafc; }
+        
+        /* SIDEBAR ULTRA-COMPACT STYLING */
         section[data-testid="stSidebar"] {
             background-color: #f1f5f9;
             border-right: 1px solid #e2e8f0;
@@ -73,6 +75,15 @@ st.markdown("""
         section[data-testid="stSidebar"] div.block-container {
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
+            gap: 0.2rem !important; /* Streamlit 1.30+ variable for widget gaps */
+        }
+        /* Target specifically vertical blocks inside sidebar to reduce spacing */
+        section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {
+            gap: 0.4rem !important;
+        }
+        section[data-testid="stSidebar"] label {
+            font-size: 13px !important;
+            margin-bottom: -5px !important;
         }
         
         /* 2. Compact Metric Cards */
@@ -273,13 +284,13 @@ if check_password():
 
         # --- 3. SIDEBAR SMART FILTERS ---
         col_header, col_reset = st.sidebar.columns([5, 3])
-        with col_header: st.markdown("### Filters 🔍")
+        with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
         with col_reset: st.button("Reset", on_click=clear_filters, use_container_width=True)
         
         filtered_df = patient_df.copy()
         
         if min_date and max_date:
-            st.sidebar.markdown("**Date Window (DD/MM/YYYY)**")
+            st.sidebar.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px;'>Date Window</div>", unsafe_allow_html=True)
             col1, col2 = st.sidebar.columns(2)
             with col1: start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
             with col2: end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
@@ -308,13 +319,14 @@ if check_password():
         selected_status = st.sidebar.selectbox("Select Patient Status", status_options, key="status_filter")
         if selected_status != "All": filtered_df = filtered_df[filtered_df['Status'] == selected_status]
 
-        # --- ZONE-WISE SUMMARY TABLE (RESTORED) ---
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("### 📊 Zone-wise Cases")
+        # --- ZONE-WISE SUMMARY TABLE (RESTORED & COMPACT) ---
+        st.sidebar.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
+        st.sidebar.markdown("<h3 style='margin-top:0px; margin-bottom: 5px; font-size: 15px;'>📊 Zone-wise Cases</h3>", unsafe_allow_html=True)
         if not filtered_df.empty and 'Zone' in filtered_df.columns:
             zone_summary = filtered_df['Zone'].value_counts().reset_index()
             zone_summary.columns = ['Zone', 'Cases']
-            st.sidebar.dataframe(zone_summary, hide_index=True, use_container_width=True, height=350)
+            # Height reduced to 210 to fit 10 zones without large scrollbars
+            st.sidebar.dataframe(zone_summary, hide_index=True, use_container_width=True, height=210)
 
         # --- SMART AI EPIDEMIOLOGICAL RISK ALERT (LEVEL 2 FORECASTING) ---
         def generate_ai_risk_alert(df, current_humidity, current_rain):
