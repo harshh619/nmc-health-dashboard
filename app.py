@@ -7,6 +7,8 @@ from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
 import requests
+from branca.element import MacroElement
+from jinja2 import Template
 
 # Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
@@ -554,7 +556,7 @@ if check_password():
         )
         
         if geo_data:
-            # zoom_control=False disabled taaki hum apne custom HTML buttons laga sakein
+            # yahan zoom_control=False zaroori hai taki by default zoom (top-left) hat jaye
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -764,51 +766,45 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # 1. LAYER CONTROL at Top-Left
+            # 1. LAYER CONTROL: Added securely at Top-Left
             folium.LayerControl(position='topleft').add_to(m)
 
-            # 2. BULLETPROOF BOTTOM-RIGHT BUTTONS (Center, +, -)
-            # This HTML element is fixed directly to the iframe window itself, guaranteeing visibility
-            custom_controls_html = """
-            <div style="position: fixed; bottom: 30px; right: 20px; z-index: 99999; display: flex; flex-direction: column; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden; border: 2px solid rgba(0,0,0,0.2);">
-                <button onclick="nagpurCenterMap(event)" style="background-color: white; border: none; border-bottom: 1px solid #ccc; width: 34px; height: 34px; font-size: 16px; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Center to Nagpur" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">🎯</button>
-                <button onclick="nagpurZoomIn(event)" style="background-color: white; border: none; border-bottom: 1px solid #ccc; width: 34px; height: 34px; font-size: 20px; font-weight: bold; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Zoom In" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">+</button>
-                <button onclick="nagpurZoomOut(event)" style="background-color: white; border: none; width: 34px; height: 34px; font-size: 24px; font-weight: bold; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Zoom Out" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">-</button>
-            </div>
-            
-            <script>
-                // Bulletproof function to find Leaflet map anywhere in the window
-                function getMapInstance() {
-                    for (var key in window) {
-                        if (window[key] && window[key] instanceof L.Map) {
-                            return window[key];
-                        }
-                    }
-                    return null;
-                }
-                
-                function nagpurCenterMap(e) {
-                    e.preventDefault(); e.stopPropagation();
-                    var map = getMapInstance();
-                    if(map) map.setView([21.1458, 79.0882], 11.5);
-                }
-                
-                function nagpurZoomIn(e) {
-                    e.preventDefault(); e.stopPropagation();
-                    var map = getMapInstance();
-                    if(map) map.zoomIn();
-                }
-                
-                function nagpurZoomOut(e) {
-                    e.preventDefault(); e.stopPropagation();
-                    var map = getMapInstance();
-                    if(map) map.zoomOut();
-                }
-            </script>
-            """
-            
-            # Injecting it directly as an HTML element root child, so it bypasses all Streamlit restrictions
-            m.get_root().html.add_child(folium.Element(custom_controls_html))
+            # 2. BULLETPROOF NATIVE MAP CONTROLS INJECTION (Center, +, - at Bottom-Right)
+            class CustomMapControls(MacroElement):
+                def __init__(self):
+                    super().__init__()
+                    self._template = Template(u"""
+                    {% macro script(this, kwargs) %}
+                        // Create custom Center Map button natively
+                        var centerControl = L.Control.extend({
+                            options: { position: 'bottomright' },
+                            onAdd: function (map) {
+                                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                // Giving it the exact same style as Leaflet's zoom buttons
+                                container.innerHTML = '<a href="#" title="Center to Nagpur" style="font-size:16px; line-height:30px; text-align:center; text-decoration:none;">🎯</a>';
+                                container.style.marginBottom = '5px'; // Gap between Center button and Zoom buttons
+                                
+                                L.DomEvent.disableClickPropagation(container);
+                                
+                                L.DomEvent.on(container, 'click', function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    map.setView([21.1458, 79.0882], 11.5);
+                                });
+                                
+                                return container;
+                            }
+                        });
+                        
+                        // Adding Center button first
+                        {{this._parent.get_name()}}.addControl(new centerControl());
+                        
+                        // Adding Native Zoom buttons (+ / -) right below it
+                        L.control.zoom({position: 'bottomright'}).addTo({{this._parent.get_name()}});
+                    {% endmacro %}
+                    """)
+                    
+            m.add_child(CustomMapControls())
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
