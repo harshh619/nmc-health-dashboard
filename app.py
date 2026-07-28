@@ -190,6 +190,20 @@ st.markdown("""
         .footer-container b {
             color: #1e3a8a;
         }
+
+        /* Stack bottom-right controls properly */
+        .leaflet-bottom.leaflet-right {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-end !important;
+            gap: 6px !important;
+        }
+        .leaflet-bottom.leaflet-right .leaflet-control {
+            margin-bottom: 0 !important;
+            margin-right: 0 !important;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.3) !important;
+            border-radius: 4px !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -544,7 +558,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + INTEGRATED TOOLBAR) ---
+        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + REPOSITIONED CONTROLS) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -779,13 +793,14 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            folium.LayerControl().add_to(m)
+            # Layer Control placed at top-left corner
+            folium.LayerControl(position='topleft').add_to(m)
 
-            # Combined Unified Map Control Toolbar (Zoom In, Zoom Out, Center Nagpur)
-            class MapToolbarControl(MacroElement):
+            # Custom Toolbar Control placed at bottom-right (Center Nagpur button above Zoom In/Out)
+            class MapBottomRightToolbar(MacroElement):
                 def __init__(self):
                     super().__init__()
-                    self._name = 'MapToolbarControl'
+                    self._name = 'MapBottomRightToolbar'
 
                 def render(self, **kwargs):
                     parent = self._parent
@@ -796,9 +811,9 @@ if check_password():
                         document.addEventListener("DOMContentLoaded", function() {{
                             setTimeout(function() {{
                                 var map = window['{map_name}'];
-                                if (map && !map.toolbarAdded) {{
-                                    var CustomToolbar = L.Control.extend({{
-                                        options: {{ position: 'topright' }},
+                                if (map && !map.bottomRightToolbarAdded) {{
+                                    var BottomRightToolbar = L.Control.extend({{
+                                        options: {{ position: 'bottomright' }},
                                         onAdd: function (map) {{
                                             var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
                                             container.style.backgroundColor = 'white';
@@ -808,7 +823,21 @@ if check_password():
                                             container.style.borderRadius = '4px';
                                             container.style.overflow = 'hidden';
 
-                                            // Zoom In (+)
+                                            // Center Nagpur (🎯) on Top
+                                            var btnCenter = L.DomUtil.create('a', '', container);
+                                            btnCenter.innerHTML = '🎯';
+                                            btnCenter.href = '#';
+                                            btnCenter.title = 'Center to Nagpur Map';
+                                            btnCenter.style.width = '30px';
+                                            btnCenter.style.height = '30px';
+                                            btnCenter.style.lineHeight = '30px';
+                                            btnCenter.style.textAlign = 'center';
+                                            btnCenter.style.fontSize = '15px';
+                                            btnCenter.style.textDecoration = 'none';
+                                            btnCenter.style.borderBottom = '1px solid #e1e1e1';
+                                            btnCenter.onclick = function(e) {{ e.preventDefault(); map.setView([21.1458, 79.0882], 11.5); }};
+
+                                            // Zoom In (+) in Middle
                                             var btnIn = L.DomUtil.create('a', '', container);
                                             btnIn.innerHTML = '+';
                                             btnIn.href = '#';
@@ -824,7 +853,7 @@ if check_password():
                                             btnIn.style.borderBottom = '1px solid #e1e1e1';
                                             btnIn.onclick = function(e) {{ e.preventDefault(); map.zoomIn(); }};
 
-                                            // Zoom Out (-)
+                                            // Zoom Out (-) at Bottom
                                             var btnOut = L.DomUtil.create('a', '', container);
                                             btnOut.innerHTML = '-';
                                             btnOut.href = '#';
@@ -837,27 +866,13 @@ if check_password():
                                             btnOut.style.fontWeight = 'bold';
                                             btnOut.style.textDecoration = 'none';
                                             btnOut.style.color = '#333';
-                                            btnOut.style.borderBottom = '1px solid #e1e1e1';
                                             btnOut.onclick = function(e) {{ e.preventDefault(); map.zoomOut(); }};
-
-                                            // Center to Nagpur (🎯)
-                                            var btnCenter = L.DomUtil.create('a', '', container);
-                                            btnCenter.innerHTML = '🎯';
-                                            btnCenter.href = '#';
-                                            btnCenter.title = 'Center to Nagpur Map';
-                                            btnCenter.style.width = '30px';
-                                            btnCenter.style.height = '30px';
-                                            btnCenter.style.lineHeight = '30px';
-                                            btnCenter.style.textAlign = 'center';
-                                            btnCenter.style.fontSize = '15px';
-                                            btnCenter.style.textDecoration = 'none';
-                                            btnCenter.onclick = function(e) {{ e.preventDefault(); map.setView([21.1458, 79.0882], 11.5); }};
 
                                             return container;
                                         }}
                                     }});
-                                    map.addControl(new CustomToolbar());
-                                    map.toolbarAdded = true;
+                                    map.addControl(new BottomRightToolbar());
+                                    map.bottomRightToolbarAdded = true;
                                 }}
                             }}, 400);
                         }});
@@ -865,7 +880,7 @@ if check_password():
                         """
                     return ""
 
-            m.add_child(MapToolbarControl())
+            m.add_child(MapBottomRightToolbar())
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
