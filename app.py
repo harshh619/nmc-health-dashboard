@@ -154,24 +154,6 @@ st.markdown("""
             font-weight: 500;
             margin-top: 2px;
         }
-        @keyframes pulse-alert {
-            0% { background-color: #fef2f2; border-color: #fecaca; }
-            50% { background-color: #fee2e2; border-color: #fca5a5; }
-            100% { background-color: #fef2f2; border-color: #fecaca; }
-        }
-        .pulsing-alert {
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid #fecaca;
-            color: #991b1b;
-            font-weight: 600;
-            font-size: 13.5px;
-            animation: pulse-alert 2s infinite ease-in-out;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
         .vertical-divider {
             border-left: 2px solid #e2e8f0;
             height: 320px;
@@ -192,10 +174,10 @@ st.markdown("""
             color: #1e3a8a;
         }
         
-        /* AI Alert Box Styling */
+        /* Unified AI Alert Box Styling */
         .ai-alert-box {
-            background: linear-gradient(to right, #f0fdf4, #dcfce7);
-            border-left: 4px solid #22c55e;
+            background: linear-gradient(to right, #fff1f2, #ffe4e6);
+            border-left: 4px solid #e11d48;
             padding: 15px 18px;
             border-radius: 8px;
             margin-bottom: 20px;
@@ -203,18 +185,21 @@ st.markdown("""
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         .ai-alert-title {
-            color: #166534;
+            color: #9f1239;
             font-weight: 700;
-            font-size: 15px;
-            margin-bottom: 6px;
+            font-size: 16px;
+            margin-bottom: 8px;
             display: flex;
             align-items: center;
             gap: 8px;
         }
         .ai-alert-text {
-            color: #14532d;
+            color: #881337;
             font-size: 14px;
-            line-height: 1.5;
+            line-height: 1.6;
+        }
+        .ai-alert-text b {
+            color: #e11d48;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -438,50 +423,37 @@ if check_password():
         else:
             st.sidebar.info("No data available for summary.")
 
-        # --- 4. DASHBOARD METRICS ---
+        # --- 4. CONSOLIDATED DASHBOARD METRICS ---
         st.markdown(f"**Active View:** `{selected_zone} Zone` ➔ `{selected_ward}`")
         
-        col_m1, col_m2 = st.columns([1, 2])
-        with col_m1:
-            total_cases = len(filtered_df)
-            st.metric("Total Cases in Selected Window", total_cases, delta="Live Data")
+        # Calculate status counts dynamically
+        status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
+        
+        # Create columns: 1 for Total Cases + columns for each Status
+        total_cols = 1 + len(status_counts)
+        metric_cols = st.columns(total_cols)
+        
+        with metric_cols[0]:
+            st.metric("Total Cases (Filtered)", len(filtered_df), delta="Live Data")
             
-        with col_m2:
-            if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
-                top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
-                top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
-                
-                st.markdown(f"""
-                    <div class="pulsing-alert">
-                        <span>🚨</span>
-                        <div><b>High-Risk Hotspot Alert:</b> {top_ward} is currently the most affected area with <b>{top_ward_cases} cases</b>!</div>
-                    </div>
-                """, unsafe_allow_html=True)
+        for idx, (status_name, count_val) in enumerate(status_counts.items()):
+            with metric_cols[idx + 1]:
+                st.metric(label=f"Status: {status_name}", value=count_val)
 
-        if 'Status' in filtered_df.columns and not filtered_df['Status'].dropna().empty:
-            st.markdown("### 🏥 Patient Status Breakdown")
-            status_counts = filtered_df['Status'].value_counts()
-            status_cols = st.columns(len(status_counts) if len(status_counts) > 0 else 1)
-            
-            for idx, (status_name, count_val) in enumerate(status_counts.items()):
-                with status_cols[idx % len(status_cols)]:
-                    st.metric(label=f"● Status: {status_name}", value=count_val)
-
-        # --- 4.1 AI HEALTH INSIGHTS & ALERT SECTION ---
-        st.markdown("### 🤖 AI Health Insights & Alerts")
-        if not filtered_df.empty:
-            top_d = filtered_df['Disease'].mode()[0] if 'Disease' in filtered_df.columns and not filtered_df['Disease'].empty else "Unknown Disease"
-            top_w = top_ward if 'top_ward' in locals() else "Unknown Ward"
-            
-            ai_message = f"Based on the current filtered dataset, <b>{top_d}</b> is detected as the most prominent disease. The highest transmission risk is actively concentrated in <b>{top_w}</b>. Immediate vector control activities and public health awareness campaigns are recommended in this region."
+        # --- 4.1 UNIFIED AI HEALTH INSIGHTS & ALERT SECTION ---
+        if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
+            top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
+            top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
+            top_disease = filtered_df['Disease'].mode()[0] if 'Disease' in filtered_df.columns and not filtered_df['Disease'].empty else "Unknown Disease"
             
             st.markdown(f"""
                 <div class="ai-alert-box">
                     <div class="ai-alert-title">
-                        <span>✨</span> Automated Health Intelligence
+                        <span>🤖</span> Automated Health Intelligence & Alert
                     </div>
                     <div class="ai-alert-text">
-                        {ai_message}
+                        🚨 <b>High-Risk Hotspot:</b> <b>{top_ward}</b> is currently the most affected area with <b>{top_ward_cases} active cases</b>!<br>
+                        🦠 <b>Insight:</b> Based on the current dataset, <b>{top_disease}</b> is detected as the most prominent disease in this region. Immediate vector control activities and public health awareness campaigns are highly recommended.
                     </div>
                 </div>
             """, unsafe_allow_html=True)
