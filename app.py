@@ -485,12 +485,15 @@ if check_password():
         # --- 4. CONSOLIDATED DASHBOARD METRICS ---
         st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{selected_zone} Zone` ➔ `{selected_ward}`</span>", unsafe_allow_html=True)
         
+        # Calculate status counts dynamically
         status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
+        
+        # Create columns: 1 for Total Cases + columns for each Status
         total_cols = 1 + len(status_counts)
         metric_cols = st.columns(total_cols)
         
         with metric_cols[0]:
-            st.metric("Total Cases (Filtered)", len(filtered_df)) # Removed live data parameter as requested
+            st.metric("Total Cases (Filtered)", len(filtered_df))
             
         for idx, (status_name, count_val) in enumerate(status_counts.items()):
             with metric_cols[idx + 1]:
@@ -633,7 +636,7 @@ if check_password():
         )
         
         if geo_data:
-            # Native folium zoom disable karke rakha hai taki custom floating buttons clear dikhein
+            # zoom_control=False taaki hum apne custom zoom/center natively laga sakein
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -843,43 +846,84 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # 1. LAYER CONTROL: Set properly at Top-Right
+            # 1. LAYER CONTROL: Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
-            # 2. BULLETPROOF ABSOLUTE HTML OVERLAY FOR ZOOM/CENTER BUTTONS
-            custom_buttons = """
-            <div style="position: absolute; bottom: 20px; right: 10px; z-index: 9999; display: flex; flex-direction: column; gap: 8px;"
-                 onmousedown="event.stopPropagation();" onwheel="event.stopPropagation();" ondblclick="event.stopPropagation();" onclick="event.stopPropagation();">
-                <button onclick="nagpurCenterMap()" style="background-color: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px; width: 34px; height: 34px; font-size: 16px; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center; box-shadow: 0 1px 5px rgba(0,0,0,0.65);" title="Center to Nagpur" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">🎯</button>
-                <div style="background-color: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px; display: flex; flex-direction: column; box-shadow: 0 1px 5px rgba(0,0,0,0.65); overflow: hidden;">
-                    <button onclick="nagpurZoomIn()" style="background-color: white; border: none; border-bottom: 1px solid #ccc; width: 30px; height: 30px; font-size: 18px; font-weight: bold; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Zoom In" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">+</button>
-                    <button onclick="nagpurZoomOut()" style="background-color: white; border: none; width: 30px; height: 30px; font-size: 22px; font-weight: bold; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Zoom Out" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">-</button>
-                </div>
-            </div>
-            <script>
-                function getMapInstance() {
-                    for (var key in window) {
-                        if (key.startsWith("map_") && window[key] instanceof L.Map) {
-                            return window[key];
-                        }
-                    }
-                    return null;
-                }
-                function nagpurCenterMap() {
-                    var m = getMapInstance();
-                    if(m) m.setView([21.1458, 79.0882], 11.5);
-                }
-                function nagpurZoomIn() {
-                    var m = getMapInstance();
-                    if(m) m.zoomIn();
-                }
-                function nagpurZoomOut() {
-                    var m = getMapInstance();
-                    if(m) m.zoomOut();
-                }
-            </script>
+            # 2. BULLETPROOF NATIVE MAP CONTROLS SCRIPT (Center, +, -)
+            # Ye code seedha map load hone par internally execute hoga
+            map_id = m.get_name()
+            custom_controls_script = f"""
+                var customZoomCenter = L.control({{position: 'bottomright'}});
+                customZoomCenter.onAdd = function (map) {{
+                    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                    div.style.backgroundColor = 'white';
+                    div.style.display = 'flex';
+                    div.style.flexDirection = 'column';
+                    div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.65)';
+                    div.style.borderRadius = '4px';
+                    
+                    var btnCenter = L.DomUtil.create('a', '', div);
+                    btnCenter.innerHTML = '🎯';
+                    btnCenter.href = '#';
+                    btnCenter.title = 'Center to Nagpur';
+                    btnCenter.style.fontSize = '16px';
+                    btnCenter.style.lineHeight = '30px';
+                    btnCenter.style.textAlign = 'center';
+                    btnCenter.style.textDecoration = 'none';
+                    btnCenter.style.color = '#333';
+                    btnCenter.style.borderBottom = '1px solid #ccc';
+                    
+                    var btnIn = L.DomUtil.create('a', '', div);
+                    btnIn.innerHTML = '+';
+                    btnIn.href = '#';
+                    btnIn.title = 'Zoom In';
+                    btnIn.style.fontSize = '18px';
+                    btnIn.style.fontWeight = 'bold';
+                    btnIn.style.lineHeight = '30px';
+                    btnIn.style.textAlign = 'center';
+                    btnIn.style.textDecoration = 'none';
+                    btnIn.style.color = '#333';
+                    btnIn.style.borderBottom = '1px solid #ccc';
+                    
+                    var btnOut = L.DomUtil.create('a', '', div);
+                    btnOut.innerHTML = '-';
+                    btnOut.href = '#';
+                    btnOut.title = 'Zoom Out';
+                    btnOut.style.fontSize = '22px';
+                    btnOut.style.fontWeight = 'bold';
+                    btnOut.style.lineHeight = '30px';
+                    btnOut.style.textAlign = 'center';
+                    btnOut.style.textDecoration = 'none';
+                    btnOut.style.color = '#333';
+
+                    L.DomEvent.disableClickPropagation(div);
+                    L.DomEvent.disableScrollPropagation(div);
+
+                    L.DomEvent.on(btnCenter, 'click', function(e) {{
+                        L.DomEvent.stopPropagation(e);
+                        L.DomEvent.preventDefault(e);
+                        map.setView([21.1458, 79.0882], 11.5);
+                    }});
+
+                    L.DomEvent.on(btnIn, 'click', function(e) {{
+                        L.DomEvent.stopPropagation(e);
+                        L.DomEvent.preventDefault(e);
+                        map.zoomIn();
+                    }});
+
+                    L.DomEvent.on(btnOut, 'click', function(e) {{
+                        L.DomEvent.stopPropagation(e);
+                        L.DomEvent.preventDefault(e);
+                        map.zoomOut();
+                    }});
+
+                    return div;
+                }};
+                customZoomCenter.addTo({map_id});
             """
-            m.get_root().html.add_child(folium.Element(custom_buttons))
+            
+            # Inject native code explicitly inside folium's generation tree
+            m.get_root().script.add_child(folium.Element(custom_controls_script))
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
