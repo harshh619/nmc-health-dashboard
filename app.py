@@ -636,7 +636,7 @@ if check_password():
         )
         
         if geo_data:
-            # zoom_control=False taaki hum apne custom zoom/center natively laga sakein
+            # Native folium zoom disable kiya gaya hai taki hum script se naye wale laga sakein
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -846,84 +846,51 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # 1. LAYER CONTROL: Top-Right
+            # 1. LAYER CONTROL: Set properly at Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
-            # 2. BULLETPROOF NATIVE MAP CONTROLS SCRIPT (Center, +, -)
-            # Ye code seedha map load hone par internally execute hoga
+            # 2. BULLETPROOF NATIVE LEAFLET SCRIPT (100% ERROR-FREE)
             map_id = m.get_name()
-            custom_controls_script = f"""
-                var customZoomCenter = L.control({{position: 'bottomright'}});
-                customZoomCenter.onAdd = function (map) {{
-                    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                    div.style.backgroundColor = 'white';
-                    div.style.display = 'flex';
-                    div.style.flexDirection = 'column';
-                    div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.65)';
-                    div.style.borderRadius = '4px';
-                    
-                    var btnCenter = L.DomUtil.create('a', '', div);
-                    btnCenter.innerHTML = '🎯';
-                    btnCenter.href = '#';
-                    btnCenter.title = 'Center to Nagpur';
-                    btnCenter.style.fontSize = '16px';
-                    btnCenter.style.lineHeight = '30px';
-                    btnCenter.style.textAlign = 'center';
-                    btnCenter.style.textDecoration = 'none';
-                    btnCenter.style.color = '#333';
-                    btnCenter.style.borderBottom = '1px solid #ccc';
-                    
-                    var btnIn = L.DomUtil.create('a', '', div);
-                    btnIn.innerHTML = '+';
-                    btnIn.href = '#';
-                    btnIn.title = 'Zoom In';
-                    btnIn.style.fontSize = '18px';
-                    btnIn.style.fontWeight = 'bold';
-                    btnIn.style.lineHeight = '30px';
-                    btnIn.style.textAlign = 'center';
-                    btnIn.style.textDecoration = 'none';
-                    btnIn.style.color = '#333';
-                    btnIn.style.borderBottom = '1px solid #ccc';
-                    
-                    var btnOut = L.DomUtil.create('a', '', div);
-                    btnOut.innerHTML = '-';
-                    btnOut.href = '#';
-                    btnOut.title = 'Zoom Out';
-                    btnOut.style.fontSize = '22px';
-                    btnOut.style.fontWeight = 'bold';
-                    btnOut.style.lineHeight = '30px';
-                    btnOut.style.textAlign = 'center';
-                    btnOut.style.textDecoration = 'none';
-                    btnOut.style.color = '#333';
-
-                    L.DomEvent.disableClickPropagation(div);
-                    L.DomEvent.disableScrollPropagation(div);
-
-                    L.DomEvent.on(btnCenter, 'click', function(e) {{
-                        L.DomEvent.stopPropagation(e);
-                        L.DomEvent.preventDefault(e);
-                        map.setView([21.1458, 79.0882], 11.5);
-                    }});
-
-                    L.DomEvent.on(btnIn, 'click', function(e) {{
-                        L.DomEvent.stopPropagation(e);
-                        L.DomEvent.preventDefault(e);
-                        map.zoomIn();
-                    }});
-
-                    L.DomEvent.on(btnOut, 'click', function(e) {{
-                        L.DomEvent.stopPropagation(e);
-                        L.DomEvent.preventDefault(e);
-                        map.zoomOut();
-                    }});
-
-                    return div;
-                }};
-                customZoomCenter.addTo({map_id});
+            custom_js_script = f"""
+                // 1. Add Default Zoom Buttons at Bottom Right
+                L.control.zoom({{position: 'bottomright'}}).addTo({map_id});
+                
+                // 2. Create the Custom Center Map Button Class
+                var CenterControl = L.Control.extend({{
+                    options: {{ position: 'bottomright' }},
+                    onAdd: function(map) {{
+                        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                        var a = L.DomUtil.create('a', '', container);
+                        a.innerHTML = '🎯';
+                        a.href = '#';
+                        a.title = 'Center to Nagpur';
+                        a.style.fontSize = '18px';
+                        a.style.lineHeight = '30px';
+                        a.style.textAlign = 'center';
+                        a.style.textDecoration = 'none';
+                        a.style.color = '#333';
+                        a.style.display = 'block';
+                        a.style.backgroundColor = '#fff';
+                        
+                        // Prevent Map interaction from passing through the button
+                        L.DomEvent.disableClickPropagation(container);
+                        
+                        L.DomEvent.on(a, 'click', function(e) {{
+                            L.DomEvent.stopPropagation(e);
+                            L.DomEvent.preventDefault(e);
+                            map.setView([21.1458, 79.0882], 11.5);
+                        }});
+                        
+                        return container;
+                    }}
+                }});
+                
+                // 3. Add the custom button to the map
+                {map_id}.addControl(new CenterControl());
             """
             
-            # Inject native code explicitly inside folium's generation tree
-            m.get_root().script.add_child(folium.Element(custom_controls_script))
+            # Script ko Folium HTML tree me strictly map generate hone ke baad insert kar rahe hain
+            m.get_root().script.add_child(folium.Element(custom_js_script))
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
