@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import folium
 from folium.plugins import MarkerCluster
+from branca.element import MacroElement
 from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
@@ -190,7 +191,7 @@ st.markdown("""
             color: #1e3a8a;
         }
 
-        /* Stack all top-right controls neatly using flexbox */
+        /* Stack all top-right controls neatly */
         .leaflet-top.leaflet-right {
             display: flex !important;
             flex-direction: column !important;
@@ -557,7 +558,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + REPOSITIONED CONTROLS) ---
+        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + NATIVE ZOOM & CENTER CONTROL) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -568,8 +569,9 @@ if check_password():
         )
         
         if geo_data:
-            # zoom_control=False to remove default top-left zoom control
+            # Native ZoomControl enabled and placed at topright
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
+            folium.ZoomControl(position='topright').add_to(m)
             
             folium.TileLayer(
                 'CartoDB Positron', 
@@ -795,55 +797,49 @@ if check_password():
                 
             folium.LayerControl().add_to(m)
 
-            # --- JAVASCRIPT & CSS TO INJECT ZOOM CONTROL AND NAGPUR CENTER BUTTON BELOW LAYER CONTROL ---
-            custom_controls_js = """
-            <script>
-            window.addEventListener('DOMContentLoaded', (event) => {
-                setTimeout(function() {
-                    Object.keys(window).forEach(function(key) {
-                        if (window[key] instanceof L.Map) {
-                            var map = window[key];
-                            
-                            // Add Zoom Control to topright
-                            if (!map.zoomControlAdded) {
-                                var zoomCtrl = L.control.zoom({position: 'topright'});
-                                zoomCtrl.addTo(map);
-                                map.zoomControlAdded = true;
-                            }
-                            
-                            // Add Center-to-Nagpur Button below Zoom Control at topright
-                            if (!map.centerCtrlAdded) {
-                                var CenterControl = L.Control.extend({
-                                    options: { position: 'topright' },
-                                    onAdd: function (map) {
-                                        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                                        container.style.backgroundColor = 'white';
-                                        container.style.width = '30px';
-                                        container.style.height = '30px';
-                                        container.style.lineHeight = '30px';
-                                        container.style.textAlign = 'center';
-                                        container.style.cursor = 'pointer';
-                                        container.style.fontSize = '16px';
-                                        container.title = 'Center to Nagpur Map';
-                                        container.innerHTML = '🎯';
-                                        
-                                        container.onclick = function(e) {
-                                            e.stopPropagation();
-                                            map.setView([21.1458, 79.0882], 11.5);
-                                        };
-                                        return container;
-                                    }
-                                });
-                                map.addControl(new CenterControl());
-                                map.centerCtrlAdded = true;
-                            }
-                        }
-                    });
-                }, 350);
-            });
-            </script>
-            """
-            m.get_root().html.add_child(folium.Element(custom_controls_js))
+            # Robust Python-bound MacroElement for Center Nagpur Button
+            class CenterControl(MacroElement):
+                def __init__(self):
+                    super().__init__()
+                    self._name = 'CenterControl'
+
+                def render(self, **kwargs):
+                    parent = self._parent
+                    if isinstance(parent, folium.Map):
+                        map_name = parent.get_name()
+                        return f"""
+                        <script>
+                        document.addEventListener("DOMContentLoaded", function() {{
+                            setTimeout(function() {{
+                                var map = window['{map_name}'];
+                                if (map && !map.centerCtrlAdded) {{
+                                    var controlDiv = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                    controlDiv.style.backgroundColor = 'white';
+                                    controlDiv.style.width = '30px';
+                                    controlDiv.style.height = '30px';
+                                    controlDiv.style.lineHeight = '30px';
+                                    controlDiv.style.textAlign = 'center';
+                                    controlDiv.style.cursor = 'pointer';
+                                    controlDiv.style.fontSize = '16px';
+                                    controlDiv.title = 'Center to Nagpur Map';
+                                    controlDiv.innerHTML = '🎯';
+                                    controlDiv.onclick = function(e) {{
+                                        e.stopPropagation();
+                                        map.setView([21.1458, 79.0882], 11.5);
+                                    }};
+                                    var rightCorner = document.querySelector('.leaflet-top.leaflet-right');
+                                    if (rightCorner) {{
+                                        rightCorner.appendChild(controlDiv);
+                                        map.centerCtrlAdded = true;
+                                    }}
+                                }}
+                            }}, 500);
+                        }});
+                        </script>
+                        """
+                    return ""
+
+            m.add_child(CenterControl())
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
