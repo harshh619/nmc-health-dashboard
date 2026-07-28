@@ -636,7 +636,7 @@ if check_password():
         )
         
         if geo_data:
-            # ✅ IMPORTATNT: zoom_control=True kiya hai taki original buttons dikhein 
+            # Native Zoom Enabled (We will shift it to bottom right via CSS)
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=True, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -846,12 +846,12 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # 1. LAYER CONTROL: Set properly at Top-Right
+            # LAYER CONTROL: Set properly at Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
-            # 2. ✅ BULLETPROOF CSS OVERLAY HACK (Guaranteed to work 100%)
-            # Yahan direct map id pass kiya hai jisse map direct action lega
+            # --- 🚀 THE 100% BULLETPROOF SOLUTION FOR CENTER BUTTON ---
             map_id = m.get_name()
+            
             ui_injection = f"""
             <style>
                 /* Force original Folium zoom controls to jump to bottom right */
@@ -865,8 +865,8 @@ if check_password():
                     z-index: 9999 !important;
                 }}
                 
-                /* Create custom center button styling perfectly matching Leaflet UI */
-                .custom-center-btn {{
+                /* Custom center button styling */
+                #center-nagpur-btn {{
                     position: fixed !important;
                     bottom: 95px !important;
                     right: 14px !important;
@@ -886,16 +886,34 @@ if check_password():
                     color: #333 !important;
                     font-family: Arial, sans-serif;
                 }}
-                .custom-center-btn:hover {{
+                #center-nagpur-btn:hover {{
                     background-color: #f4f4f4;
-                    color: #000 !important;
                 }}
             </style>
             
-            <a href="#" class="custom-center-btn" onclick="event.preventDefault(); event.stopPropagation(); {map_id}.setView([21.1458, 79.0882], 11.5);" title="Center to Nagpur">🎯</a>
+            <a href="#" id="center-nagpur-btn" title="Center to Nagpur">🎯</a>
+            
+            <script>
+                // Ye script map load hone ka wait karegi, fir button ke sath EventListener attach karegi (Bypass CSP)
+                var mapCheckInterval = setInterval(function() {{
+                    if (typeof {map_id} !== 'undefined') {{
+                        clearInterval(mapCheckInterval); // Stop waiting
+                        
+                        var centerBtn = document.getElementById('center-nagpur-btn');
+                        if (centerBtn) {{
+                            centerBtn.addEventListener('click', function(e) {{
+                                e.preventDefault();
+                                e.stopPropagation();
+                                // Map ko safely Center me lao with Smooth Glide Animation!
+                                {map_id}.setView([21.1458, 79.0882], 11.5, {{animate: true, duration: 1.0}});
+                            }});
+                        }}
+                    }}
+                }}, 200); // Har 200ms me check karega ki map ready hai ya nahi
+            </script>
             """
             
-            # Direct insertion in HTML wrapper
+            # Map wrapper me code dal diya
             m.get_root().html.add_child(folium.Element(ui_injection))
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
