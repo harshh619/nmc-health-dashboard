@@ -543,7 +543,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + 100% NATIVE HTML/CSS BUTTONS) ---
+        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + PERFECT NATIVE LEAFLET CONTROLS) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -554,26 +554,12 @@ if check_password():
         )
         
         if geo_data:
+            # zoom_control=False rakha hai taki by default top-left wala zoom na dikhe
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
-            folium.TileLayer(
-                'CartoDB Positron', 
-                name='Clean B&W Map',
-                control=True
-            ).add_to(m)
-
-            folium.TileLayer(
-                'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png',
-                attr='&copy; OpenStreetMap & CARTO',
-                name='Clean No-Labels Map',
-                control=True
-            ).add_to(m)
-
-            folium.TileLayer(
-                'OpenStreetMap', 
-                name='Default Map',
-                control=True
-            ).add_to(m)
+            folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
+            folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
+            folium.TileLayer('OpenStreetMap', name='Default Map', control=True).add_to(m)
             
             def clean_ward_str(val):
                 if pd.isna(val): return "Unknown"
@@ -778,56 +764,54 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # 1. Layer Control placed at top-left corner
+            # 1. LAYER CONTROL: Fix to top-left corner
             folium.LayerControl(position='topleft').add_to(m)
 
-            # 2. HACK-FREE HTML & CSS OVERLAY FOR BOTTOM-RIGHT CONTROLS (Center, Plus, Minus)
+            # 2. MAP BUTTONS: Native Leaflet control injection
             map_id = m.get_name()
             
-            custom_controls_html = f"""
-            <style>
-                .custom-map-controls {{
-                    position: fixed; /* Bypasses Streamlit iFrame restrictions */
-                    bottom: 25px;
-                    right: 15px;
-                    z-index: 99999;
-                    background-color: white;
-                    border: 2px solid rgba(0,0,0,0.2);
-                    border-radius: 4px;
-                    display: flex;
-                    flex-direction: column;
-                    box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-                    overflow: hidden;
-                }}
-                .custom-map-controls button {{
-                    background: white;
-                    border: none;
-                    width: 32px;
-                    height: 32px;
-                    cursor: pointer;
-                    color: #333;
-                    border-bottom: 1px solid #ccc;
-                    padding: 0;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    outline: none;
-                }}
-                .custom-map-controls button:last-child {{
-                    border-bottom: none;
-                }}
-                .custom-map-controls button:hover {{
-                    background-color: #f4f4f4;
-                }}
-            </style>
-            <div class="custom-map-controls">
-                <button title="Center to Nagpur" onclick="{map_id}.setView([21.1458, 79.0882], 11.5);" style="font-size: 16px;">🎯</button>
-                <button title="Zoom In" onclick="{map_id}.zoomIn();" style="font-size: 20px; font-weight: bold;">+</button>
-                <button title="Zoom Out" onclick="{map_id}.zoomOut();" style="font-size: 24px; font-weight: bold;">-</button>
-            </div>
+            # Ye code strictly Folium/Leaflet engine ke flow me execute hoga
+            # Streamlit iframe ke constraints ko bypass kar dega
+            native_leaflet_js = f"""
+                // A. Add default Leaflet Zoom (+/-) buttons to bottom-right
+                L.control.zoom({{position: 'bottomright'}}).addTo({map_id});
+                
+                // B. Create a custom button for centering Nagpur
+                var CenterButtonControl = L.Control.extend({{
+                    options: {{ position: 'bottomright' }},
+                    onAdd: function (map) {{
+                        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                        var btn = L.DomUtil.create('a', '', container);
+                        btn.innerHTML = '🎯';
+                        btn.href = '#';
+                        btn.title = 'Center to Nagpur';
+                        btn.style.fontSize = '17px';
+                        btn.style.display = 'flex';
+                        btn.style.justifyContent = 'center';
+                        btn.style.alignItems = 'center';
+                        btn.style.textDecoration = 'none';
+                        btn.style.color = '#333';
+                        
+                        // Disable map drag/click when clicking the button
+                        L.DomEvent.disableClickPropagation(btn);
+                        
+                        // Action on click
+                        L.DomEvent.on(btn, 'click', function(e) {{
+                            L.DomEvent.stopPropagation(e);
+                            L.DomEvent.preventDefault(e);
+                            map.setView([21.1458, 79.0882], 11.5);
+                        }});
+                        
+                        return container;
+                    }}
+                }});
+                
+                // Add the Center Button. It will automatically sit just above the Zoom buttons
+                {map_id}.addControl(new CenterButtonControl());
             """
-            # Injecting HTML directly into the folium rendering engine
-            m.get_root().html.add_child(folium.Element(custom_controls_html))
+            
+            # Inject this perfectly timed JavaScript directly into Folium's script template
+            m.get_root().script.add_child(folium.Element(native_leaflet_js))
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
