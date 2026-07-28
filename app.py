@@ -3,7 +3,6 @@ import pandas as pd
 import json
 import folium
 from folium.plugins import MarkerCluster
-from branca.element import MacroElement
 from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
@@ -189,20 +188,6 @@ st.markdown("""
         }
         .footer-container b {
             color: #1e3a8a;
-        }
-
-        /* Stack bottom-right controls properly */
-        .leaflet-bottom.leaflet-right {
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: flex-end !important;
-            gap: 6px !important;
-        }
-        .leaflet-bottom.leaflet-right .leaflet-control {
-            margin-bottom: 0 !important;
-            margin-right: 0 !important;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.3) !important;
-            border-radius: 4px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -558,7 +543,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + REPOSITIONED CONTROLS) ---
+        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + 100% NATIVE HTML/CSS BUTTONS) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -793,94 +778,56 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # Layer Control placed at top-left corner
+            # 1. Layer Control placed at top-left corner
             folium.LayerControl(position='topleft').add_to(m)
 
-            # Custom Toolbar Control placed at bottom-right (Center Nagpur button above Zoom In/Out)
-            class MapBottomRightToolbar(MacroElement):
-                def __init__(self):
-                    super().__init__()
-                    self._name = 'MapBottomRightToolbar'
-
-                def render(self, **kwargs):
-                    parent = self._parent
-                    if isinstance(parent, folium.Map):
-                        map_name = parent.get_name()
-                        return f"""
-                        <script>
-                        document.addEventListener("DOMContentLoaded", function() {{
-                            setTimeout(function() {{
-                                var map = window['{map_name}'];
-                                if (map && !map.bottomRightToolbarAdded) {{
-                                    var BottomRightToolbar = L.Control.extend({{
-                                        options: {{ position: 'bottomright' }},
-                                        onAdd: function (map) {{
-                                            var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                                            container.style.backgroundColor = 'white';
-                                            container.style.display = 'flex';
-                                            container.style.flexDirection = 'column';
-                                            container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.3)';
-                                            container.style.borderRadius = '4px';
-                                            container.style.overflow = 'hidden';
-
-                                            // Center Nagpur (🎯) on Top
-                                            var btnCenter = L.DomUtil.create('a', '', container);
-                                            btnCenter.innerHTML = '🎯';
-                                            btnCenter.href = '#';
-                                            btnCenter.title = 'Center to Nagpur Map';
-                                            btnCenter.style.width = '30px';
-                                            btnCenter.style.height = '30px';
-                                            btnCenter.style.lineHeight = '30px';
-                                            btnCenter.style.textAlign = 'center';
-                                            btnCenter.style.fontSize = '15px';
-                                            btnCenter.style.textDecoration = 'none';
-                                            btnCenter.style.borderBottom = '1px solid #e1e1e1';
-                                            btnCenter.onclick = function(e) {{ e.preventDefault(); map.setView([21.1458, 79.0882], 11.5); }};
-
-                                            // Zoom In (+) in Middle
-                                            var btnIn = L.DomUtil.create('a', '', container);
-                                            btnIn.innerHTML = '+';
-                                            btnIn.href = '#';
-                                            btnIn.title = 'Zoom In';
-                                            btnIn.style.width = '30px';
-                                            btnIn.style.height = '30px';
-                                            btnIn.style.lineHeight = '30px';
-                                            btnIn.style.textAlign = 'center';
-                                            btnIn.style.fontSize = '16px';
-                                            btnIn.style.fontWeight = 'bold';
-                                            btnIn.style.textDecoration = 'none';
-                                            btnIn.style.color = '#333';
-                                            btnIn.style.borderBottom = '1px solid #e1e1e1';
-                                            btnIn.onclick = function(e) {{ e.preventDefault(); map.zoomIn(); }};
-
-                                            // Zoom Out (-) at Bottom
-                                            var btnOut = L.DomUtil.create('a', '', container);
-                                            btnOut.innerHTML = '-';
-                                            btnOut.href = '#';
-                                            btnOut.title = 'Zoom Out';
-                                            btnOut.style.width = '30px';
-                                            btnOut.style.height = '30px';
-                                            btnOut.style.lineHeight = '30px';
-                                            btnOut.style.textAlign = 'center';
-                                            btnOut.style.fontSize = '20px';
-                                            btnOut.style.fontWeight = 'bold';
-                                            btnOut.style.textDecoration = 'none';
-                                            btnOut.style.color = '#333';
-                                            btnOut.onclick = function(e) {{ e.preventDefault(); map.zoomOut(); }};
-
-                                            return container;
-                                        }}
-                                    }});
-                                    map.addControl(new BottomRightToolbar());
-                                    map.bottomRightToolbarAdded = true;
-                                }}
-                            }}, 400);
-                        }});
-                        </script>
-                        """
-                    return ""
-
-            m.add_child(MapBottomRightToolbar())
+            # 2. HACK-FREE HTML & CSS OVERLAY FOR BOTTOM-RIGHT CONTROLS (Center, Plus, Minus)
+            map_id = m.get_name()
+            
+            custom_controls_html = f"""
+            <style>
+                .custom-map-controls {{
+                    position: fixed; /* Bypasses Streamlit iFrame restrictions */
+                    bottom: 25px;
+                    right: 15px;
+                    z-index: 99999;
+                    background-color: white;
+                    border: 2px solid rgba(0,0,0,0.2);
+                    border-radius: 4px;
+                    display: flex;
+                    flex-direction: column;
+                    box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+                    overflow: hidden;
+                }}
+                .custom-map-controls button {{
+                    background: white;
+                    border: none;
+                    width: 32px;
+                    height: 32px;
+                    cursor: pointer;
+                    color: #333;
+                    border-bottom: 1px solid #ccc;
+                    padding: 0;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    outline: none;
+                }}
+                .custom-map-controls button:last-child {{
+                    border-bottom: none;
+                }}
+                .custom-map-controls button:hover {{
+                    background-color: #f4f4f4;
+                }}
+            </style>
+            <div class="custom-map-controls">
+                <button title="Center to Nagpur" onclick="{map_id}.setView([21.1458, 79.0882], 11.5);" style="font-size: 16px;">🎯</button>
+                <button title="Zoom In" onclick="{map_id}.zoomIn();" style="font-size: 20px; font-weight: bold;">+</button>
+                <button title="Zoom Out" onclick="{map_id}.zoomOut();" style="font-size: 24px; font-weight: bold;">-</button>
+            </div>
+            """
+            # Injecting HTML directly into the folium rendering engine
+            m.get_root().html.add_child(folium.Element(custom_controls_html))
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
