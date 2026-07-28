@@ -636,8 +636,8 @@ if check_password():
         )
         
         if geo_data:
-            # Native folium zoom disable kiya gaya hai taki hum script se naye wale laga sakein
-            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
+            # ✅ SOLUTION: Yaha par zoom_control=True rakha hai (Native controls enabled hain)
+            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=True, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
             folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
@@ -849,48 +849,67 @@ if check_password():
             # 1. LAYER CONTROL: Set properly at Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
-            # 2. BULLETPROOF NATIVE LEAFLET SCRIPT (100% ERROR-FREE)
-            map_id = m.get_name()
-            custom_js_script = f"""
-                // 1. Add Default Zoom Buttons at Bottom Right
-                L.control.zoom({{position: 'bottomright'}}).addTo({map_id});
+            # 2. ✅ BULLETPROOF CSS OVERLAY HACK (Guaranteed to work)
+            # Hum native zoom buttons ko Bottom-Right khiska rahe hain CSS se
+            ui_injection = """
+            <style>
+                /* Force original Folium zoom controls to jump to bottom right */
+                .leaflet-container .leaflet-control-zoom {
+                    position: fixed !important;
+                    bottom: 20px !important;
+                    right: 14px !important;
+                    left: auto !important;
+                    top: auto !important;
+                    margin: 0 !important;
+                    z-index: 9999 !important;
+                }
                 
-                // 2. Create the Custom Center Map Button Class
-                var CenterControl = L.Control.extend({{
-                    options: {{ position: 'bottomright' }},
-                    onAdd: function(map) {{
-                        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                        var a = L.DomUtil.create('a', '', container);
-                        a.innerHTML = '🎯';
-                        a.href = '#';
-                        a.title = 'Center to Nagpur';
-                        a.style.fontSize = '18px';
-                        a.style.lineHeight = '30px';
-                        a.style.textAlign = 'center';
-                        a.style.textDecoration = 'none';
-                        a.style.color = '#333';
-                        a.style.display = 'block';
-                        a.style.backgroundColor = '#fff';
-                        
-                        // Prevent Map interaction from passing through the button
-                        L.DomEvent.disableClickPropagation(container);
-                        
-                        L.DomEvent.on(a, 'click', function(e) {{
-                            L.DomEvent.stopPropagation(e);
-                            L.DomEvent.preventDefault(e);
-                            map.setView([21.1458, 79.0882], 11.5);
-                        }});
-                        
-                        return container;
-                    }}
-                }});
-                
-                // 3. Add the custom button to the map
-                {map_id}.addControl(new CenterControl());
+                /* Create custom center button styling perfectly matching Leaflet UI */
+                .custom-center-btn {
+                    position: fixed !important;
+                    bottom: 95px !important;
+                    right: 14px !important;
+                    background-color: #ffffff;
+                    border: 2px solid rgba(0,0,0,0.2);
+                    width: 34px;
+                    height: 34px;
+                    border-radius: 4px;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+                    cursor: pointer;
+                    z-index: 9999 !important;
+                    font-size: 18px;
+                    text-decoration: none;
+                    color: #333 !important;
+                    font-family: Arial, sans-serif;
+                }
+                .custom-center-btn:hover {
+                    background-color: #f4f4f4;
+                    color: #000 !important;
+                }
+            </style>
+            
+            <a href="#" class="custom-center-btn" onclick="centerNagpurMap(event)" title="Center to Nagpur">🎯</a>
+            
+            <script>
+                function centerNagpurMap(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Map ka reference find karne ka bulletproof tarika
+                    for (var key in window) {
+                        if (key.startsWith("map_") && window[key] instanceof L.Map) {
+                            window[key].setView([21.1458, 79.0882], 11.5);
+                            return;
+                        }
+                    }
+                }
+            </script>
             """
             
-            # Script ko Folium HTML tree me strictly map generate hone ke baad insert kar rahe hain
-            m.get_root().script.add_child(folium.Element(custom_js_script))
+            # HTML me direct inject kar diya taki iframe me fail na ho
+            m.get_root().html.add_child(folium.Element(ui_injection))
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
