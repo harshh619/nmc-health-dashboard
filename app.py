@@ -556,7 +556,7 @@ if check_password():
         )
         
         if geo_data:
-            # yahan zoom_control=False zaroori hai taki by default zoom (top-left) hat jaye
+            # zoom_control=False disabled taaki hum apne custom HTML buttons laga sakein
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -766,10 +766,10 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # 1. LAYER CONTROL: Added securely at Top-Left
-            folium.LayerControl(position='topleft').add_to(m)
+            # 1. LAYER CONTROL: Fix to top-right corner
+            folium.LayerControl(position='topright').add_to(m)
 
-            # 2. BULLETPROOF NATIVE MAP CONTROLS INJECTION (Center, +, - at Bottom-Right)
+            # 2. MAP BUTTONS: Native Leaflet control injection
             class CustomMapControls(MacroElement):
                 def __init__(self):
                     super().__init__()
