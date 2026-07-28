@@ -3,6 +3,8 @@ import pandas as pd
 import json
 import folium
 from folium.plugins import MarkerCluster
+from branca.element import MacroElement
+from jinja2 import Template
 from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
@@ -197,7 +199,7 @@ st.markdown("""
             color: #1e3a8a;
         }
         
-        /* Unified AI Alert Box Styling with Pulsating Effect */
+        /* Unified AI Alert Box Styling */
         @keyframes ai-pulse {
             0% { background-color: #fff1f2; border-left-color: #e11d48; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
             50% { background-color: #fecdd3; border-left-color: #9f1239; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.2); }
@@ -485,10 +487,8 @@ if check_password():
         # --- 4. CONSOLIDATED DASHBOARD METRICS ---
         st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{selected_zone} Zone` ➔ `{selected_ward}`</span>", unsafe_allow_html=True)
         
-        # Calculate status counts dynamically
         status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
         
-        # Create columns: 1 for Total Cases + columns for each Status
         total_cols = 1 + len(status_counts)
         metric_cols = st.columns(total_cols)
         
@@ -636,8 +636,8 @@ if check_password():
         )
         
         if geo_data:
-            # Native Zoom Enabled (We will shift it to bottom right via CSS)
-            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=True, attribution_control=False)
+            # ✅ SOLUTION: Yaha zoom_control=False rakha hai taki custom macro se proper add kar sakein
+            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
             folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
@@ -849,72 +849,53 @@ if check_password():
             # LAYER CONTROL: Set properly at Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
-            # --- 🚀 THE 100% BULLETPROOF SOLUTION FOR CENTER BUTTON ---
-            map_id = m.get_name()
+            # --- 🚀 THE 100% BULLETPROOF NATIVE MACRO SOLUTION ---
+            # Hum ek native script banayenge jo Leaflet ke engine me seedha inject hogi.
+            # Ye Streamlit Iframe Security ko puri tarah bypass kar degi!
             
-            ui_injection = f"""
-            <style>
-                /* Force original Folium zoom controls to jump to bottom right */
-                .leaflet-container .leaflet-control-zoom {{
-                    position: fixed !important;
-                    bottom: 20px !important;
-                    right: 14px !important;
-                    left: auto !important;
-                    top: auto !important;
-                    margin: 0 !important;
-                    z-index: 9999 !important;
-                }}
-                
-                /* Custom center button styling */
-                #center-nagpur-btn {{
-                    position: fixed !important;
-                    bottom: 95px !important;
-                    right: 14px !important;
-                    background-color: #ffffff;
-                    border: 2px solid rgba(0,0,0,0.2);
-                    width: 34px;
-                    height: 34px;
-                    border-radius: 4px;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-                    cursor: pointer;
-                    z-index: 9999 !important;
-                    font-size: 18px;
-                    text-decoration: none;
-                    color: #333 !important;
-                    font-family: Arial, sans-serif;
-                }}
-                #center-nagpur-btn:hover {{
-                    background-color: #f4f4f4;
-                }}
-            </style>
-            
-            <a href="#" id="center-nagpur-btn" title="Center to Nagpur">🎯</a>
-            
-            <script>
-                // Ye script map load hone ka wait karegi, fir button ke sath EventListener attach karegi (Bypass CSP)
-                var mapCheckInterval = setInterval(function() {{
-                    if (typeof {map_id} !== 'undefined') {{
-                        clearInterval(mapCheckInterval); // Stop waiting
+            class CustomMapControls(MacroElement):
+                _template = Template("""
+                    {% macro script(this, kwargs) %}
+                        // 1. Add Default Zoom Buttons at Bottom Right
+                        L.control.zoom({position: 'bottomright'}).addTo({{ this._parent.get_name() }});
                         
-                        var centerBtn = document.getElementById('center-nagpur-btn');
-                        if (centerBtn) {{
-                            centerBtn.addEventListener('click', function(e) {{
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // Map ko safely Center me lao with Smooth Glide Animation!
-                                {map_id}.setView([21.1458, 79.0882], 11.5, {{animate: true, duration: 1.0}});
-                            }});
-                        }}
-                    }}
-                }}, 200); // Har 200ms me check karega ki map ready hai ya nahi
-            </script>
-            """
-            
-            # Map wrapper me code dal diya
-            m.get_root().html.add_child(folium.Element(ui_injection))
+                        // 2. Add Center Map Button Custom Control
+                        var centerControl = L.control({position: 'bottomright'});
+                        centerControl.onAdd = function (map) {
+                            var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                            var a = L.DomUtil.create('a', '', div);
+                            a.innerHTML = '🎯';
+                            a.href = '#';
+                            a.title = 'Center Map to Nagpur';
+                            a.style.fontSize = '18px';
+                            a.style.lineHeight = '30px';
+                            a.style.textAlign = 'center';
+                            a.style.textDecoration = 'none';
+                            a.style.display = 'block';
+                            a.style.backgroundColor = '#fff';
+                            a.style.color = '#333';
+                            a.style.width = '30px';
+                            a.style.height = '30px';
+                            
+                            // Hover effects
+                            a.onmouseover = function(){ this.style.backgroundColor = '#f4f4f4'; };
+                            a.onmouseout = function(){ this.style.backgroundColor = '#fff'; };
+                            
+                            // Native Click Event attached directly to Leaflet Map engine
+                            L.DomEvent.on(a, 'click', function(e) {
+                                L.DomEvent.stopPropagation(e);
+                                L.DomEvent.preventDefault(e);
+                                map.setView([21.1458, 79.0882], 11.5, {animate: true, duration: 1.0});
+                            });
+                            
+                            return div;
+                        };
+                        {{ this._parent.get_name() }}.addControl(centerControl);
+                    {% endmacro %}
+                """)
+
+            # Attach native script control to map
+            m.add_child(CustomMapControls())
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
