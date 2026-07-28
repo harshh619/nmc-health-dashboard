@@ -7,6 +7,8 @@ from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
 import requests
+from branca.element import MacroElement
+from jinja2 import Template
 
 # Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
@@ -258,6 +260,7 @@ st.markdown("""
         }
         .stPlotlyChart:hover {
             transform: translateY(-5px);
+            /* Soft shadow on hover for 3D effect */
             box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
         }
     </style>
@@ -544,7 +547,7 @@ if check_password():
                 fig_pie.update_layout(
                     margin=dict(t=10, b=10, l=10, r=10), 
                     height=280,
-                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"),
+                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), # Custom Premium Tooltip
                     legend=dict(
                         orientation="v",
                         yanchor="middle",
@@ -584,7 +587,7 @@ if check_password():
                     coloraxis_showscale=False,
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
-                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"),
+                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), # Custom Premium Tooltip
                     yaxis=dict(showgrid=True, gridcolor='#f1f5f9')
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
@@ -619,7 +622,7 @@ if check_password():
                 yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'),
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
-                hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1")
+                hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1") # Custom Premium Tooltip
             )
             st.plotly_chart(fig_timeline, use_container_width=True)
         else:
@@ -636,6 +639,7 @@ if check_password():
         )
         
         if geo_data:
+            # zoom_control=False taaki hum custom buttons manually laga sakein
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -848,39 +852,42 @@ if check_password():
             # 1. LAYER CONTROL: Set properly at Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
-            # 2. BULLETPROOF MAP CONTROLS SCRIPT (Native Folium Injected Script)
-            map_id = m.get_name()
-            native_map_controls_js = f"""
-                var centerControl = L.Control.extend({{
-                    options: {{ position: 'bottomright' }},
-                    onAdd: function (map) {{
-                        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                        var a = L.DomUtil.create('a', '', container);
-                        a.innerHTML = '🎯';
-                        a.href = '#';
-                        a.title = 'Center to Nagpur';
-                        a.style.fontSize = '16px';
-                        a.style.lineHeight = '30px';
-                        a.style.textAlign = 'center';
-                        a.style.display = 'block';
-                        a.style.textDecoration = 'none';
-                        a.style.color = '#333';
-                        a.style.marginBottom = '4px';
+            # 2. MAP BUTTONS: Native Leaflet control injection
+            class CustomMapControls(MacroElement):
+                def __init__(self):
+                    super().__init__()
+                    self._template = Template(u"""
+                    {% macro script(this, kwargs) %}
+                        // Create custom Center Map button natively
+                        var centerControl = L.Control.extend({
+                            options: { position: 'bottomright' },
+                            onAdd: function (map) {
+                                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                // Giving it the exact same style as Leaflet's zoom buttons
+                                container.innerHTML = '<a href="#" title="Center to Nagpur" style="font-size:16px; line-height:30px; text-align:center; text-decoration:none;">🎯</a>';
+                                container.style.marginBottom = '5px'; // Gap between Center button and Zoom buttons
+                                
+                                L.DomEvent.disableClickPropagation(container);
+                                
+                                L.DomEvent.on(container, 'click', function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    map.setView([21.1458, 79.0882], 11.5);
+                                });
+                                
+                                return container;
+                            }
+                        });
                         
-                        L.DomEvent.disableClickPropagation(container);
-                        L.DomEvent.on(a, 'click', function(e) {{
-                            L.DomEvent.stopPropagation(e);
-                            L.DomEvent.preventDefault(e);
-                            map.setView([21.1458, 79.0882], 11.5);
-                        }});
-                        return container;
-                    }}
-                }});
-                
-                {map_id}.addControl(new centerControl());
-                L.control.zoom({{ position: 'bottomright' }}).addTo({map_id});
-            """
-            m.get_root().script.add_child(folium.Element(native_map_controls_js))
+                        // Adding Center button first at bottomright
+                        {{this._parent.get_name()}}.addControl(new centerControl());
+                        
+                        // Adding Native Zoom buttons (+ / -) right below it at bottomright
+                        L.control.zoom({position: 'bottomright'}).addTo({{this._parent.get_name()}});
+                    {% endmacro %}
+                    """)
+                    
+            m.add_child(CustomMapControls())
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
