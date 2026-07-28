@@ -189,6 +189,20 @@ st.markdown("""
         .footer-container b {
             color: #1e3a8a;
         }
+
+        /* Stack all top-right controls neatly using flexbox */
+        .leaflet-top.leaflet-right {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-end !important;
+            gap: 6px !important;
+        }
+        .leaflet-top.leaflet-right .leaflet-control {
+            margin-top: 0 !important;
+            margin-right: 0 !important;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.3) !important;
+            border-radius: 4px !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -543,7 +557,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + MAP LAYERS) ---
+        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + REPOSITIONED CONTROLS) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -554,7 +568,8 @@ if check_password():
         )
         
         if geo_data:
-            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, attribution_control=False)
+            # zoom_control=False to remove default top-left zoom control
+            m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer(
                 'CartoDB Positron', 
@@ -671,7 +686,6 @@ if check_password():
                         if pd.notna(row.get('Date')):
                             date_str = row['Date'].strftime('%d/%m/%Y') 
 
-                        # Patient Name formatted in Normal/Title Case using .title()
                         patient_name_formatted = str(row.get('Patient_Name', 'N/A')).title()
 
                         popup_text = f"""
@@ -756,7 +770,6 @@ if check_password():
             elif map_mode == "All Cases Points View":
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
-                        # Patient Name formatted in Normal/Title Case using .title()
                         patient_name_formatted = str(row.get('Patient_Name', 'N/A')).title()
 
                         popup_text = f"""
@@ -781,6 +794,57 @@ if check_password():
                             ).add_to(m)
                 
             folium.LayerControl().add_to(m)
+
+            # --- JAVASCRIPT & CSS TO INJECT ZOOM CONTROL AND NAGPUR CENTER BUTTON BELOW LAYER CONTROL ---
+            custom_controls_js = """
+            <script>
+            window.addEventListener('DOMContentLoaded', (event) => {
+                setTimeout(function() {
+                    Object.keys(window).forEach(function(key) {
+                        if (window[key] instanceof L.Map) {
+                            var map = window[key];
+                            
+                            // Add Zoom Control to topright
+                            if (!map.zoomControlAdded) {
+                                var zoomCtrl = L.control.zoom({position: 'topright'});
+                                zoomCtrl.addTo(map);
+                                map.zoomControlAdded = true;
+                            }
+                            
+                            // Add Center-to-Nagpur Button below Zoom Control at topright
+                            if (!map.centerCtrlAdded) {
+                                var CenterControl = L.Control.extend({
+                                    options: { position: 'topright' },
+                                    onAdd: function (map) {
+                                        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                        container.style.backgroundColor = 'white';
+                                        container.style.width = '30px';
+                                        container.style.height = '30px';
+                                        container.style.lineHeight = '30px';
+                                        container.style.textAlign = 'center';
+                                        container.style.cursor = 'pointer';
+                                        container.style.fontSize = '16px';
+                                        container.title = 'Center to Nagpur Map';
+                                        container.innerHTML = '🎯';
+                                        
+                                        container.onclick = function(e) {
+                                            e.stopPropagation();
+                                            map.setView([21.1458, 79.0882], 11.5);
+                                        };
+                                        return container;
+                                    }
+                                });
+                                map.addControl(new CenterControl());
+                                map.centerCtrlAdded = true;
+                            }
+                        }
+                    });
+                }, 350);
+            });
+            </script>
+            """
+            m.get_root().html.add_child(folium.Element(custom_controls_js))
+
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
             st.info("Geojson data available nahi hai.")
