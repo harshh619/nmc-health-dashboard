@@ -558,7 +558,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + NATIVE ZOOM & CENTER CONTROL) ---
+        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + CUSTOM CONTROLS TOOLBAR) ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -569,9 +569,7 @@ if check_password():
         )
         
         if geo_data:
-            # Native ZoomControl enabled and placed at topright
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
-            folium.ZoomControl(position='topright').add_to(m)
             
             folium.TileLayer(
                 'CartoDB Positron', 
@@ -797,11 +795,11 @@ if check_password():
                 
             folium.LayerControl().add_to(m)
 
-            # Robust Python-bound MacroElement for Center Nagpur Button
-            class CenterControl(MacroElement):
+            # Robust Custom Toolbar Control for Zoom In/Out and Nagpur Center
+            class MapToolbarControl(MacroElement):
                 def __init__(self):
                     super().__init__()
-                    self._name = 'CenterControl'
+                    self._name = 'MapToolbarControl'
 
                 def render(self, **kwargs):
                     parent = self._parent
@@ -812,34 +810,74 @@ if check_password():
                         document.addEventListener("DOMContentLoaded", function() {{
                             setTimeout(function() {{
                                 var map = window['{map_name}'];
-                                if (map && !map.centerCtrlAdded) {{
-                                    var controlDiv = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                                    controlDiv.style.backgroundColor = 'white';
-                                    controlDiv.style.width = '30px';
-                                    controlDiv.style.height = '30px';
-                                    controlDiv.style.lineHeight = '30px';
-                                    controlDiv.style.textAlign = 'center';
-                                    controlDiv.style.cursor = 'pointer';
-                                    controlDiv.style.fontSize = '16px';
-                                    controlDiv.title = 'Center to Nagpur Map';
-                                    controlDiv.innerHTML = '🎯';
-                                    controlDiv.onclick = function(e) {{
-                                        e.stopPropagation();
-                                        map.setView([21.1458, 79.0882], 11.5);
+                                if (map && !map.toolbarAdded) {{
+                                    var CustomToolbar = L.Control.extend {{
+                                        options: {{ position: 'topright' }},
+                                        onAdd: function (map) {{
+                                            var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                            container.style.backgroundColor = 'white';
+                                            container.style.display = 'flex';
+                                            container.style.flexDirection = 'column';
+                                            container.style.boxShadow = '0 1px 5px rgba(0,0,0,0.3)';
+                                            container.style.borderRadius = '4px';
+                                            container.style.overflow = 'hidden';
+
+                                            // Zoom In
+                                            var btnIn = L.DomUtil.create('a', '', container);
+                                            btnIn.innerHTML = '+';
+                                            btnIn.href = '#';
+                                            btnIn.title = 'Zoom In';
+                                            btnIn.style.width = '30px';
+                                            btnIn.style.height = '30px';
+                                            btnIn.style.lineHeight = '30px';
+                                            btnIn.style.textAlign = 'center';
+                                            btnIn.style.fontSize = '16px';
+                                            btnIn.style.textDecoration = 'none';
+                                            btnIn.style.color = 'black';
+                                            btnIn.style.borderBottom = '1px solid #ccc';
+                                            btnIn.onclick = function(e) {{ e.preventDefault(); map.zoomIn(); }};
+
+                                            // Zoom Out
+                                            var btnOut = L.DomUtil.create('a', '', container);
+                                            btnOut.innerHTML = '-';
+                                            btnOut.href = '#';
+                                            btnOut.title = 'Zoom Out';
+                                            btnOut.style.width = '30px';
+                                            btnOut.style.height = '30px';
+                                            btnOut.style.lineHeight = '30px';
+                                            btnOut.style.textAlign = 'center';
+                                            btnOut.style.fontSize = '18px';
+                                            btnOut.style.textDecoration = 'none';
+                                            btnOut.style.color = 'black';
+                                            btnOut.style.borderBottom = '1px solid #ccc';
+                                            btnOut.onclick = function(e) {{ e.preventDefault(); map.zoomOut(); }};
+
+                                            // Center Nagpur
+                                            var btnCenter = L.DomUtil.create('a', '', container);
+                                            btnCenter.innerHTML = '🎯';
+                                            btnCenter.href = '#';
+                                            btnCenter.title = 'Center to Nagpur Map';
+                                            btnCenter.style.width = '30px';
+                                            btnCenter.style.height = '30px';
+                                            btnCenter.style.lineHeight = '30px';
+                                            btnCenter.style.textAlign = 'center';
+                                            btnCenter.style.fontSize = '15px';
+                                            btnCenter.style.textDecoration = 'none';
+                                            btnCenter.onclick = function(e) {{ e.preventDefault(); map.setView([21.1458, 79.0882], 11.5); }};
+
+                                            return container;
+                                        }}
                                     }};
-                                    var rightCorner = document.querySelector('.leaflet-top.leaflet-right');
-                                    if (rightCorner) {{
-                                        rightCorner.appendChild(controlDiv);
-                                        map.centerCtrlAdded = true;
-                                    }}
+                                    map.addControl(new CustomToolbar());
+                                    map.toolbarAdded = true;
                                 }}
-                            }}, 500);
+                            }}, 400);
                         }});
                         </script>
                         """
                     return ""
 
-            m.add_child(CenterControl())
+            m.add_child(MapToolbarControl())
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
