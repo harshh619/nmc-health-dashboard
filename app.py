@@ -671,12 +671,14 @@ if check_password():
                         if pd.notna(row.get('Date')):
                             date_str = row['Date'].strftime('%d/%m/%Y') 
 
-                        # UPDATED: Patient Name instead of Patient ID in Patient Cluster View popup
+                        # Patient Name formatted in Normal/Title Case using .title()
+                        patient_name_formatted = str(row.get('Patient_Name', 'N/A')).title()
+
                         popup_text = f"""
                         <div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
                             <b style="color: #1e3a8a; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br>
                             <hr style="margin: 4px 0;">
-                            <b>Patient Name:</b> {row.get('Patient_Name', 'N/A')}<br>
+                            <b>Patient Name:</b> {patient_name_formatted}<br>
                             <b>Ward No:</b> {clean_ward_str(row.get('Ward_Name', 'N/A'))}<br>
                             <b>Status:</b> {row.get('Status', 'N/A')}
                         </div>
@@ -754,11 +756,14 @@ if check_password():
             elif map_mode == "All Cases Points View":
                 if not filtered_df.empty:
                     for idx, row in filtered_df.iterrows():
+                        # Patient Name formatted in Normal/Title Case using .title()
+                        patient_name_formatted = str(row.get('Patient_Name', 'N/A')).title()
+
                         popup_text = f"""
                         <div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
                             <b style="color: #dc2626; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br>
                             <hr style="margin: 4px 0;">
-                            <b>Patient Name:</b> {row.get('Patient_Name', 'N/A')}<br>
+                            <b>Patient Name:</b> {patient_name_formatted}<br>
                             <b>Ward No:</b> {clean_ward_str(row.get('Ward_Name', 'N/A'))}<br>
                             <b>Status:</b> {row.get('Status', 'N/A')}
                         </div>
