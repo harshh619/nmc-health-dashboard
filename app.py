@@ -543,7 +543,7 @@ if check_password():
         else:
             st.info("Timeline ke liye valid Date data available nahi hai.")
         
-        # --- 5. MAP VIEW SWITCHER (RADIO BUTTON + PERFECT NATIVE LEAFLET CONTROLS) ---
+        # --- 5. MAP VIEW SWITCHER ---
         st.markdown("### 📍 Patients Map View")
         
         map_mode = st.radio(
@@ -554,7 +554,7 @@ if check_password():
         )
         
         if geo_data:
-            # zoom_control=False rakha hai taki by default top-left wala zoom na dikhe
+            # zoom_control=False disabled taaki hum apne custom HTML buttons laga sakein
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -764,54 +764,51 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # 1. LAYER CONTROL: Fix to top-left corner
+            # 1. LAYER CONTROL at Top-Left
             folium.LayerControl(position='topleft').add_to(m)
 
-            # 2. MAP BUTTONS: Native Leaflet control injection
-            map_id = m.get_name()
+            # 2. BULLETPROOF BOTTOM-RIGHT BUTTONS (Center, +, -)
+            # This HTML element is fixed directly to the iframe window itself, guaranteeing visibility
+            custom_controls_html = """
+            <div style="position: fixed; bottom: 30px; right: 20px; z-index: 99999; display: flex; flex-direction: column; box-shadow: 0 2px 6px rgba(0,0,0,0.3); border-radius: 4px; overflow: hidden; border: 2px solid rgba(0,0,0,0.2);">
+                <button onclick="nagpurCenterMap(event)" style="background-color: white; border: none; border-bottom: 1px solid #ccc; width: 34px; height: 34px; font-size: 16px; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Center to Nagpur" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">🎯</button>
+                <button onclick="nagpurZoomIn(event)" style="background-color: white; border: none; border-bottom: 1px solid #ccc; width: 34px; height: 34px; font-size: 20px; font-weight: bold; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Zoom In" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">+</button>
+                <button onclick="nagpurZoomOut(event)" style="background-color: white; border: none; width: 34px; height: 34px; font-size: 24px; font-weight: bold; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Zoom Out" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">-</button>
+            </div>
             
-            # Ye code strictly Folium/Leaflet engine ke flow me execute hoga
-            # Streamlit iframe ke constraints ko bypass kar dega
-            native_leaflet_js = f"""
-                // A. Add default Leaflet Zoom (+/-) buttons to bottom-right
-                L.control.zoom({{position: 'bottomright'}}).addTo({map_id});
+            <script>
+                // Bulletproof function to find Leaflet map anywhere in the window
+                function getMapInstance() {
+                    for (var key in window) {
+                        if (window[key] && window[key] instanceof L.Map) {
+                            return window[key];
+                        }
+                    }
+                    return null;
+                }
                 
-                // B. Create a custom button for centering Nagpur
-                var CenterButtonControl = L.Control.extend({{
-                    options: {{ position: 'bottomright' }},
-                    onAdd: function (map) {{
-                        var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                        var btn = L.DomUtil.create('a', '', container);
-                        btn.innerHTML = '🎯';
-                        btn.href = '#';
-                        btn.title = 'Center to Nagpur';
-                        btn.style.fontSize = '17px';
-                        btn.style.display = 'flex';
-                        btn.style.justifyContent = 'center';
-                        btn.style.alignItems = 'center';
-                        btn.style.textDecoration = 'none';
-                        btn.style.color = '#333';
-                        
-                        // Disable map drag/click when clicking the button
-                        L.DomEvent.disableClickPropagation(btn);
-                        
-                        // Action on click
-                        L.DomEvent.on(btn, 'click', function(e) {{
-                            L.DomEvent.stopPropagation(e);
-                            L.DomEvent.preventDefault(e);
-                            map.setView([21.1458, 79.0882], 11.5);
-                        }});
-                        
-                        return container;
-                    }}
-                }});
+                function nagpurCenterMap(e) {
+                    e.preventDefault(); e.stopPropagation();
+                    var map = getMapInstance();
+                    if(map) map.setView([21.1458, 79.0882], 11.5);
+                }
                 
-                // Add the Center Button. It will automatically sit just above the Zoom buttons
-                {map_id}.addControl(new CenterButtonControl());
+                function nagpurZoomIn(e) {
+                    e.preventDefault(); e.stopPropagation();
+                    var map = getMapInstance();
+                    if(map) map.zoomIn();
+                }
+                
+                function nagpurZoomOut(e) {
+                    e.preventDefault(); e.stopPropagation();
+                    var map = getMapInstance();
+                    if(map) map.zoomOut();
+                }
+            </script>
             """
             
-            # Inject this perfectly timed JavaScript directly into Folium's script template
-            m.get_root().script.add_child(folium.Element(native_leaflet_js))
+            # Injecting it directly as an HTML element root child, so it bypasses all Streamlit restrictions
+            m.get_root().html.add_child(folium.Element(custom_controls_html))
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
