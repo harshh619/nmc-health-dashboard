@@ -636,7 +636,7 @@ if check_password():
         )
         
         if geo_data:
-            # ✅ SOLUTION: Yaha par zoom_control=True rakha hai (Native controls enabled hain)
+            # ✅ IMPORTATNT: zoom_control=True kiya hai taki original buttons dikhein 
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=True, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -849,12 +849,13 @@ if check_password():
             # 1. LAYER CONTROL: Set properly at Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
-            # 2. ✅ BULLETPROOF CSS OVERLAY HACK (Guaranteed to work)
-            # Hum native zoom buttons ko Bottom-Right khiska rahe hain CSS se
-            ui_injection = """
+            # 2. ✅ BULLETPROOF CSS OVERLAY HACK (Guaranteed to work 100%)
+            # Yahan direct map id pass kiya hai jisse map direct action lega
+            map_id = m.get_name()
+            ui_injection = f"""
             <style>
                 /* Force original Folium zoom controls to jump to bottom right */
-                .leaflet-container .leaflet-control-zoom {
+                .leaflet-container .leaflet-control-zoom {{
                     position: fixed !important;
                     bottom: 20px !important;
                     right: 14px !important;
@@ -862,10 +863,10 @@ if check_password():
                     top: auto !important;
                     margin: 0 !important;
                     z-index: 9999 !important;
-                }
+                }}
                 
                 /* Create custom center button styling perfectly matching Leaflet UI */
-                .custom-center-btn {
+                .custom-center-btn {{
                     position: fixed !important;
                     bottom: 95px !important;
                     right: 14px !important;
@@ -884,31 +885,17 @@ if check_password():
                     text-decoration: none;
                     color: #333 !important;
                     font-family: Arial, sans-serif;
-                }
-                .custom-center-btn:hover {
+                }}
+                .custom-center-btn:hover {{
                     background-color: #f4f4f4;
                     color: #000 !important;
-                }
+                }}
             </style>
             
-            <a href="#" class="custom-center-btn" onclick="centerNagpurMap(event)" title="Center to Nagpur">🎯</a>
-            
-            <script>
-                function centerNagpurMap(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    // Map ka reference find karne ka bulletproof tarika
-                    for (var key in window) {
-                        if (key.startsWith("map_") && window[key] instanceof L.Map) {
-                            window[key].setView([21.1458, 79.0882], 11.5);
-                            return;
-                        }
-                    }
-                }
-            </script>
+            <a href="#" class="custom-center-btn" onclick="event.preventDefault(); event.stopPropagation(); {map_id}.setView([21.1458, 79.0882], 11.5);" title="Center to Nagpur">🎯</a>
             """
             
-            # HTML me direct inject kar diya taki iframe me fail na ho
+            # Direct insertion in HTML wrapper
             m.get_root().html.add_child(folium.Element(ui_injection))
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
