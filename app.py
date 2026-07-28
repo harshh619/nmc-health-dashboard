@@ -7,8 +7,6 @@ from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
 import requests
-from branca.element import MacroElement
-from jinja2 import Template
 
 # Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
@@ -260,7 +258,6 @@ st.markdown("""
         }
         .stPlotlyChart:hover {
             transform: translateY(-5px);
-            /* Soft shadow on hover for 3D effect */
             box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
         }
     </style>
@@ -488,15 +485,12 @@ if check_password():
         # --- 4. CONSOLIDATED DASHBOARD METRICS ---
         st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{selected_zone} Zone` ➔ `{selected_ward}`</span>", unsafe_allow_html=True)
         
-        # Calculate status counts dynamically
         status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
-        
-        # Create columns: 1 for Total Cases + columns for each Status
         total_cols = 1 + len(status_counts)
         metric_cols = st.columns(total_cols)
         
         with metric_cols[0]:
-            st.metric("Total Cases (Filtered)", len(filtered_df))
+            st.metric("Total Cases (Filtered)", len(filtered_df)) # Removed live data parameter as requested
             
         for idx, (status_name, count_val) in enumerate(status_counts.items()):
             with metric_cols[idx + 1]:
@@ -547,7 +541,7 @@ if check_password():
                 fig_pie.update_layout(
                     margin=dict(t=10, b=10, l=10, r=10), 
                     height=280,
-                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), # Custom Premium Tooltip
+                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"),
                     legend=dict(
                         orientation="v",
                         yanchor="middle",
@@ -587,7 +581,7 @@ if check_password():
                     coloraxis_showscale=False,
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
-                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), # Custom Premium Tooltip
+                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"),
                     yaxis=dict(showgrid=True, gridcolor='#f1f5f9')
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
@@ -622,7 +616,7 @@ if check_password():
                 yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'),
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
-                hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1") # Custom Premium Tooltip
+                hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1")
             )
             st.plotly_chart(fig_timeline, use_container_width=True)
         else:
@@ -639,7 +633,7 @@ if check_password():
         )
         
         if geo_data:
-            # zoom_control=False taaki hum custom buttons manually laga sakein
+            # Native folium zoom disable karke rakha hai taki custom floating buttons clear dikhein
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -852,42 +846,40 @@ if check_password():
             # 1. LAYER CONTROL: Set properly at Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
-            # 2. MAP BUTTONS: Native Leaflet control injection
-            class CustomMapControls(MacroElement):
-                def __init__(self):
-                    super().__init__()
-                    self._template = Template(u"""
-                    {% macro script(this, kwargs) %}
-                        // Create custom Center Map button natively
-                        var centerControl = L.Control.extend({
-                            options: { position: 'bottomright' },
-                            onAdd: function (map) {
-                                var container = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                                // Giving it the exact same style as Leaflet's zoom buttons
-                                container.innerHTML = '<a href="#" title="Center to Nagpur" style="font-size:16px; line-height:30px; text-align:center; text-decoration:none;">🎯</a>';
-                                container.style.marginBottom = '5px'; // Gap between Center button and Zoom buttons
-                                
-                                L.DomEvent.disableClickPropagation(container);
-                                
-                                L.DomEvent.on(container, 'click', function(e) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    map.setView([21.1458, 79.0882], 11.5);
-                                });
-                                
-                                return container;
-                            }
-                        });
-                        
-                        // Adding Center button first at bottomright
-                        {{this._parent.get_name()}}.addControl(new centerControl());
-                        
-                        // Adding Native Zoom buttons (+ / -) right below it at bottomright
-                        L.control.zoom({position: 'bottomright'}).addTo({{this._parent.get_name()}});
-                    {% endmacro %}
-                    """)
-                    
-            m.add_child(CustomMapControls())
+            # 2. BULLETPROOF ABSOLUTE HTML OVERLAY FOR ZOOM/CENTER BUTTONS
+            custom_buttons = """
+            <div style="position: absolute; bottom: 20px; right: 10px; z-index: 9999; display: flex; flex-direction: column; gap: 8px;"
+                 onmousedown="event.stopPropagation();" onwheel="event.stopPropagation();" ondblclick="event.stopPropagation();" onclick="event.stopPropagation();">
+                <button onclick="nagpurCenterMap()" style="background-color: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px; width: 34px; height: 34px; font-size: 16px; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center; box-shadow: 0 1px 5px rgba(0,0,0,0.65);" title="Center to Nagpur" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">🎯</button>
+                <div style="background-color: white; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px; display: flex; flex-direction: column; box-shadow: 0 1px 5px rgba(0,0,0,0.65); overflow: hidden;">
+                    <button onclick="nagpurZoomIn()" style="background-color: white; border: none; border-bottom: 1px solid #ccc; width: 30px; height: 30px; font-size: 18px; font-weight: bold; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Zoom In" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">+</button>
+                    <button onclick="nagpurZoomOut()" style="background-color: white; border: none; width: 30px; height: 30px; font-size: 22px; font-weight: bold; cursor: pointer; color: #333; display: flex; justify-content: center; align-items: center;" title="Zoom Out" onmouseover="this.style.backgroundColor='#f4f4f4'" onmouseout="this.style.backgroundColor='white'">-</button>
+                </div>
+            </div>
+            <script>
+                function getMapInstance() {
+                    for (var key in window) {
+                        if (key.startsWith("map_") && window[key] instanceof L.Map) {
+                            return window[key];
+                        }
+                    }
+                    return null;
+                }
+                function nagpurCenterMap() {
+                    var m = getMapInstance();
+                    if(m) m.setView([21.1458, 79.0882], 11.5);
+                }
+                function nagpurZoomIn() {
+                    var m = getMapInstance();
+                    if(m) m.zoomIn();
+                }
+                function nagpurZoomOut() {
+                    var m = getMapInstance();
+                    if(m) m.zoomOut();
+                }
+            </script>
+            """
+            m.get_root().html.add_child(folium.Element(custom_buttons))
 
             st_folium(m, height=700, use_container_width=True, returned_objects=[])
         else:
