@@ -13,7 +13,7 @@ from jinja2 import Template
 # Set page config with initial_sidebar_state="expanded" so it loads open by default
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING ---
+# --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING & ANIMATIONS ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -26,12 +26,18 @@ st.markdown("""
             font-weight: normal !important;
         }
 
-        /* 1. Eliminate Top Padding to stick banner to the top */
+        /* 1. Page Load Animation (Fade-In & Slide-Up) */
+        @keyframes fadeInSlideUp {
+            0% { opacity: 0; transform: translateY(15px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
         .block-container {
             padding-top: 0.1rem !important; 
             padding-bottom: 1rem !important;
+            animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         
+        /* Sidebar Toggle Button Styling */
         [data-testid="stSidebarHeader"] button, 
         [data-testid="collapsedControl"] {
             opacity: 0 !important;
@@ -85,6 +91,7 @@ st.markdown("""
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
             gap: 0.2rem !important;
+            animation: none !important; /* Sidebar specific */
         }
         section[data-testid="stSidebar"] label {
             font-size: 13px !important;
@@ -93,24 +100,29 @@ st.markdown("""
             color: #334155 !important;
         }
         
-        /* Compact & Sleek Metric Cards */
+        /* 2. Floating Metric Cards Animation */
         div[data-testid="stMetric"] {
             background-color: #f8fafc;
             border: 1px solid #e2e8f0;
             padding: 8px 12px !important;
             border-radius: 8px;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-            transition: all 0.3s ease;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         div[data-testid="stMetric"]:hover {
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            border-color: #cbd5e1;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-color: #93c5fd;
             background-color: #ffffff;
+            transform: translateY(-4px); /* 3D Float Effect */
         }
         div[data-testid="stMetric"] label {
             font-size: 12px !important;
             color: #475569 !important;
             margin-bottom: 2px !important;
+            transition: color 0.3s ease;
+        }
+        div[data-testid="stMetric"]:hover label {
+            color: #1e3a8a !important; /* Blue text on hover */
         }
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
             font-size: 20px !important;
@@ -129,6 +141,8 @@ st.markdown("""
             align-items: center;
             gap: 8px;
         }
+        
+        /* 3. Header Banner Hover Animation */
         .header-banner {
             background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
             padding: 10px 18px;
@@ -140,6 +154,11 @@ st.markdown("""
             box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);
             margin-bottom: 12px;
             margin-top: 0px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .header-banner:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px -3px rgba(30, 58, 138, 0.35);
         }
         .header-banner h2 {
             color: white !important;
@@ -154,7 +173,7 @@ st.markdown("""
             font-weight: 500;
             margin-top: 2px;
         }
-        
+
         .vertical-divider {
             border-left: 2px solid #e2e8f0;
             height: 320px;
@@ -170,6 +189,10 @@ st.markdown("""
             color: #475569;
             font-size: 13px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+            transition: background-color 0.3s ease;
+        }
+        .footer-container:hover {
+            background-color: #f8fafc;
         }
         .footer-container b {
             color: #1e3a8a;
@@ -206,6 +229,21 @@ st.markdown("""
         }
         .ai-alert-text b {
             color: #e11d48;
+        }
+
+        /* 4. Streamlit Interactive Buttons Animation (Reset, Export) */
+        .stButton > button, .stDownloadButton > button {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            border-radius: 6px !important;
+        }
+        .stButton > button:hover, .stDownloadButton > button:hover {
+            transform: scale(1.04) !important;
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15) !important;
+            border-color: #1e3a8a !important;
+            color: #1e3a8a !important;
+        }
+        .stButton > button:active, .stDownloadButton > button:active {
+            transform: scale(0.96) !important; /* Bounce/Press effect */
         }
     </style>
 """, unsafe_allow_html=True)
@@ -430,7 +468,7 @@ if check_password():
             st.sidebar.info("No data available for summary.")
 
         # --- 4. CONSOLIDATED DASHBOARD METRICS ---
-        st.markdown(f"**Active View:** `{selected_zone} Zone` ➔ `{selected_ward}`")
+        st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{selected_zone} Zone` ➔ `{selected_ward}`</span>", unsafe_allow_html=True)
         
         # Calculate status counts dynamically
         status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
