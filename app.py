@@ -191,6 +191,31 @@ st.markdown("""
         .footer-container b {
             color: #1e3a8a;
         }
+        
+        /* AI Alert Box Styling */
+        .ai-alert-box {
+            background: linear-gradient(to right, #f0fdf4, #dcfce7);
+            border-left: 4px solid #22c55e;
+            padding: 15px 18px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            margin-top: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .ai-alert-title {
+            color: #166534;
+            font-weight: 700;
+            font-size: 15px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ai-alert-text {
+            color: #14532d;
+            font-size: 14px;
+            line-height: 1.5;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -442,7 +467,28 @@ if check_password():
                 with status_cols[idx % len(status_cols)]:
                     st.metric(label=f"● Status: {status_name}", value=count_val)
 
-        # --- 4.1 ANALYTICAL CHARTS ---
+        # --- 4.1 AI HEALTH INSIGHTS & ALERT SECTION ---
+        st.markdown("### 🤖 AI Health Insights & Alerts")
+        if not filtered_df.empty:
+            top_d = filtered_df['Disease'].mode()[0] if 'Disease' in filtered_df.columns and not filtered_df['Disease'].empty else "Unknown Disease"
+            top_w = top_ward if 'top_ward' in locals() else "Unknown Ward"
+            
+            ai_message = f"Based on the current filtered dataset, <b>{top_d}</b> is detected as the most prominent disease. The highest transmission risk is actively concentrated in <b>{top_w}</b>. Immediate vector control activities and public health awareness campaigns are recommended in this region."
+            
+            st.markdown(f"""
+                <div class="ai-alert-box">
+                    <div class="ai-alert-title">
+                        <span>✨</span> Automated Health Intelligence
+                    </div>
+                    <div class="ai-alert-text">
+                        {ai_message}
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.info("No data available to generate AI insights.")
+
+        # --- 4.2 ANALYTICAL CHARTS ---
         col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
         
         with col_chart1:
@@ -556,7 +602,7 @@ if check_password():
         )
         
         if geo_data:
-            # zoom_control=False disabled taaki hum apne custom HTML buttons laga sakein
+            # zoom_control=False taaki hum custom buttons manually laga sakein
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -766,7 +812,7 @@ if check_password():
                                 fill_opacity=0.9
                             ).add_to(m)
                 
-            # 1. LAYER CONTROL: Fix to top-right corner
+            # 1. LAYER CONTROL: Set properly at Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
             # 2. MAP BUTTONS: Native Leaflet control injection
@@ -796,10 +842,10 @@ if check_password():
                             }
                         });
                         
-                        // Adding Center button first
+                        // Adding Center button first at bottomright
                         {{this._parent.get_name()}}.addControl(new centerControl());
                         
-                        // Adding Native Zoom buttons (+ / -) right below it
+                        // Adding Native Zoom buttons (+ / -) right below it at bottomright
                         L.control.zoom({position: 'bottomright'}).addTo({{this._parent.get_name()}});
                     {% endmacro %}
                     """)
