@@ -91,7 +91,7 @@ st.markdown("""
             padding-top: 1rem !important;
             padding-bottom: 1rem !important;
             gap: 0.2rem !important;
-            animation: none !important; /* Sidebar specific */
+            animation: none !important;
         }
         section[data-testid="stSidebar"] label {
             font-size: 13px !important;
@@ -113,7 +113,7 @@ st.markdown("""
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             border-color: #93c5fd;
             background-color: #ffffff;
-            transform: translateY(-4px); /* 3D Float Effect */
+            transform: translateY(-4px); 
         }
         div[data-testid="stMetric"] label {
             font-size: 12px !important;
@@ -122,7 +122,7 @@ st.markdown("""
             transition: color 0.3s ease;
         }
         div[data-testid="stMetric"]:hover label {
-            color: #1e3a8a !important; /* Blue text on hover */
+            color: #1e3a8a !important;
         }
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {
             font-size: 20px !important;
@@ -179,6 +179,7 @@ st.markdown("""
             height: 320px;
             margin: auto;
         }
+        
         .footer-container {
             margin-top: 30px;
             padding: 15px;
@@ -231,7 +232,7 @@ st.markdown("""
             color: #e11d48;
         }
 
-        /* 4. Streamlit Interactive Buttons Animation (Reset, Export) */
+        /* 4. Streamlit Interactive Buttons Animation */
         .stButton > button, .stDownloadButton > button {
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
             border-radius: 6px !important;
@@ -243,7 +244,24 @@ st.markdown("""
             color: #1e3a8a !important;
         }
         .stButton > button:active, .stDownloadButton > button:active {
-            transform: scale(0.96) !important; /* Bounce/Press effect */
+            transform: scale(0.96) !important; 
+        }
+
+        /* 5. Chart Container Animations */
+        @keyframes chartZoomIn {
+            0% { opacity: 0; transform: scale(0.97) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .stPlotlyChart {
+            animation: chartZoomIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border-radius: 12px;
+            padding: 5px;
+        }
+        .stPlotlyChart:hover {
+            transform: translateY(-5px);
+            /* Soft shadow on hover for 3D effect */
+            box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
         }
     </style>
 """, unsafe_allow_html=True)
@@ -478,7 +496,6 @@ if check_password():
         metric_cols = st.columns(total_cols)
         
         with metric_cols[0]:
-            # Removed the delta parameter to align sizes
             st.metric("Total Cases (Filtered)", len(filtered_df))
             
         for idx, (status_name, count_val) in enumerate(status_counts.items()):
@@ -530,6 +547,7 @@ if check_password():
                 fig_pie.update_layout(
                     margin=dict(t=10, b=10, l=10, r=10), 
                     height=280,
+                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), # Custom Premium Tooltip
                     legend=dict(
                         orientation="v",
                         yanchor="middle",
@@ -569,6 +587,7 @@ if check_password():
                     coloraxis_showscale=False,
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
+                    hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), # Custom Premium Tooltip
                     yaxis=dict(showgrid=True, gridcolor='#f1f5f9')
                 )
                 st.plotly_chart(fig_bar, use_container_width=True)
@@ -602,7 +621,8 @@ if check_password():
                 xaxis=dict(title='', showgrid=False),
                 yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'),
                 plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)'
+                paper_bgcolor='rgba(0,0,0,0)',
+                hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1") # Custom Premium Tooltip
             )
             st.plotly_chart(fig_timeline, use_container_width=True)
         else:
