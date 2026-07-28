@@ -154,6 +154,7 @@ st.markdown("""
             font-weight: 500;
             margin-top: 2px;
         }
+        
         .vertical-divider {
             border-left: 2px solid #e2e8f0;
             height: 320px;
@@ -174,15 +175,20 @@ st.markdown("""
             color: #1e3a8a;
         }
         
-        /* Unified AI Alert Box Styling */
+        /* Unified AI Alert Box Styling with Pulsating Effect */
+        @keyframes ai-pulse {
+            0% { background-color: #fff1f2; border-left-color: #e11d48; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+            50% { background-color: #fecdd3; border-left-color: #9f1239; box-shadow: 0 4px 12px rgba(225, 29, 72, 0.2); }
+            100% { background-color: #fff1f2; border-left-color: #e11d48; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        }
+        
         .ai-alert-box {
-            background: linear-gradient(to right, #fff1f2, #ffe4e6);
-            border-left: 4px solid #e11d48;
             padding: 15px 18px;
             border-radius: 8px;
             margin-bottom: 20px;
             margin-top: 10px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-left: 4px solid;
+            animation: ai-pulse 2.5s infinite ease-in-out;
         }
         .ai-alert-title {
             color: #9f1239;
