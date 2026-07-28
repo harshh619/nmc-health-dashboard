@@ -636,7 +636,6 @@ if check_password():
         )
         
         if geo_data:
-            # ✅ SOLUTION: Yaha zoom_control=False rakha hai taki custom macro se proper add kar sakein
             m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
             
             folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -849,10 +848,47 @@ if check_password():
             # LAYER CONTROL: Set properly at Top-Right
             folium.LayerControl(position='topright').add_to(m)
 
-            # --- 🚀 THE 100% BULLETPROOF NATIVE MACRO SOLUTION ---
-            # Hum ek native script banayenge jo Leaflet ke engine me seedha inject hogi.
-            # Ye Streamlit Iframe Security ko puri tarah bypass kar degi!
-            
+            # --- 🚀 NEW ADDITION: FLOATING COLOR LEGEND (BOTTOM LEFT) ---
+            legend_html = """
+            <div style="
+                position: fixed; 
+                bottom: 25px; 
+                left: 20px; 
+                width: 155px; 
+                background-color: rgba(255, 255, 255, 0.95); 
+                border: 2px solid rgba(0,0,0,0.15); 
+                z-index: 9999; 
+                font-family: 'Inter', sans-serif;
+                font-size: 12px;
+                padding: 12px;
+                border-radius: 8px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+                pointer-events: auto;
+                ">
+                <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b>
+                <hr style="margin: 6px 0; border: none; border-top: 1px solid #cbd5e1;">
+                <div style="display:flex; align-items:center; margin-top:5px;">
+                    <div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span>
+                </div>
+                <div style="display:flex; align-items:center; margin-top:6px;">
+                    <div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span>
+                </div>
+                <div style="display:flex; align-items:center; margin-top:6px;">
+                    <div style="width:14px; height:14px; background-color:#feb24c; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate</span>
+                </div>
+                <div style="display:flex; align-items:center; margin-top:6px;">
+                    <div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span>
+                </div>
+                <div style="display:flex; align-items:center; margin-top:6px;">
+                    <div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span>
+                </div>
+            </div>
+            """
+            # Inject floating legend into the map
+            m.get_root().html.add_child(folium.Element(legend_html))
+
+
+            # --- NATIVE MAP CONTROLS MACRO ---
             class CustomMapControls(MacroElement):
                 _template = Template("""
                     {% macro script(this, kwargs) %}
