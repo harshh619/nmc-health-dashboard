@@ -478,7 +478,8 @@ if check_password():
         metric_cols = st.columns(total_cols)
         
         with metric_cols[0]:
-            st.metric("Total Cases (Filtered)", len(filtered_df), delta="Live Data")
+            # Removed the delta parameter to align sizes
+            st.metric("Total Cases (Filtered)", len(filtered_df))
             
         for idx, (status_name, count_val) in enumerate(status_counts.items()):
             with metric_cols[idx + 1]:
