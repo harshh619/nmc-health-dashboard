@@ -167,7 +167,7 @@ if check_password():
             mapping_df.rename(columns={'name': 'Ward_Name', 'description': 'Zone'}, inplace=True)
             mapping_df['Zone'] = mapping_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
             
-            # Smart Fallback for Simplified GeoJSON
+            # Smart Fallback for TopoJSON / Simplified GeoJSON
             file_to_load = 'wards_simplified.geojson' if os.path.exists('wards_simplified.geojson') else 'wards.geojson'
             
             with open(file_to_load, encoding='utf-8') as f:
@@ -187,63 +187,42 @@ if check_password():
             st.error(f"Static file load error: {e}")
             return None, None
 
-    # --- 3. HIGH-PERFORMANCE SUPABASE DATABASE DATA ENGINE WITH FALLBACK ---
+    # --- 3. 🚀 HIGH-PERFORMANCE PARQUET DATA ENGINE ---
     @st.cache_data(ttl=60)
     def load_patient_data():
-        try:
-            url = st.secrets["SUPABASE_URL"]
-            key = st.secrets["SUPABASE_KEY"]
-            rest_url = f"{url}/rest/v1/patients_data?select=*"
-            headers = {
-                "apikey": key,
-                "Authorization": f"Bearer {key}"
-            }
-            res = requests.get(rest_url, headers=headers, timeout=5)
-            if res.status_code == 200:
-                data = res.json()
-                patient_df = pd.DataFrame(data)
-                if 'Date' in patient_df.columns:
-                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
-                if 'Zone' in patient_df.columns:
-                    patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-                return patient_df
-            else:
-                raise Exception(f"API Error Code: {res.status_code}")
-        except Exception as e:
-            # FALLBACK TO GOOGLE SHEETS / CSV
-            st.warning(f"⚠️ Database connection warning, falling back to Live Google Sheets... ({e})")
-            url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
+        parquet_file = 'patients_data.parquet'
+        
+        # METHOD A: Ultra-Fast Parquet Load (Runs in milliseconds)
+        if os.path.exists(parquet_file):
             try:
-                patient_df = pd.read_csv(url)
-                if 'Date' in patient_df.columns:
-                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
+                patient_df = pd.read_parquet(parquet_file, engine='pyarrow')
+                # Ensure Date is parsed securely
+                if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
+                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
+                
+                # Cleanup Zones securely
                 if 'Zone' in patient_df.columns:
                     patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
                 return patient_df
-            except:
-                return pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
+            except Exception as e:
+                st.warning(f"Parquet engine failed, falling back to CSV Engine. Error: {e}")
+        
+        # METHOD B: Live Google Sheets / CSV Fallback
+        url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
+        try:
+            patient_df = pd.read_csv(url)
+            if 'Date' in patient_df.columns:
+                patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
+            if 'Zone' in patient_df.columns:
+                patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+            return patient_df
+        except:
+            return pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
 
-    # DATA LOAD
     mapping_df, geo_data = load_static_data()
     raw_patient_df = load_patient_data()
 
     if raw_patient_df is not None and mapping_df is not None:
-        
-        # --- BULLETPROOF FIX: Handle Empty Table and Lowercase Columns ---
-        if raw_patient_df.empty and len(raw_patient_df.columns) == 0:
-            raw_patient_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
-        
-        col_mapping = {
-            'date': 'Date', 'patient_id': 'Patient_ID', 'patient_name': 'Patient_Name',
-            'disease': 'Disease', 'ward_name': 'Ward_Name', 'zone': 'Zone',
-            'lat': 'Lat', 'long': 'Long', 'status': 'Status'
-        }
-        raw_patient_df.rename(columns=col_mapping, inplace=True)
-        
-        if 'Ward_Name' not in raw_patient_df.columns:
-            raw_patient_df['Ward_Name'] = 'Unknown'
-
-        # MERGE DATA
         patient_df = pd.merge(raw_patient_df, mapping_df[['Ward_Name', 'Zone']], on='Ward_Name', how='left', suffixes=('', '_map'))
         if 'Zone_map' in patient_df.columns:
             patient_df['Zone'] = patient_df['Zone'].fillna(patient_df['Zone_map'])
@@ -527,6 +506,7 @@ if check_password():
             col_t1, col_t2 = st.columns([8, 2], vertical_alignment="bottom")
             with col_t1: st.markdown("### 📋 Patient Details")
             with col_t2:
+                # Keep Export as CSV because end-users usually open data in Excel
                 csv_data = filtered_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="📥 Export CSV", data=csv_data, file_name="NMC_Health_Report.csv", mime="text/csv", use_container_width=True)
 
