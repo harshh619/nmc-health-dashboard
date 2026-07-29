@@ -9,6 +9,7 @@ from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
 import requests
+import os
 
 # Set page config
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
@@ -158,7 +159,7 @@ if check_password():
     with w_col2: st.metric("💧 Relative Humidity", f"{humidity} %", delta="Vector-Borne Risk Factor")
     with w_col3: st.metric("🌧️ Precipitation / Rainfall", f"{rainfall} mm", delta="Waterlogging Index")
 
-    # --- 2. OPTIMIZED DATA LOADING ---
+    # --- 2. OPTIMIZED STATIC DATA LOADING ---
     @st.cache_data(ttl=86400)
     def load_static_data():
         try:
@@ -166,7 +167,10 @@ if check_password():
             mapping_df.rename(columns={'name': 'Ward_Name', 'description': 'Zone'}, inplace=True)
             mapping_df['Zone'] = mapping_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
             
-            with open('wards_simplified.geojson', encoding='utf-8') as f:
+            # Smart Fallback for Simplified GeoJSON
+            file_to_load = 'wards_simplified.geojson' if os.path.exists('wards_simplified.geojson') else 'wards.geojson'
+            
+            with open(file_to_load, encoding='utf-8') as f:
                 geo_data = json.load(f)
                 
             for feature in geo_data['features']:
@@ -183,23 +187,63 @@ if check_password():
             st.error(f"Static file load error: {e}")
             return None, None
 
+    # --- 3. HIGH-PERFORMANCE SUPABASE DATABASE DATA ENGINE WITH FALLBACK ---
     @st.cache_data(ttl=60)
     def load_patient_data():
-        url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
         try:
-            patient_df = pd.read_csv(url)
-            if 'Date' in patient_df.columns:
-                patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
-            if 'Zone' in patient_df.columns:
-                patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-            return patient_df
-        except:
-            return pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
+            url = st.secrets["SUPABASE_URL"]
+            key = st.secrets["SUPABASE_KEY"]
+            rest_url = f"{url}/rest/v1/patients_data?select=*"
+            headers = {
+                "apikey": key,
+                "Authorization": f"Bearer {key}"
+            }
+            res = requests.get(rest_url, headers=headers, timeout=5)
+            if res.status_code == 200:
+                data = res.json()
+                patient_df = pd.DataFrame(data)
+                if 'Date' in patient_df.columns:
+                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
+                if 'Zone' in patient_df.columns:
+                    patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+                return patient_df
+            else:
+                raise Exception(f"API Error Code: {res.status_code}")
+        except Exception as e:
+            # FALLBACK TO GOOGLE SHEETS / CSV
+            st.warning(f"⚠️ Database connection warning, falling back to Live Google Sheets... ({e})")
+            url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
+            try:
+                patient_df = pd.read_csv(url)
+                if 'Date' in patient_df.columns:
+                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
+                if 'Zone' in patient_df.columns:
+                    patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+                return patient_df
+            except:
+                return pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
 
+    # DATA LOAD
     mapping_df, geo_data = load_static_data()
     raw_patient_df = load_patient_data()
 
     if raw_patient_df is not None and mapping_df is not None:
+        
+        # --- BULLETPROOF FIX: Handle Empty Table and Lowercase Columns ---
+        if raw_patient_df.empty and len(raw_patient_df.columns) == 0:
+            raw_patient_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
+        
+        col_mapping = {
+            'date': 'Date', 'patient_id': 'Patient_ID', 'patient_name': 'Patient_Name',
+            'disease': 'Disease', 'ward_name': 'Ward_Name', 'zone': 'Zone',
+            'lat': 'Lat', 'long': 'Long', 'status': 'Status'
+        }
+        raw_patient_df.rename(columns=col_mapping, inplace=True)
+        
+        if 'Ward_Name' not in raw_patient_df.columns:
+            raw_patient_df['Ward_Name'] = 'Unknown'
+
+        # MERGE DATA
         patient_df = pd.merge(raw_patient_df, mapping_df[['Ward_Name', 'Zone']], on='Ward_Name', how='left', suffixes=('', '_map'))
         if 'Zone_map' in patient_df.columns:
             patient_df['Zone'] = patient_df['Zone'].fillna(patient_df['Zone_map'])
@@ -212,7 +256,6 @@ if check_password():
 
         # =====================================================================
         # 🚀 STREAMLIT FRAGMENT: INTERACTIVE DASHBOARD SECTION
-        # Filters update instantly here without reloading the whole page!
         # =====================================================================
         @st.fragment
         def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date):
@@ -226,7 +269,6 @@ if check_password():
                     st.session_state['start_date'] = min_date
                     st.session_state['end_date'] = max_date
 
-            # --- 3. SIDEBAR SMART FILTERS ---
             with st.sidebar:
                 col_header, col_reset = st.columns([5, 3])
                 with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
@@ -266,7 +308,6 @@ if check_password():
                 selected_status = st.selectbox("Select Patient Status", status_options, key="status_filter")
                 if selected_status != "All": filtered_df = filtered_df[filtered_df['Status'] == selected_status]
 
-                # --- ZONE-WISE SUMMARY TABLE ---
                 st.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
                 st.markdown("<h3 style='margin-top:0px; margin-bottom: 5px; font-size: 15px;'>📊 Zone-wise Cases</h3>", unsafe_allow_html=True)
                 if not filtered_df.empty and 'Zone' in filtered_df.columns:
@@ -274,7 +315,7 @@ if check_password():
                     zone_summary.columns = ['Zone', 'Cases']
                     st.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
 
-            # --- 4. CONSOLIDATED DASHBOARD METRICS ---
+            # --- CONSOLIDATED DASHBOARD METRICS ---
             st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{selected_zone} Zone` ➔ `{selected_ward}`</span>", unsafe_allow_html=True)
             
             status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
@@ -284,7 +325,7 @@ if check_password():
             for idx, (status_name, count_val) in enumerate(status_counts.items()):
                 with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val)
 
-            # --- 4.1 UNIFIED AI HEALTH INSIGHTS ---
+            # --- AI HEALTH INSIGHTS ---
             if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
                 top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
                 top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
@@ -300,7 +341,7 @@ if check_password():
                     </div>
                 """, unsafe_allow_html=True)
 
-            # --- 4.2 ANALYTICAL CHARTS ---
+            # --- ANALYTICAL CHARTS ---
             col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
             
             with col_chart1:
@@ -337,7 +378,7 @@ if check_password():
                 fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=260, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
                 st.plotly_chart(fig_timeline, use_container_width=True)
             
-            # --- 5. FAST FOLIUM MAP RENDERING (WITH PATIENT CLUSTER VIEW) ---
+            # --- FAST FOLIUM MAP RENDERING ---
             st.markdown("### 📍 Patients Map View")
             map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
             
@@ -387,10 +428,8 @@ if check_password():
                     zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                     ward_cases = clean_ward_counts.get(clean_ward, 0)
                     
-                    if selected_ward != "All":
-                        zone_cases = ward_cases if clean_ward == selected_ward_clean else 0
-                    else:
-                        zone_cases = clean_zone_counts.get(zone_name, 0)
+                    if selected_ward != "All": zone_cases = ward_cases if clean_ward == selected_ward_clean else 0
+                    else: zone_cases = clean_zone_counts.get(zone_name, 0)
                     
                     feature['properties']['Clean_Zone'] = zone_name
                     feature['properties']['Ward_Cases'] = ward_cases
@@ -495,10 +534,9 @@ if check_password():
             if 'Date' in display_df.columns: display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
             st.dataframe(display_df, use_container_width=True)
 
-        # Call the Fragment to Render
         interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date)
 
-        # --- PROFESSIONAL FOOTER (Runs only once initially) ---
+        # --- PROFESSIONAL FOOTER ---
         st.markdown("""
             <div class="footer-container">
                 <div><b>Nagpur Municipal Corporation (NMC)</b> - Public Health Intelligence & Disease Surveillance Portal</div>
