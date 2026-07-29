@@ -187,7 +187,7 @@ if check_password():
             st.error(f"Static file load error: {e}")
             return None, None
 
-    # --- 3. 🚀 HIGH-PERFORMANCE PARQUET DATA ENGINE ---
+    # --- 3. 🚀 HIGH-PERFORMANCE MULTI-TIER DATA ENGINE ---
     @st.cache_data(ttl=60)
     def load_patient_data():
         parquet_file = 'patients_data.parquet'
@@ -196,18 +196,28 @@ if check_password():
         if os.path.exists(parquet_file):
             try:
                 patient_df = pd.read_parquet(parquet_file, engine='pyarrow')
-                # Ensure Date is parsed securely
                 if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
                     patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
-                
-                # Cleanup Zones securely
                 if 'Zone' in patient_df.columns:
                     patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
                 return patient_df
-            except Exception as e:
-                st.warning(f"Parquet engine failed, falling back to CSV Engine. Error: {e}")
+            except Exception:
+                pass
         
-        # METHOD B: Live Google Sheets / CSV Fallback
+        # METHOD B: Supabase PostgreSQL Connection (Highly Scalable)
+        try:
+            conn = st.connection("supabase", type="sql")
+            patient_df = conn.query("SELECT * FROM patients_data", ttl=60)
+            
+            if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
+                patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
+            if 'Zone' in patient_df.columns:
+                patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+            return patient_df
+        except Exception:
+            pass # Fallback if Supabase is not configured yet
+            
+        # METHOD C: Live Google Sheets / CSV Fallback
         url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
         try:
             patient_df = pd.read_csv(url)
@@ -330,7 +340,7 @@ if check_password():
                     disease_df.columns = ['Disease', 'Count']
                     fig_pie = px.pie(disease_df, names='Disease', values='Count', hole=0.45, color_discrete_sequence=px.colors.qualitative.Bold)
                     
-                    # PERCENT + BOLD VALUE IMPLEMENTED HERE
+                    # BOLD VALUE + PERCENTAGE IMPLEMENTED HERE
                     fig_pie.update_traces(texttemplate='<b>%{value}</b><br>%{percent:.1%}', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
                     
                     fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.82))
