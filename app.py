@@ -187,50 +187,32 @@ if check_password():
             st.error(f"Static file load error: {e}")
             return None, None
 
-    # --- 3. 🚀 HIGH-PERFORMANCE MULTI-TIER DATA ENGINE ---
+    # --- 3. 🚀 SUPABASE DIRECT SQL CONNECTION ---
     @st.cache_data(ttl=60)
     def load_patient_data():
-        parquet_file = 'patients_data.parquet'
-        
-        # METHOD A: Ultra-Fast Parquet Load (Runs in milliseconds)
-        if os.path.exists(parquet_file):
-            try:
-                patient_df = pd.read_parquet(parquet_file, engine='pyarrow')
-                if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
-                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
-                if 'Zone' in patient_df.columns:
-                    patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-                return patient_df
-            except Exception:
-                pass
-        
-        # METHOD B: Supabase PostgreSQL Connection (Highly Scalable)
         try:
+            # DIRECTLY CONNECTING TO SUPABASE
             conn = st.connection("supabase", type="sql")
-            patient_df = conn.query("SELECT * FROM patients_data", ttl=60)
+            patient_df = conn.query("SELECT * FROM patients_data;", ttl=60)
             
+            # Date format parsing
             if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
                 patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
-            if 'Zone' in patient_df.columns:
-                patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-            return patient_df
-        except Exception:
-            pass # Fallback if Supabase is not configured yet
             
-        # METHOD C: Live Google Sheets / CSV Fallback
-        url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
-        try:
-            patient_df = pd.read_csv(url)
-            if 'Date' in patient_df.columns:
-                patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
+            # Clean Zone formatting
             if 'Zone' in patient_df.columns:
                 patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-            return patient_df
-        except:
-            return pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
+            
+            return patient_df, "Supabase Database"
+            
+        except Exception as e:
+            st.error(f"⚠️ Supabase Connection Error: {e}")
+            # Agar database fail ho jaye toh blank table de dega error rokne ke liye
+            empty_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
+            return empty_df, "Connection Error"
 
     mapping_df, geo_data = load_static_data()
-    raw_patient_df = load_patient_data()
+    raw_patient_df, data_source = load_patient_data()
 
     if raw_patient_df is not None and mapping_df is not None:
         patient_df = pd.merge(raw_patient_df, mapping_df[['Ward_Name', 'Zone']], on='Ward_Name', how='left', suffixes=('', '_map'))
@@ -247,7 +229,7 @@ if check_password():
         # 🚀 STREAMLIT FRAGMENT: INTERACTIVE DASHBOARD SECTION
         # =====================================================================
         @st.fragment
-        def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date):
+        def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source):
             
             def clear_filters():
                 st.session_state['disease_filter'] = "All"
@@ -259,6 +241,39 @@ if check_password():
                     st.session_state['end_date'] = max_date
 
             with st.sidebar:
+                # --- SUPABASE LIVE INDICATOR ---
+                is_connected = "Supabase" in data_source
+                indicator_color = "#2ed573" if is_connected else "#ef4444"
+                status_text = "Live: Connected" if is_connected else "Disconnected"
+                
+                indicator_html = f"""
+                <style>
+                @keyframes pulse-dot {{
+                    0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 {indicator_color}99; }}
+                    70% {{ transform: scale(1); box-shadow: 0 0 0 10px {indicator_color}00; }}
+                    100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 {indicator_color}00; }}
+                }}
+                .db-indicator-box {{
+                    display: flex; align-items: center; padding: 12px 15px;
+                    background-color: {indicator_color}15; border-radius: 8px;
+                    border: 1px solid {indicator_color}33; margin-bottom: 20px;
+                }}
+                .db-blob {{
+                    background: {indicator_color}; border-radius: 50%; height: 12px; width: 12px; min-width: 12px;
+                    box-shadow: 0 0 0 0 {indicator_color}; animation: pulse-dot 1.5s infinite; margin-right: 12px;
+                }}
+                .db-text {{
+                    font-weight: 600; color: {indicator_color}; font-size: 14px; margin: 0; padding: 0;
+                }}
+                </style>
+                <div class="db-indicator-box">
+                    <div class="db-blob"></div>
+                    <div class="db-text">{status_text}</div>
+                </div>
+                """
+                st.markdown(indicator_html, unsafe_allow_html=True)
+                # ---------------------------------------------------
+
                 col_header, col_reset = st.columns([5, 3])
                 with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
                 with col_reset: st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
@@ -527,7 +542,7 @@ if check_password():
             if 'Date' in display_df.columns: display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
             st.dataframe(display_df, use_container_width=True)
 
-        interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date)
+        interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source)
 
         # --- PROFESSIONAL FOOTER ---
         st.markdown("""
