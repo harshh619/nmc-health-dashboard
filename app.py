@@ -329,7 +329,10 @@ if check_password():
                     disease_df = filtered_df['Disease'].value_counts().reset_index()
                     disease_df.columns = ['Disease', 'Count']
                     fig_pie = px.pie(disease_df, names='Disease', values='Count', hole=0.45, color_discrete_sequence=px.colors.qualitative.Bold)
-                    fig_pie.update_traces(textinfo='percent', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
+                    
+                    # PERCENT + VALUE IMPLEMENTED HERE
+                    fig_pie.update_traces(textinfo='percent+value', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
+                    
                     fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.82))
                     st.plotly_chart(fig_pie, use_container_width=True)
 
