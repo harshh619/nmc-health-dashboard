@@ -166,7 +166,7 @@ if check_password():
             mapping_df.rename(columns={'name': 'Ward_Name', 'description': 'Zone'}, inplace=True)
             mapping_df['Zone'] = mapping_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
             
-            with open('wards.geojson', encoding='utf-8') as f:
+            with open('wards_simplified.geojson', encoding='utf-8') as f:
                 geo_data = json.load(f)
                 
             for feature in geo_data['features']:
