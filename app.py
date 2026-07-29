@@ -188,7 +188,6 @@ if check_password():
             return None, None
 
     # --- 3. 🚀 HIGH-PERFORMANCE MULTI-TIER DATA ENGINE ---
-    # Yahan humne function ko modify kiya hai taaki wo (dataframe, source_name) return kare
     @st.cache_data(ttl=60)
     def load_patient_data():
         parquet_file = 'patients_data.parquet'
@@ -201,7 +200,7 @@ if check_password():
                     patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
                 if 'Zone' in patient_df.columns:
                     patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-                return patient_df, "Parquet"
+                return patient_df
             except Exception:
                 pass
         
@@ -214,7 +213,7 @@ if check_password():
                 patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
             if 'Zone' in patient_df.columns:
                 patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-            return patient_df, "Supabase"
+            return patient_df
         except Exception:
             pass # Fallback if Supabase is not configured yet
             
@@ -226,14 +225,12 @@ if check_password():
                 patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
             if 'Zone' in patient_df.columns:
                 patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-            return patient_df, "Google Sheets"
+            return patient_df
         except:
-            empty_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
-            return empty_df, "Offline/Error"
+            return pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
 
     mapping_df, geo_data = load_static_data()
-    # Yahan humne data_source variable receive kiya
-    raw_patient_df, data_source = load_patient_data()
+    raw_patient_df = load_patient_data()
 
     if raw_patient_df is not None and mapping_df is not None:
         patient_df = pd.merge(raw_patient_df, mapping_df[['Ward_Name', 'Zone']], on='Ward_Name', how='left', suffixes=('', '_map'))
@@ -250,8 +247,7 @@ if check_password():
         # 🚀 STREAMLIT FRAGMENT: INTERACTIVE DASHBOARD SECTION
         # =====================================================================
         @st.fragment
-        # Yahan fragment ko data_source pass kiya gaya hai
-        def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source):
+        def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date):
             
             def clear_filters():
                 st.session_state['disease_filter'] = "All"
@@ -263,44 +259,6 @@ if check_password():
                     st.session_state['end_date'] = max_date
 
             with st.sidebar:
-                # --- NEW ADDITION: DATABASE CONNECTION INDICATOR ---
-                if "Supabase" in data_source:
-                    indicator_color = "#2ed573" # Green
-                elif "Google Sheets" in data_source:
-                    indicator_color = "#3b82f6" # Blue
-                elif "Parquet" in data_source:
-                    indicator_color = "#eab308" # Yellow
-                else:
-                    indicator_color = "#ef4444" # Red
-                    
-                indicator_html = f"""
-                <style>
-                @keyframes pulse-dot {{
-                    0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 {indicator_color}99; }}
-                    70% {{ transform: scale(1); box-shadow: 0 0 0 10px {indicator_color}00; }}
-                    100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 {indicator_color}00; }}
-                }}
-                .db-indicator-box {{
-                    display: flex; align-items: center; padding: 12px 15px;
-                    background-color: {indicator_color}15; border-radius: 8px;
-                    border: 1px solid {indicator_color}33; margin-bottom: 20px;
-                }}
-                .db-blob {{
-                    background: {indicator_color}; border-radius: 50%; height: 12px; width: 12px; min-width: 12px;
-                    box-shadow: 0 0 0 0 {indicator_color}; animation: pulse-dot 1.5s infinite; margin-right: 12px;
-                }}
-                .db-text {{
-                    font-weight: 600; color: {indicator_color}; font-size: 14px; margin: 0; padding: 0;
-                }}
-                </style>
-                <div class="db-indicator-box" title="Data Source: {data_source}">
-                    <div class="db-blob"></div>
-                    <div class="db-text">Live: {data_source}</div>
-                </div>
-                """
-                st.markdown(indicator_html, unsafe_allow_html=True)
-                # ---------------------------------------------------
-
                 col_header, col_reset = st.columns([5, 3])
                 with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
                 with col_reset: st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
@@ -569,8 +527,7 @@ if check_password():
             if 'Date' in display_df.columns: display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
             st.dataframe(display_df, use_container_width=True)
 
-        # Pass data_source to the fragment here
-        interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source)
+        interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date)
 
         # --- PROFESSIONAL FOOTER ---
         st.markdown("""
