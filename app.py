@@ -211,6 +211,7 @@ if check_password():
                 raise Exception(f"API Error Code: {res.status_code}")
         except Exception as e:
             # FALLBACK TO GOOGLE SHEETS / CSV
+            st.warning(f"⚠️ Database connection warning, falling back to Live Google Sheets... ({e})")
             url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
             try:
                 patient_df = pd.read_csv(url)
@@ -222,10 +223,27 @@ if check_password():
             except:
                 return pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
 
+    # DATA LOAD
     mapping_df, geo_data = load_static_data()
     raw_patient_df = load_patient_data()
 
     if raw_patient_df is not None and mapping_df is not None:
+        
+        # --- BULLETPROOF FIX: Handle Empty Table and Lowercase Columns ---
+        if raw_patient_df.empty and len(raw_patient_df.columns) == 0:
+            raw_patient_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
+        
+        col_mapping = {
+            'date': 'Date', 'patient_id': 'Patient_ID', 'patient_name': 'Patient_Name',
+            'disease': 'Disease', 'ward_name': 'Ward_Name', 'zone': 'Zone',
+            'lat': 'Lat', 'long': 'Long', 'status': 'Status'
+        }
+        raw_patient_df.rename(columns=col_mapping, inplace=True)
+        
+        if 'Ward_Name' not in raw_patient_df.columns:
+            raw_patient_df['Ward_Name'] = 'Unknown'
+
+        # MERGE DATA
         patient_df = pd.merge(raw_patient_df, mapping_df[['Ward_Name', 'Zone']], on='Ward_Name', how='left', suffixes=('', '_map'))
         if 'Zone_map' in patient_df.columns:
             patient_df['Zone'] = patient_df['Zone'].fillna(patient_df['Zone_map'])
