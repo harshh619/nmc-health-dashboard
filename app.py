@@ -186,23 +186,31 @@ if check_password():
             st.error(f"Static file load error: {e}")
             return None, None
 
-    # --- 3. 🚀 SUPABASE DATA ENGINE WITH GOOGLE SHEETS FALLBACK ---
+    # --- 3. 🚀 SUPABASE API CLIENT DATA ENGINE WITH FALLBACK ---
     @st.cache_data(ttl=60)
     def load_patient_data():
-        # Try Supabase Connection First
         try:
-            conn = st.connection("supabase", type="sql")
-            patient_df = conn.query("SELECT * FROM patients_data;", ttl=60)
+            from supabase import create_client, Client
             
-            if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
-                patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
-            if 'Zone' in patient_df.columns:
-                patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+            # Using your provided Supabase credentials
+            url = "https://oysmagibpobxsipxjzpd.supabase.co"
+            key = "sb_secret_yX2l6GXr0lKngsCY_CxSng_phLv7wH_"
+            
+            supabase: Client = create_client(url, key)
+            response = supabase.table("patients_data").select("*").execute()
+            
+            patient_df = pd.DataFrame(response.data)
             
             if not patient_df.empty:
-                return patient_df, "Supabase Database"
+                if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
+                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
+                if 'Zone' in patient_df.columns:
+                    patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+                return patient_df, "Supabase API ⚡"
+            else:
+                raise Exception("Empty table")
         except Exception:
-            pass # Fallback to Google Sheets if Supabase is not configured yet
+            pass # Fallback to Google Sheets if API fails
             
         # Fallback to Google Sheets CSV
         url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
@@ -212,10 +220,10 @@ if check_password():
                 patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
             if 'Zone' in patient_df.columns:
                 patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-            return patient_df, "Google Sheets"
+            return patient_df, "Google Sheets 📊"
         except:
             empty_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
-            return empty_df, "Offline / Error"
+            return empty_df, "Offline ❌"
 
     mapping_df, geo_data = load_static_data()
     raw_patient_df, data_source = load_patient_data()
