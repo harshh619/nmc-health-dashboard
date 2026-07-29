@@ -202,10 +202,6 @@ if check_password():
             if res.status_code == 200:
                 data = res.json()
                 patient_df = pd.DataFrame(data)
-                if 'Date' in patient_df.columns:
-                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
-                if 'Zone' in patient_df.columns:
-                    patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
                 return patient_df
             else:
                 raise Exception(f"API Error Code: {res.status_code}")
@@ -215,10 +211,6 @@ if check_password():
             url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
             try:
                 patient_df = pd.read_csv(url)
-                if 'Date' in patient_df.columns:
-                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
-                if 'Zone' in patient_df.columns:
-                    patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
                 return patient_df
             except:
                 return pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
@@ -242,6 +234,12 @@ if check_password():
         
         if 'Ward_Name' not in raw_patient_df.columns:
             raw_patient_df['Ward_Name'] = 'Unknown'
+
+        # --- THE ULTIMATE DATETIME FIX (Works even if table is empty) ---
+        if 'Date' in raw_patient_df.columns:
+            raw_patient_df['Date'] = pd.to_datetime(raw_patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
+        if 'Zone' in raw_patient_df.columns:
+            raw_patient_df['Zone'] = raw_patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
 
         # MERGE DATA
         patient_df = pd.merge(raw_patient_df, mapping_df[['Ward_Name', 'Zone']], on='Ward_Name', how='left', suffixes=('', '_map'))
