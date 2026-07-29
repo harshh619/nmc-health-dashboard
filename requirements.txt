@@ -6,3 +6,4 @@ streamlit-folium
 plotly
 SQLAlchemy
 psycopg2-binary
+pyarrow
