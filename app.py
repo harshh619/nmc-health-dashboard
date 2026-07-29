@@ -167,7 +167,6 @@ if check_password():
             mapping_df.rename(columns={'name': 'Ward_Name', 'description': 'Zone'}, inplace=True)
             mapping_df['Zone'] = mapping_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
             
-            # Smart Fallback for TopoJSON / Simplified GeoJSON
             file_to_load = 'wards_simplified.geojson' if os.path.exists('wards_simplified.geojson') else 'wards.geojson'
             
             with open(file_to_load, encoding='utf-8') as f:
@@ -187,29 +186,36 @@ if check_password():
             st.error(f"Static file load error: {e}")
             return None, None
 
-    # --- 3. 🚀 SUPABASE DIRECT SQL CONNECTION ---
+    # --- 3. 🚀 SUPABASE DATA ENGINE WITH GOOGLE SHEETS FALLBACK ---
     @st.cache_data(ttl=60)
     def load_patient_data():
+        # Try Supabase Connection First
         try:
-            # DIRECTLY CONNECTING TO SUPABASE
             conn = st.connection("supabase", type="sql")
             patient_df = conn.query("SELECT * FROM patients_data;", ttl=60)
             
-            # Date format parsing
             if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
                 patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
-            
-            # Clean Zone formatting
             if 'Zone' in patient_df.columns:
                 patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
             
-            return patient_df, "Supabase Database"
+            if not patient_df.empty:
+                return patient_df, "Supabase Database"
+        except Exception:
+            pass # Fallback to Google Sheets if Supabase is not configured yet
             
-        except Exception as e:
-            st.error(f"⚠️ Supabase Connection Error: {e}")
-            # Agar database fail ho jaye toh blank table de dega error rokne ke liye
+        # Fallback to Google Sheets CSV
+        url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
+        try:
+            patient_df = pd.read_csv(url)
+            if 'Date' in patient_df.columns:
+                patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
+            if 'Zone' in patient_df.columns:
+                patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+            return patient_df, "Google Sheets"
+        except:
             empty_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
-            return empty_df, "Connection Error"
+            return empty_df, "Offline / Error"
 
     mapping_df, geo_data = load_static_data()
     raw_patient_df, data_source = load_patient_data()
@@ -241,10 +247,9 @@ if check_password():
                     st.session_state['end_date'] = max_date
 
             with st.sidebar:
-                # --- SUPABASE LIVE INDICATOR ---
-                is_connected = "Supabase" in data_source
-                indicator_color = "#2ed573" if is_connected else "#ef4444"
-                status_text = "Live: Connected" if is_connected else "Disconnected"
+                # --- LIVE DATABASE STATUS INDICATOR ---
+                is_supabase = "Supabase" in data_source
+                indicator_color = "#2ed573" if is_supabase else "#3b82f6"
                 
                 indicator_html = f"""
                 <style>
@@ -254,25 +259,25 @@ if check_password():
                     100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 {indicator_color}00; }}
                 }}
                 .db-indicator-box {{
-                    display: flex; align-items: center; padding: 12px 15px;
+                    display: flex; align-items: center; padding: 10px 14px;
                     background-color: {indicator_color}15; border-radius: 8px;
-                    border: 1px solid {indicator_color}33; margin-bottom: 20px;
+                    border: 1px solid {indicator_color}33; margin-bottom: 15px;
                 }}
                 .db-blob {{
-                    background: {indicator_color}; border-radius: 50%; height: 12px; width: 12px; min-width: 12px;
-                    box-shadow: 0 0 0 0 {indicator_color}; animation: pulse-dot 1.5s infinite; margin-right: 12px;
+                    background: {indicator_color}; border-radius: 50%; height: 10px; width: 10px; min-width: 10px;
+                    box-shadow: 0 0 0 0 {indicator_color}; animation: pulse-dot 1.5s infinite; margin-right: 10px;
                 }}
                 .db-text {{
-                    font-weight: 600; color: {indicator_color}; font-size: 14px; margin: 0; padding: 0;
+                    font-weight: 600; color: {indicator_color}; font-size: 13px; margin: 0; padding: 0;
                 }}
                 </style>
                 <div class="db-indicator-box">
                     <div class="db-blob"></div>
-                    <div class="db-text">{status_text}</div>
+                    <div class="db-text">Live: {data_source}</div>
                 </div>
                 """
                 st.markdown(indicator_html, unsafe_allow_html=True)
-                # ---------------------------------------------------
+                # -------------------------------------
 
                 col_header, col_reset = st.columns([5, 3])
                 with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
@@ -534,7 +539,6 @@ if check_password():
             col_t1, col_t2 = st.columns([8, 2], vertical_alignment="bottom")
             with col_t1: st.markdown("### 📋 Patient Details")
             with col_t2:
-                # Keep Export as CSV because end-users usually open data in Excel
                 csv_data = filtered_df.to_csv(index=False).encode('utf-8')
                 st.download_button(label="📥 Export CSV", data=csv_data, file_name="NMC_Health_Report.csv", mime="text/csv", use_container_width=True)
 
