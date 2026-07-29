@@ -4,3 +4,5 @@ openpyxl
 folium
 streamlit-folium
 plotly
+SQLAlchemy
+psycopg2-binary
