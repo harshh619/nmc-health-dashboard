@@ -1,7 +1,11 @@
 import streamlit as st
 import pandas as pd
 import json
-import pydeck as pdk
+import folium
+from folium.plugins import MarkerCluster
+from branca.element import MacroElement
+from jinja2 import Template
+from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
 import requests
@@ -173,21 +177,7 @@ if check_password():
                 clean_w = clean_w.strip().lstrip('0')
                 if clean_w == "": clean_w = "0"
                 feature['properties']['Clean_Ward'] = clean_w
-
-                # Calculate Centroid for TextLayer Badge
-                centroid_lon, centroid_lat = 79.0882, 21.1458
-                geom = feature.get('geometry')
-                if geom:
-                    try:
-                        coords = geom.get('coordinates')
-                        ring = coords[0] if geom['type'] == 'Polygon' else coords[0][0]
-                        lons = [p[0] for p in ring]
-                        lats = [p[1] for p in ring]
-                        centroid_lat, centroid_lon = sum(lats) / len(lats), sum(lons) / len(lons)
-                    except: pass
-                feature['properties']['centroid_lat'] = centroid_lat
-                feature['properties']['centroid_lon'] = centroid_lon
-
+                
             return mapping_df, geo_data
         except Exception as e:
             st.error(f"Static file load error: {e}")
@@ -222,9 +212,11 @@ if check_password():
 
         # =====================================================================
         # 🚀 STREAMLIT FRAGMENT: INTERACTIVE DASHBOARD SECTION
+        # Filters update instantly here without reloading the whole page!
         # =====================================================================
         @st.fragment
         def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date):
+            
             def clear_filters():
                 st.session_state['disease_filter'] = "All"
                 st.session_state['zone_filter'] = "All"
@@ -234,13 +226,14 @@ if check_password():
                     st.session_state['start_date'] = min_date
                     st.session_state['end_date'] = max_date
 
-            # --- SIDEBAR SMART FILTERS ---
+            # --- 3. SIDEBAR SMART FILTERS ---
             with st.sidebar:
                 col_header, col_reset = st.columns([5, 3])
                 with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
                 with col_reset: st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
                 
                 filtered_df = patient_df.copy()
+                
                 if min_date and max_date:
                     st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
                     col1, col2 = st.columns(2)
@@ -273,6 +266,7 @@ if check_password():
                 selected_status = st.selectbox("Select Patient Status", status_options, key="status_filter")
                 if selected_status != "All": filtered_df = filtered_df[filtered_df['Status'] == selected_status]
 
+                # --- ZONE-WISE SUMMARY TABLE ---
                 st.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
                 st.markdown("<h3 style='margin-top:0px; margin-bottom: 5px; font-size: 15px;'>📊 Zone-wise Cases</h3>", unsafe_allow_html=True)
                 if not filtered_df.empty and 'Zone' in filtered_df.columns:
@@ -280,19 +274,22 @@ if check_password():
                     zone_summary.columns = ['Zone', 'Cases']
                     st.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
 
-            # --- CONSOLIDATED METRICS ---
+            # --- 4. CONSOLIDATED DASHBOARD METRICS ---
             st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{selected_zone} Zone` ➔ `{selected_ward}`</span>", unsafe_allow_html=True)
+            
             status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
-            metric_cols = st.columns(1 + len(status_counts))
+            total_cols = 1 + len(status_counts)
+            metric_cols = st.columns(total_cols)
             with metric_cols[0]: st.metric("Total Cases (Filtered)", len(filtered_df))
             for idx, (status_name, count_val) in enumerate(status_counts.items()):
                 with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val)
 
-            # --- AI INSIGHTS ---
+            # --- 4.1 UNIFIED AI HEALTH INSIGHTS ---
             if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
                 top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
                 top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
                 top_disease = filtered_df['Disease'].mode()[0] if 'Disease' in filtered_df.columns and not filtered_df['Disease'].empty else "Unknown Disease"
+                
                 st.markdown(f"""
                     <div class="ai-alert-box">
                         <div class="ai-alert-title"><span>🤖</span> Automated Health Intelligence & Alert</div>
@@ -303,8 +300,9 @@ if check_password():
                     </div>
                 """, unsafe_allow_html=True)
 
-            # --- ANALYTICAL CHARTS ---
+            # --- 4.2 ANALYTICAL CHARTS ---
             col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
+            
             with col_chart1:
                 st.markdown("### 🦠 Disease Distribution")
                 if 'Disease' in filtered_df.columns and not filtered_df.empty:
@@ -339,17 +337,22 @@ if check_password():
                 fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=260, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
                 st.plotly_chart(fig_timeline, use_container_width=True)
             
-            # --- 5. ULTRA FAST PYDECK (GPU) MAP RENDERING ---
-            st.markdown("### 📍 WebGL Hardware-Accelerated Map View")
-            map_mode = st.radio("Select Map View Mode", ["Patient 3D Hexagon View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
+            # --- 5. FAST FOLIUM MAP RENDERING (WITH PATIENT CLUSTER VIEW) ---
+            st.markdown("### 📍 Patients Map View")
+            map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
             
             if geo_data:
-                # 5.1 PREPARE DATA FOR PYDECK
+                m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
+                folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
+                folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
+                folium.TileLayer('OpenStreetMap', name='Default Map', control=True).add_to(m)
+                
                 def clean_ward_fast(val):
                     if pd.isna(val): return "Unknown"
                     v = str(val)
                     v = v[:-2] if v.endswith('.0') else v
-                    for p in ["Prabhag No. ", "Prabhag No.", "Prabhag No ", "Ward No. ", "Ward No.", "Ward No "]: v = v.replace(p, "")
+                    for p in ["Prabhag No. ", "Prabhag No.", "Prabhag No ", "Ward No. ", "Ward No.", "Ward No "]:
+                        v = v.replace(p, "")
                     v = v.strip().lstrip('0')
                     return v if v else "0"
 
@@ -370,153 +373,116 @@ if check_password():
 
                 max_ward_cases = max(clean_ward_counts.values()) if clean_ward_counts else 1
 
-                # Colors configured for PyDeck (RGBA arrays)
-                def get_density_color_rgb(cases):
-                    if cases == 0: return [235, 237, 239, 160]         # #ebedef
-                    elif cases < max_ward_cases * 0.2: return [255, 237, 160, 170] # #ffeda0
-                    elif cases < max_ward_cases * 0.4: return [254, 178, 76, 170]  # #feb24c
-                    elif cases < max_ward_cases * 0.7: return [252, 78, 42, 170]   # #fc4e2a
-                    else: return [189, 0, 38, 170]                     # #bd0026
+                def get_density_color(cases):
+                    if cases == 0: return "#ebedef"  
+                    elif cases < max_ward_cases * 0.2: return "#ffeda0"  
+                    elif cases < max_ward_cases * 0.4: return "#feb24c"  
+                    elif cases < max_ward_cases * 0.7: return "#fc4e2a"  
+                    else: return "#bd0026"
 
                 selected_ward_clean = clean_ward_fast(selected_ward) if selected_ward != "All" else "All"
                 
-                # Update GeoJSON Properties for PyDeck layer
                 for feature in geo_data['features']:
                     clean_ward = feature['properties']['Clean_Ward'] 
                     zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                     ward_cases = clean_ward_counts.get(clean_ward, 0)
                     
-                    if selected_ward != "All": zone_cases = ward_cases if clean_ward == selected_ward_clean else 0
-                    else: zone_cases = clean_zone_counts.get(zone_name, 0)
+                    if selected_ward != "All":
+                        zone_cases = ward_cases if clean_ward == selected_ward_clean else 0
+                    else:
+                        zone_cases = clean_zone_counts.get(zone_name, 0)
                     
-                    feature['properties']['Clean_Zone'] = f"Zone No: {zone_name}"
-                    feature['properties']['Ward_Cases'] = str(ward_cases)
-                    feature['properties']['fill_color'] = get_density_color_rgb(ward_cases)
-                    
-                    # Unified hover tooltips mapping
-                    feature['properties']['Hover_Info_1'] = f"Total Area Cases: {ward_cases}"
-                    feature['properties']['Hover_Info_2'] = f"Overall Zone Cases: {zone_cases}"
+                    feature['properties']['Clean_Zone'] = zone_name
+                    feature['properties']['Ward_Cases'] = ward_cases
+                    feature['properties']['Zone_Cases'] = zone_cases
+                    feature['properties']['fill_color'] = get_density_color(ward_cases)
 
-                # Prepare Point Data for Pydeck
-                points_df = filtered_df.dropna(subset=['Lat', 'Long']).copy()
-                if not points_df.empty:
-                    points_df['Clean_Ward'] = points_df['Ward_Name'].apply(clean_ward_fast)
-                    points_df['Clean_Zone'] = "Zone No: " + points_df['Zone'].astype(str)
-                    points_df['Disease'] = points_df['Disease'].fillna("Unknown")
-                    points_df['Status'] = points_df['Status'].fillna("Unknown")
-                    points_df['Patient_Name'] = points_df['Patient_Name'].fillna("Unknown Patient")
-                    points_df['Hover_Info_1'] = points_df['Disease'].astype(str) + " (" + points_df['Status'].astype(str) + ")"
-                    points_df['Hover_Info_2'] = "Patient: " + points_df['Patient_Name'].astype(str)
+                m.get_root().html.add_child(folium.Element("<style>.leaflet-popup-content, .leaflet-popup-content-wrapper {font-family: 'Inter', sans-serif !important; font-size: 13px !important;}</style>"))
 
-                # 5.2 DEFINE PYDECK LAYERS
-                layers = []
-                
-                # Base Polygon Layer (Always ON)
-                geojson_layer = pdk.Layer(
-                    "GeoJsonLayer",
+                popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_ward != "All" else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
+                popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_ward != "All" else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
+
+                folium.GeoJson(
                     geo_data,
-                    pickable=True,
-                    stroked=True,
-                    filled=True,
-                    extruded=False,
-                    get_fill_color="properties.fill_color",
-                    get_line_color=[100, 100, 100, 200],
-                    get_line_width=25,
-                    line_width_min_pixels=1,
-                )
-                layers.append(geojson_layer)
+                    style_function=lambda feature: {'color': '#444444', 'weight': 1, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.60},
+                    highlight_function=lambda feature: {'color': '#000000', 'weight': 2.5, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.80},
+                    popup=folium.GeoJsonPopup(fields=popup_fields, aliases=popup_aliases, labels=True, style="font-family: 'Inter', sans-serif; font-size: 13px;")
+                ).add_to(m)
 
-                if map_mode == "Patient 3D Hexagon View" and not points_df.empty:
-                    hex_layer = pdk.Layer(
-                        "HexagonLayer",
-                        data=points_df,
-                        get_position="[Long, Lat]",
-                        radius=250, # Radius in meters
-                        elevation_scale=15,
-                        elevation_range=[0, 3000],
-                        extruded=True,
-                        coverage=0.9,
-                        pickable=False,
-                        color_range=[[255, 237, 160], [254, 178, 76], [252, 78, 42], [189, 0, 38], [128, 0, 38]]
-                    )
-                    layers.append(hex_layer)
+                if map_mode == "Patient Cluster View":
+                    marker_cluster = MarkerCluster().add_to(m)
+                    if not filtered_df.empty:
+                        for idx, row in filtered_df.iterrows():
+                            p_name = str(row.get('Patient_Name', 'N/A')).title()
+                            popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
+                                <b style="color: #1e3a8a; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br><hr style="margin: 4px 0;">
+                                <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
+                            if pd.notna(row['Lat']) and pd.notna(row['Long']):
+                                folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color='#2563eb', fill_opacity=0.9, popup=folium.Popup(popup_text, max_width=250)).add_to(marker_cluster)
 
                 elif map_mode == "Ward-wise Exact Count View":
-                    text_data = []
                     for feature in geo_data['features']:
-                        w_cases = int(feature['properties']['Ward_Cases'])
-                        if w_cases > 0:
-                            text_data.append({
-                                'Clean_Ward': feature['properties']['Clean_Ward'],
-                                'Clean_Zone': feature['properties']['Clean_Zone'],
-                                'lon': feature['properties']['centroid_lon'],
-                                'lat': feature['properties']['centroid_lat'],
-                                'cases_text': str(w_cases),
-                                'Hover_Info_1': f"Total Cases: {w_cases}",
-                                'Hover_Info_2': ""
-                            })
-                    if text_data:
-                        text_layer = pdk.Layer(
-                            "TextLayer",
-                            data=pd.DataFrame(text_data),
-                            get_position="[lon, lat]",
-                            get_text="cases_text",
-                            get_size=16,
-                            get_color=[255, 255, 255, 255], # White text
-                            background=True,
-                            get_background_color=[220, 38, 38, 255], # Red Badge background
-                            background_padding=[6, 4],
-                            border_radius=12,
-                            pickable=True
-                        )
-                        layers.append(text_layer)
+                        ward_cases = feature['properties']['Ward_Cases']
+                        if ward_cases > 0:
+                            geom = feature.get('geometry')
+                            if geom:
+                                try:
+                                    coords = geom.get('coordinates')
+                                    ring = coords[0] if geom['type'] == 'Polygon' else coords[0][0]
+                                    lons = [p[0] for p in ring]
+                                    lats = [p[1] for p in ring]
+                                    center_lat, center_lon = sum(lats) / len(lats), sum(lons) / len(lons)
+                                    badge = f"""<div style="background-color:#e53e3e; border:2px solid #fff; color:#fff; font-weight:bold; font-size:11px; width:24px; height:24px; line-height:20px; border-radius:50%; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.4); transform:translate(-50%, -50%);">{ward_cases}</div>"""
+                                    extra_str = "" if selected_ward != "All" else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
+                                    popup = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px;"><b>Ward No :</b> {feature['properties']['Clean_Ward']}<br><b>Total Cases :</b> {ward_cases}<br><b>Zone No :</b> {feature['properties']['Clean_Zone']}{extra_str}</div>"""
+                                    folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), popup=folium.Popup(popup, max_width=200)).add_to(m)
+                                except Exception: pass
 
-                elif map_mode == "All Cases Points View" and not points_df.empty:
-                    scatter_layer = pdk.Layer(
-                        "ScatterplotLayer",
-                        data=points_df,
-                        get_position="[Long, Lat]",
-                        get_color=[220, 38, 38, 230], # Red Dots
-                        get_radius=80,
-                        radius_min_pixels=4,
-                        radius_max_pixels=10,
-                        pickable=True
-                    )
-                    layers.append(scatter_layer)
+                elif map_mode == "All Cases Points View":
+                    if not filtered_df.empty:
+                        for idx, row in filtered_df.iterrows():
+                            p_name = str(row.get('Patient_Name', 'N/A')).title()
+                            popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
+                                <b style="color: #dc2626; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br><hr style="margin: 4px 0;">
+                                <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
+                            if pd.notna(row['Lat']) and pd.notna(row['Long']):
+                                folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, popup=folium.Popup(popup_text, max_width=250), color='#ffffff', weight=1, fill=True, fill_color='#e53e3e', fill_opacity=0.9).add_to(m)
+                    
+                folium.LayerControl(position='topright').add_to(m)
 
-                # Global Tooltip Configuration (Handles both GeoJSON and Points properties)
-                deck_tooltip = {
-                    "html": """
-                        <div style='font-family: "Inter", sans-serif; font-size: 13px; line-height: 1.6;'>
-                            <b>Ward No: {Clean_Ward}</b> <br/>
-                            <span style='color: #475569;'>{Clean_Zone}</span>
-                            <hr style='margin: 6px 0; border: none; border-top: 1px solid #e2e8f0;'/>
-                            <span style='color: #dc2626; font-weight: bold;'>{Hover_Info_1}</span><br/>
-                            <span style='color: #1e3a8a; font-weight: 500;'>{Hover_Info_2}</span>
-                        </div>
-                    """,
-                    "style": {"backgroundColor": "#ffffff", "border": "1px solid #cbd5e1", "boxShadow": "0 4px 10px rgba(0,0,0,0.1)", "borderRadius": "6px"}
-                }
+                legend_html = """
+                <div style="position:fixed; bottom:25px; left:20px; width:155px; background-color:rgba(255,255,255,0.95); border:2px solid rgba(0,0,0,0.15); z-index:9999; font-family:'Inter',sans-serif; font-size:12px; padding:12px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.15); pointer-events:auto;">
+                    <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
+                    <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
+                    <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span></div>
+                    <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#feb24c; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate</span></div>
+                    <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
+                    <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
+                </div>"""
+                m.get_root().html.add_child(folium.Element(legend_html))
 
-                # Setup View State (Pitch for 3D effect if Hexagon View selected)
-                pitch = 45 if map_mode == "Patient 3D Hexagon View" else 0
-                view_state = pdk.ViewState(latitude=21.1458, longitude=79.0882, zoom=11.5, pitch=pitch, bearing=0)
-
-                # Render PyDeck Map
-                r = pdk.Deck(layers=layers, initial_view_state=view_state, map_provider="carto", map_style="light", tooltip=deck_tooltip)
-                st.pydeck_chart(r, use_container_width=True)
-
-                # 5.3 HORIZONTAL LEGEND (Below the map)
-                st.markdown("""
-                    <div style="display:flex; justify-content:center; flex-wrap:wrap; gap: 15px; background-color:#f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1; margin-top: -15px; margin-bottom: 20px;">
-                        <b style="color:#1e3a8a; display:flex; align-items:center;">📊 Map Density Indicator:</b>
-                        <div style="display:flex; align-items:center;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:5px; border-radius:3px;"></div>High/Critical</div>
-                        <div style="display:flex; align-items:center;"><div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:5px; border-radius:3px;"></div>Moderate-High</div>
-                        <div style="display:flex; align-items:center;"><div style="width:14px; height:14px; background-color:#feb24c; margin-right:5px; border-radius:3px;"></div>Moderate</div>
-                        <div style="display:flex; align-items:center;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:5px; border-radius:3px;"></div>Low Cases</div>
-                        <div style="display:flex; align-items:center;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:5px; border:1px solid #cbd5e1; border-radius:3px;"></div>Zero Cases</div>
-                    </div>
-                """, unsafe_allow_html=True)
+                class CustomMapControls(MacroElement):
+                    _template = Template("""
+                        {% macro script(this, kwargs) %}
+                            L.control.zoom({position: 'bottomright'}).addTo({{ this._parent.get_name() }});
+                            var centerControl = L.control({position: 'bottomright'});
+                            centerControl.onAdd = function (map) {
+                                var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                var a = L.DomUtil.create('a', '', div);
+                                a.innerHTML = '🎯'; a.href = '#'; a.title = 'Center Map';
+                                a.style.fontSize = '18px'; a.style.lineHeight = '30px'; a.style.textAlign = 'center'; a.style.textDecoration = 'none';
+                                a.style.display = 'block'; a.style.backgroundColor = '#fff'; a.style.color = '#333'; a.style.width = '30px'; a.style.height = '30px';
+                                a.onmouseover = function(){ this.style.backgroundColor = '#f4f4f4'; };
+                                a.onmouseout = function(){ this.style.backgroundColor = '#fff'; };
+                                L.DomEvent.on(a, 'click', function(e) { L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e); map.setView([21.1458, 79.0882], 11.5, {animate: true, duration: 1.0}); });
+                                return div;
+                            };
+                            {{ this._parent.get_name() }}.addControl(centerControl);
+                        {% endmacro %}
+                    """)
+                m.add_child(CustomMapControls())
+                
+                st_folium(m, height=700, use_container_width=True, returned_objects=[])
 
             # --- 6. DATA TABLE WITH EXPORT ---
             col_t1, col_t2 = st.columns([8, 2], vertical_alignment="bottom")
@@ -532,7 +498,7 @@ if check_password():
         # Call the Fragment to Render
         interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date)
 
-        # --- PROFESSIONAL FOOTER ---
+        # --- PROFESSIONAL FOOTER (Runs only once initially) ---
         st.markdown("""
             <div class="footer-container">
                 <div><b>Nagpur Municipal Corporation (NMC)</b> - Public Health Intelligence & Disease Surveillance Portal</div>
