@@ -9,6 +9,7 @@ from streamlit_folium import st_folium
 import datetime
 import plotly.express as px
 import requests
+import os
 
 # Set page config
 st.set_page_config(page_title="NMC Health Dashboard", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
@@ -166,7 +167,11 @@ if check_password():
             mapping_df.rename(columns={'name': 'Ward_Name', 'description': 'Zone'}, inplace=True)
             mapping_df['Zone'] = mapping_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
             
-            with open('wards.geojson', encoding='utf-8') as f:
+            # --- 🚀 SMART FALLBACK LOGIC FOR SIMPLIFIED GEOJSON ---
+            # Pehle fast/simplified file check karega, nahi mili to normal wali load karega
+            file_to_load = 'wards_simplified.geojson' if os.path.exists('wards_simplified.geojson') else 'wards.geojson'
+            
+            with open(file_to_load, encoding='utf-8') as f:
                 geo_data = json.load(f)
                 
             for feature in geo_data['features']:
@@ -212,7 +217,6 @@ if check_password():
 
         # =====================================================================
         # 🚀 STREAMLIT FRAGMENT: INTERACTIVE DASHBOARD SECTION
-        # Filters update instantly here without reloading the whole page!
         # =====================================================================
         @st.fragment
         def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date):
@@ -337,7 +341,7 @@ if check_password():
                 fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=260, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
                 st.plotly_chart(fig_timeline, use_container_width=True)
             
-            # --- 5. FAST FOLIUM MAP RENDERING (WITH PATIENT CLUSTER VIEW) ---
+            # --- 5. FAST FOLIUM MAP RENDERING ---
             st.markdown("### 📍 Patients Map View")
             map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
             
