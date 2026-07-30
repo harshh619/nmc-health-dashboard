@@ -405,23 +405,13 @@ if check_password():
                 fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=260, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
                 st.plotly_chart(fig_timeline, use_container_width=True)
             
-            # --- FAST FOLIUM MAP RENDERING WITH AUTO-CENTER & AUTO-ZOOM ---
+            # --- FAST FOLIUM MAP RENDERING (FIXED TO DEFAULT NAGPUR VIEW) ---
             st.markdown("### 📍 Patients Map View")
             map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
             
             if geo_data:
-                # 🚀 DYNAMIC MAP CENTER & ZOOM LOGIC BASED ON FILTERS
-                map_center = [21.1458, 79.0882]
-                zoom_level = 11.5
-                
-                if selected_ward != "All" and not filtered_df.empty and 'Lat' in filtered_df.columns and filtered_df['Lat'].notna().any():
-                    map_center = [filtered_df['Lat'].mean(), filtered_df['Long'].mean()]
-                    zoom_level = 14.5
-                elif selected_zone != "All" and not filtered_df.empty and 'Lat' in filtered_df.columns and filtered_df['Lat'].notna().any():
-                    map_center = [filtered_df['Lat'].mean(), filtered_df['Long'].mean()]
-                    zoom_level = 12.5
-
-                m = folium.Map(location=map_center, zoom_start=zoom_level, tiles=None, zoom_control=False, attribution_control=False)
+                # 🚀 FIXED DEFAULT NAGPUR VIEW (No automatic zoom-in on filters)
+                m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
                 folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
                 folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
                 folium.TileLayer('OpenStreetMap', name='Default Map', control=True).add_to(m)
@@ -533,7 +523,7 @@ if check_password():
                     
                 folium.LayerControl(position='topright').add_to(m)
 
-                # --- 🚀 SMART DYNAMIC LEGEND (Hides zero-count diseases & sorts descending) ---
+                # --- 🚀 SMART DYNAMIC LEGEND ---
                 disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                 
                 sorted_diseases_for_legend = sorted(
@@ -557,19 +547,18 @@ if check_password():
                     disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                 
                 disease_legend_section = f"""
-                <!-- 1. Disease Types Legend (Dynamic, Counts > 0, Sorted) -->
+                <!-- 1. Disease Types Legend -->
                 <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                 {disease_legend_items}
                 <div style="margin-top: 15px;"></div>
                 """
 
-                # Legend Box:
                 legend_html = f"""
                 <div style="position:fixed; bottom:25px; left:20px; width:210px; background-color:rgba(255,255,255,0.95); border:2px solid rgba(0,0,0,0.15); z-index:9999; font-family:'Inter',sans-serif; font-size:12px; padding:12px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.15); pointer-events:auto; max-height: 75vh; overflow-y: auto;">
                     
                     {disease_legend_section}
                     
-                    <!-- 2. Case Density Legend (Static) -->
+                    <!-- 2. Case Density Legend -->
                     <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                     <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
                     <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span></div>
