@@ -558,60 +558,39 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX: Smart CSS Overlay Trick. 
-                    # Layer Control is given a fixed positioning where it expands OVER the map and zoom/target buttons below it 
-                    # using absolute z-indexing, so it keeps its exact ideal size from "Perfect.png" without ever shifting the icons!
+                    # 🛠️ FIX: Ultimate Bulletproof CSS Trick. 
+                    # Layer Control keeps its 100% natural expanded size, but its expanded container is set to absolute position 
+                    # with a high z-index so it FLOATS over the map and buttons without ever pushing or shifting the Zoom/Target buttons below it!
                     perfect_spacing_css = """
                     <style>
                         .leaflet-top.leaflet-right {
                             right: 12px !important;
                             top: 12px !important;
+                            display: flex !important;
+                            flex-direction: column !important;
+                            align-items: flex-end !important;
+                            gap: 8px !important;
                         }
                         
-                        /* Layer control is positioned at top-right with high z-index and auto height/width expansion */
-                        .leaflet-control-layers {
-                            position: absolute !important;
-                            top: 0px !important;
-                            right: 0px !important;
+                        .leaflet-top.leaflet-right > div {
+                            position: relative !important;
+                            float: none !important;
                             margin: 0 !important;
-                            z-index: 1005 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
                             border: 2px solid rgba(0,0,0,0.2) !important;
                             border-radius: 6px !important;
                             background: white !important;
                         }
                         
-                        /* Expanded Layer popup maintains its ideal natural dimensions */
+                        /* Layer Control Popup floats gracefully as an overlay, leaving the icon layout completely undisturbed */
                         .leaflet-control-layers-expanded {
+                            position: absolute !important;
+                            right: 0 !important;
+                            top: 0 !important;
+                            z-index: 9999 !important;
+                            background: white !important;
                             padding: 10px 14px !important;
-                            background: white !important;
-                            color: #333 !important;
-                        }
-                        
-                        /* Zoom Control locked securely in place below the layer control */
-                        .leaflet-control-zoom {
-                            position: absolute !important;
-                            top: 42px !important;
-                            right: 0px !important;
-                            margin: 0 !important;
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
-                            border: 2px solid rgba(0,0,0,0.2) !important;
-                            border-radius: 6px !important;
-                            background: white !important;
-                            z-index: 999 !important;
-                        }
-                        
-                        /* Target Button locked securely below Zoom Control */
-                        .custom-center-btn {
-                            position: absolute !important;
-                            top: 122px !important;
-                            right: 0px !important;
-                            margin: 0 !important;
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
-                            border: 2px solid rgba(0,0,0,0.2) !important;
-                            border-radius: 6px !important;
-                            background: white !important;
-                            z-index: 998 !important;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
                         }
                         
                         .leaflet-control-zoom-in, .leaflet-control-zoom-out {
