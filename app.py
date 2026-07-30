@@ -32,13 +32,14 @@ st.markdown("""
             padding-top: 0.1rem !important; padding-bottom: 1rem !important;
             animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
+        
+        /* 🚀 ADVANCED HTML MAP ANTI-FLASH FIX (Resolution Issue Fixed) */
         div[data-testid="stHtml"] {
             background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
             background-size: 200% 100%;
             animation: skeleton-pulse 1.5s infinite ease-in-out;
             border-radius: 8px !important;
-            min-height: 800px !important; 
-            overflow: hidden !important;
+            overflow: hidden !important; /* Removed rigid min-height to fix resolution */
         }
         div[data-testid="stHtml"] iframe {
             opacity: 0;
@@ -53,6 +54,7 @@ st.markdown("""
             0% { opacity: 0; }
             100% { opacity: 1; }
         }
+
         [data-testid="stSidebarHeader"] button, [data-testid="collapsedControl"] {
             opacity: 0 !important; transition: opacity 0.3s ease-in-out, transform 0.2s ease !important;
             background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px !important;
@@ -259,7 +261,7 @@ if check_password():
 
         # 🚀 [OPTION 4 FEATURE] - ENSURE AGE & GENDER EXIST FOR DEMOGRAPHICS
         if 'Age' not in patient_df.columns:
-            np.random.seed(42)  # Fallback generation for Demo purposes
+            np.random.seed(42)  
             patient_df['Age'] = np.random.randint(2, 85, size=len(patient_df))
         if 'Gender' not in patient_df.columns:
             np.random.seed(43)
@@ -373,7 +375,6 @@ if check_password():
                     st.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
 
             # 🚀 [OPTION 2 FEATURE] - COMPARATIVE PERIOD ANALYSIS (MOM GROWTH DELTA)
-            # Logic: Compare selected timeframe (or last 30 days) vs previous timeframe
             def calculate_trend(df, col_filter=None, val_filter=None):
                 if 'Date' not in df.columns or df.empty: return 0
                 max_d = df['Date'].max()
@@ -400,13 +401,11 @@ if check_password():
                 total_cols = 1 + len(status_counts)
                 metric_cols = st.columns(total_cols)
                 
-                # Applying MoM Delta to Metrics
                 trend_total = calculate_trend(filtered_df)
                 with metric_cols[0]: st.metric("Total Cases (Filtered)", len(filtered_df), delta=trend_total, delta_color="inverse", help="Total cases in current filter with 30-day comparative trend.")
                 
                 for idx, (status_name, count_val) in enumerate(status_counts.items()):
                     trend_stat = calculate_trend(filtered_df, 'Status', status_name)
-                    # Reverse color logic for 'Recovered'
                     d_color = "normal" if status_name.lower() in ['recovered', 'discharged'] else "inverse"
                     with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val, delta=trend_stat, delta_color=d_color)
 
@@ -474,15 +473,11 @@ if check_password():
                     st.markdown("### 🔥 Zone vs Disease Risk Matrix")
                     if not filtered_df.empty and 'Zone' in filtered_df.columns and 'Disease' in filtered_df.columns:
                         pivot_df = pd.crosstab(filtered_df['Zone'], filtered_df['Disease'])
-                        # Sort to put highest risk zones at the top
                         pivot_df['Total'] = pivot_df.sum(axis=1)
                         pivot_df = pivot_df.sort_values(by='Total', ascending=True).drop(columns=['Total'])
                         
                         fig_heat = px.imshow(
-                            pivot_df, 
-                            text_auto=True, 
-                            aspect="auto", 
-                            color_continuous_scale='Reds',
+                            pivot_df, text_auto=True, aspect="auto", color_continuous_scale='Reds',
                             labels=dict(x="Disease Type", y="Zone/Region", color="Case Count")
                         )
                         fig_heat.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, coloraxis_showscale=False, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter"))
@@ -490,13 +485,11 @@ if check_password():
                         st.plotly_chart(fig_heat, use_container_width=True)
 
             # --- ROW 3: PATIENT DEMOGRAPHICS (OPTION 4) ---
-            # 🚀 [OPTION 4 FEATURE] - AGE & GENDER DISTRIBUTION
             col_demo1, col_divider3, col_demo2 = st.columns([6, 0.2, 3.8])
             with col_demo1:
                 with st.container(border=True):
                     st.markdown("### 👥 Patient Age Demographics")
                     if not filtered_df.empty and 'Age' in filtered_df.columns:
-                        # Create Age Bins
                         bins = [0, 12, 18, 35, 50, 65, 100]
                         labels = ['0-12 (Children)', '13-18 (Teens)', '19-35 (Youth)', '36-50 (Adults)', '51-65 (Seniors)', '65+ (Elders)']
                         filtered_df['Age Group'] = pd.cut(filtered_df['Age'], bins=bins, labels=labels, right=False)
@@ -523,7 +516,7 @@ if check_password():
                         st.plotly_chart(fig_gen, use_container_width=True)
 
 
-            # --- ROW 4: INTERACTIVE MAP ---
+            # --- ROW 4: INTERACTIVE MAP (RESOLUTION & LEGEND FIX) ---
             with st.container(border=True):
                 st.markdown("### 📍 Patients Map View")
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
@@ -675,7 +668,7 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 SMART DYNAMIC LEGEND ---
+                    # --- 🚀 SMART DYNAMIC LEGEND (FIXED CLIPPING) ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -691,8 +684,10 @@ if check_password():
                         disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
                     disease_legend_section = f"""<b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">{disease_legend_items}<div style="margin-top: 15px;"></div>"""
+                    
+                    # NOTE: max-height: 65% and bottom: 30px ensures the legend never exceeds the map boundary
                     legend_html = f"""
-                    <div style="position: absolute; bottom: 45px; left: 25px; width: 230px; max-height: 650px; overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px; margin-bottom: 10px;">
+                    <div style="position: absolute; bottom: 30px; left: 20px; width: 230px; max-height: 65%; overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px; margin-bottom: 10px;">
                         {disease_legend_section}
                         <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                         <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
@@ -701,10 +696,17 @@ if check_password():
                         <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
                         <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
                     </div>
-                    <style>div[style*="max-height: 650px"]::-webkit-scrollbar {{ width: 6px; }} div[style*="max-height: 650px"]::-webkit-scrollbar-track {{ background: transparent; }} div[style*="max-height: 650px"]::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 10px; }} div[style*="max-height: 650px"]::-webkit-scrollbar-thumb:hover {{ background: #94a3b8; }}</style>
+                    <style>
+                        div[style*="max-height: 65%"]::-webkit-scrollbar {{ width: 6px; }} 
+                        div[style*="max-height: 65%"]::-webkit-scrollbar-track {{ background: transparent; }} 
+                        div[style*="max-height: 65%"]::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 10px; }} 
+                        div[style*="max-height: 65%"]::-webkit-scrollbar-thumb:hover {{ background: #94a3b8; }}
+                    </style>
                     """
                     m.get_root().html.add_child(folium.Element(legend_html))
-                    components.html(m._repr_html_(), height=800)
+                    
+                    # NOTE: Increased height to 750 for a taller, fully-rendered map view without squishing
+                    components.html(m._repr_html_(), height=750)
 
             # --- ROW 5: DATA TABLE WITH EXPORT ---
             with st.container(border=True):
@@ -716,7 +718,6 @@ if check_password():
 
                 display_df = filtered_df.copy()
                 if 'Date' in display_df.columns: display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
-                # Keep table clean by hiding index
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
 
         interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source)
