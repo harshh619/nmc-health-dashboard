@@ -667,7 +667,7 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 SMART DYNAMIC LEGEND (100% FIXED & BULLETPROOF ID METHOD) ---
+                    # --- 🚀 SMART DYNAMIC LEGEND (FULL VISIBILITY FIX - NO SCROLL) ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -684,16 +684,14 @@ if check_password():
                     
                     disease_legend_section = f"""<b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">{disease_legend_items}<div style="margin-top: 15px;"></div>"""
                     
-                    # 🚀 [FIXED] Strict absolute pixel max-height assigned to an ID ensuring the bottom edge NEVER surpasses map container limits.
+                    # 🚀 [FIXED] Removed max-height and overflow restrictions to show full legend perfectly.
                     legend_html = f"""
                     <style>
                         #custom-map-legend {{
                             position: absolute; 
-                            bottom: 25px; 
+                            bottom: 20px; 
                             left: 20px; 
                             width: 230px; 
-                            max-height: 320px; /* Safe pixel limit preventing bottom cut */
-                            overflow-y: auto; 
                             background-color: rgba(255,255,255,0.95); 
                             border: 2px solid rgba(0,0,0,0.15); 
                             z-index: 9999; 
@@ -704,10 +702,6 @@ if check_password():
                             font-family: 'Inter', sans-serif; 
                             font-size: 12px;
                         }}
-                        #custom-map-legend::-webkit-scrollbar {{ width: 6px; }} 
-                        #custom-map-legend::-webkit-scrollbar-track {{ background: transparent; }} 
-                        #custom-map-legend::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 10px; }} 
-                        #custom-map-legend::-webkit-scrollbar-thumb:hover {{ background: #94a3b8; }}
                     </style>
                     <div id="custom-map-legend">
                         {disease_legend_section}
@@ -721,7 +715,8 @@ if check_password():
                     """
                     m.get_root().html.add_child(folium.Element(legend_html))
                     
-                    components.html(m._repr_html_(), height=750)
+                    # 🚀 [FIXED] Increased iframe height from 750 to 850 so the full legend fits comfortably without getting cut off
+                    components.html(m._repr_html_(), height=850)
 
             # --- ROW 5: DATA TABLE WITH EXPORT ---
             with st.container(border=True):
