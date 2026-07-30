@@ -234,7 +234,7 @@ if check_password():
             else:
                 raise Exception("Empty table")
         except Exception:
-            pass # Fallback to Google Sheets if API fails
+            pass 
             
         # Fallback to Google Sheets CSV
         url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
@@ -326,7 +326,6 @@ if check_password():
                 if min_date and max_date:
                     st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
                     col1, col2 = st.columns(2)
-                    # No more on_change for toasts!
                     with col1: start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
                     with col2: end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
                     if start_date > end_date:
@@ -495,11 +494,10 @@ if check_password():
                         feature['properties']['Zone_Cases'] = zone_cases
                         feature['properties']['fill_color'] = get_density_color(ward_cases)
 
-                    m.get_root().html.add_child(folium.Element("<style>.leaflet-popup-content, .leaflet-popup-content-wrapper {font-family: 'Inter', sans-serif !important; font-size: 13px !important;}</style>"))
-
                     popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_wards else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
                     popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_wards else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
 
+                    # 🛠️ FIX 1: Tooltip reverted to default clean style without squished fonts. Auto-hide functionality intact!
                     folium.GeoJson(
                         geo_data,
                         name="Base map", 
@@ -508,8 +506,7 @@ if check_password():
                         tooltip=folium.GeoJsonTooltip(
                             fields=popup_fields, 
                             aliases=popup_aliases, 
-                            labels=True, 
-                            style="font-family: 'Inter', sans-serif; font-size: 13px; background-color: rgba(255, 255, 255, 0.95); border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 8px;"
+                            labels=True
                         )
                     ).add_to(m)
 
@@ -562,27 +559,32 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX 2: Advanced CSS to completely isolate the Layer dropdown from the Zoom buttons!
+                    # 🛠️ FIX 2: Perfected CSS for fixed non-jumping controls!
+                    # Zoom aur Center button ko bilkul absolute lock kar diya hai, jisse unpe dropdown ka asar na pade.
                     anti_jump_css = """
                     <style>
-                        /* Make Layer Control independent from normal flow */
-                        .leaflet-control-layers {
-                            position: absolute !important;
-                            top: 10px !important;
-                            right: 10px !important;
-                            z-index: 1000 !important;
-                        }
-                        /* Push the Zoom Controls down so they sit exactly below where the Layer Icon is */
-                        .leaflet-top.leaflet-right {
-                            padding-top: 50px !important; 
-                        }
-                        /* Style the expanded menu so it smoothly overlaps */
+                        /* Keep Layers Dropdown normal but ensure the text is never squished */
                         .leaflet-control-layers-expanded {
-                            padding: 10px !important;
-                            border-radius: 8px !important;
-                            border: 1px solid #cbd5e1 !important;
-                            box-shadow: 0 4px 10px rgba(0,0,0,0.15) !important;
-                            background: rgba(255, 255, 255, 0.96) !important;
+                            width: max-content !important;
+                            min-width: 160px !important;
+                            white-space: nowrap !important;
+                            padding: 8px 12px !important;
+                        }
+                        /* Lock the Zoom buttons permanently */
+                        .leaflet-top.leaflet-right .leaflet-control-zoom {
+                            position: absolute !important;
+                            top: 55px !important;
+                            right: 10px !important;
+                            margin: 0 !important;
+                            z-index: 900 !important;
+                        }
+                        /* Lock the Custom Target button permanently just below Zoom */
+                        .leaflet-top.leaflet-right .custom-center-btn {
+                            position: absolute !important;
+                            top: 130px !important;
+                            right: 10px !important;
+                            margin: 0 !important;
+                            z-index: 900 !important;
                         }
                     </style>
                     """
@@ -595,7 +597,8 @@ if check_password():
                                 
                                 var centerControl = L.control({position: 'topright'});
                                 centerControl.onAdd = function (map) {
-                                    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                    // Added the class 'custom-center-btn' to lock it using CSS above
+                                    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-center-btn');
                                     var a = L.DomUtil.create('a', '', div);
                                     a.innerHTML = '🎯'; 
                                     a.href = '#'; 
