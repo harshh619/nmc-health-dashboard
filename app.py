@@ -673,9 +673,9 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 SMART DYNAMIC LEGEND (LEAFLET NATIVE CONTROL - 100% BULLETPROOF) ---
-                    # Ab hum absolute raw HTML div use nahi karenge. Usse iframe borders element ko cut kar dete hain.
-                    # Hum Leaflet ke official `L.control` API ko use karenge jisse legend strictly map padding ke andar fit hoga.
+                    # --- 🚀 SMART DYNAMIC LEGEND (UPWARD EXPANDING 100% FIX) ---
+                    # Ab humne strict CSS 'bottom: 40px' laga diya hai aur 'top' hata diya hai.
+                    # Isse jab bhi 15 items aayenge, height UPWARD direction me badhegi, niche kabhi clip nahi hogi.
                     
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
@@ -691,73 +691,66 @@ if check_password():
                     else:
                         disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    # 🚀 Fix: Removed raw `absolute` wrapper. Styled standard container.
-                    legend_css_native = """
+                    # 🚀 "bottom: 40px !important;" ensures it anchors from bottom and grows strictly UP
+                    legend_html = f"""
                     <style>
-                        /* Ye force karega control ko map ke absolute bottom border se upar rehne ke liye */
-                        .leaflet-bottom.leaflet-left { margin-bottom: 25px !important; margin-left: 10px !important; }
-                        
-                        .native-leaflet-legend {
-                            background-color: rgba(255,255,255,0.95);
-                            border: 2px solid rgba(0,0,0,0.15);
-                            border-radius: 8px;
-                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-                            padding: 14px 18px;
-                            font-family: 'Inter', sans-serif;
+                        #custom-map-legend {{
+                            position: absolute; 
+                            bottom: 40px !important; /* 🔥 FORCE ANCHOR TO BOTTOM SO IT GROWS UPWARDS */
+                            left: 20px !important; 
+                            background-color: rgba(255,255,255,0.95); 
+                            border: 2px solid rgba(0,0,0,0.15); 
+                            z-index: 99999 !important; 
+                            border-radius: 8px; 
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+                            pointer-events: auto; 
+                            padding: 15px 18px 18px 18px; 
+                            font-family: 'Inter', sans-serif; 
                             display: flex;
                             flex-direction: row;
-                        }
-                        .legend-col-left { display: flex; flex-direction: column; min-width: 155px; padding-right: 25px; border-right: 1px solid #cbd5e1; }
-                        .legend-col-right { display: flex; flex-direction: column; min-width: 140px; padding-left: 25px; }
-                        .legend-item { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
-                        .legend-item-left { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }
-                        .legend-item-right { color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; }
-                        .legend-blob { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; }
-                        .legend-sq { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; }
+                            max-height: 650px; /* 🔥 Safety Limit so it never breaks layout */
+                            overflow-y: auto; /* 🔥 Internal scroll just in case */
+                        }}
+                        .legend-col-left {{ 
+                            display: flex; 
+                            flex-direction: column; 
+                            min-width: 170px; 
+                            padding-right: 25px; 
+                            border-right: 1px solid #cbd5e1; 
+                        }}
+                        .legend-col-right {{ 
+                            display: flex; 
+                            flex-direction: column; 
+                            min-width: 140px; 
+                            padding-left: 25px; 
+                        }}
+                        .legend-item {{ display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }} 
+                        .legend-item-left {{ display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }}
+                        .legend-item-right {{ color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; }}
+                        .legend-blob {{ width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; flex-shrink: 0; }}
+                        .legend-sq {{ width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; }}
                     </style>
-                    """
-                    m.get_root().html.add_child(folium.Element(legend_css_native))
-                    
-                    inner_html = f"""
+                    <div id="custom-map-legend">
+                        <!-- Column 1: Disease Types -->
                         <div class="legend-col-left">
                             <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b>
-                            <hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
+                            <hr style="margin:8px 0; border:none; border-top:1px solid #cbd5e1;">
                             {disease_legend_items}
                         </div>
                         
+                        <!-- Column 2: Case Density -->
                         <div class="legend-col-right">
                             <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">📊 Case Density</b>
-                            <hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
+                            <hr style="margin:8px 0; border:none; border-top:1px solid #cbd5e1;">
                             <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#bd0026;"></div>High / Critical</div></div>
                             <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#fc4e2a;"></div>Moderate-High</div></div>
                             <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#feb24c;"></div>Moderate</div></div>
                             <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#ffeda0;"></div>Low Cases</div></div>
                             <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#ebedef;"></div>Zero Cases</div></div>
                         </div>
+                    </div>
                     """
-
-                    class NativeLegendControl(MacroElement):
-                        def __init__(self, html):
-                            super().__init__()
-                            self.html = html
-
-                        _template = Template("""
-                            {% macro script(this, kwargs) %}
-                                // Built-in position ensure karta hai ki ye hamesha frame ke andar rahe
-                                var legendControl = L.control({position: 'bottomleft'});
-                                legendControl.onAdd = function (map) {
-                                    var div = L.DomUtil.create('div', 'native-leaflet-legend');
-                                    div.innerHTML = `{{ this.html }}`;
-                                    // Click/Scroll ko map zoom se rokne ke liye
-                                    L.DomEvent.disableClickPropagation(div);
-                                    L.DomEvent.disableScrollPropagation(div);
-                                    return div;
-                                };
-                                {{ this._parent.get_name() }}.addControl(legendControl);
-                            {% endmacro %}
-                        """)
-                    
-                    m.add_child(NativeLegendControl(inner_html))
+                    m.get_root().html.add_child(folium.Element(legend_html))
                     
                     components.html(m._repr_html_(), height=720)
 
