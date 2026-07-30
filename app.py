@@ -30,6 +30,17 @@ st.markdown("""
             padding-top: 0.1rem !important; padding-bottom: 1rem !important;
             animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
+        
+        /* 🚀 SMOOTH MAP TRANSITION & ANTI-FLASH FIX */
+        iframe {
+            opacity: 1 !important;
+            transition: opacity 0.4s ease-in-out !important;
+        }
+        div[data-testid="stIFrame"] {
+            background-color: #f8fafc !important;
+            border-radius: 8px;
+        }
+
         [data-testid="stSidebarHeader"] button, [data-testid="collapsedControl"] {
             opacity: 0 !important; transition: opacity 0.3s ease-in-out, transform 0.2s ease !important;
             background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px !important;
