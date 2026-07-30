@@ -522,13 +522,18 @@ if check_password():
                     
                 folium.LayerControl(position='topright').add_to(m)
 
-                # --- 🚀 SMART DYNAMIC LEGEND (Visible in ALL Views with Counts) ---
+                # --- 🚀 SMART DYNAMIC LEGEND (Visible in ALL Views with Counts & Sorted) ---
                 disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                 
+                # 🚀 YAHAN SORTING LOGIC ADD KIYA GAYA HAI: Descending by Count
+                sorted_diseases_for_legend = sorted(
+                    [(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items()],
+                    key=lambda x: x[2], 
+                    reverse=True
+                )
+                
                 disease_legend_items = ""
-                for disease, color in disease_color_map.items():
-                    count = disease_counts_dict.get(disease, 0)
-                    
+                for disease, color, count in sorted_diseases_for_legend:
                     disease_legend_items += f"""
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
                         <div style="display:flex; align-items:center;">
@@ -539,7 +544,7 @@ if check_password():
                     </div>"""
                 
                 disease_legend_section = f"""
-                <!-- 1. Disease Types Legend (Dynamic with counts) -->
+                <!-- 1. Disease Types Legend (Dynamic, Counts, Sorted) -->
                 <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                 {disease_legend_items}
                 <div style="margin-top: 15px;"></div>
