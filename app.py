@@ -245,6 +245,12 @@ if check_password():
         @st.fragment
         def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source):
             
+            # 🎨 --- GLOBAL DISEASE COLOR MAPPING (Syncs Pie Chart & Map) ---
+            bold_colors = px.colors.qualitative.Bold
+            all_diseases = patient_df['Disease'].dropna().unique() if 'Disease' in patient_df.columns else []
+            # Har disease ko alphabetically sort karke ek fix color assign kar rahe hain
+            disease_color_map = {d: bold_colors[i % len(bold_colors)] for i, d in enumerate(sorted(all_diseases))}
+            
             def clear_filters():
                 st.session_state['disease_filter'] = "All"
                 st.session_state['zone_filter'] = "All"
@@ -366,11 +372,15 @@ if check_password():
                 if 'Disease' in filtered_df.columns and not filtered_df.empty:
                     disease_df = filtered_df['Disease'].value_counts().reset_index()
                     disease_df.columns = ['Disease', 'Count']
-                    fig_pie = px.pie(disease_df, names='Disease', values='Count', hole=0.45, color_discrete_sequence=px.colors.qualitative.Bold)
                     
-                    # BOLD VALUE + PERCENTAGE IMPLEMENTED HERE
+                    # 🚀 UPDATED PIE CHART: Ab yeh global mapping ke colors use karega
+                    fig_pie = px.pie(
+                        disease_df, names='Disease', values='Count', hole=0.45, 
+                        color='Disease', 
+                        color_discrete_map=disease_color_map
+                    )
+                    
                     fig_pie.update_traces(texttemplate='<b>%{value}</b><br>%{percent:.1%}', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
-                    
                     fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.82))
                     st.plotly_chart(fig_pie, use_container_width=True)
 
@@ -473,11 +483,16 @@ if check_password():
                     if not filtered_df.empty:
                         for idx, row in filtered_df.iterrows():
                             p_name = str(row.get('Patient_Name', 'N/A')).title()
+                            disease_name = row.get('Disease', 'N/A')
+                            
+                            # 🚀 UPDATED: Cluster Markers bhi Disease ke specific color me aayenge
+                            point_color = disease_color_map.get(disease_name, '#2563eb')
+                            
                             popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
-                                <b style="color: #1e3a8a; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br><hr style="margin: 4px 0;">
+                                <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                 <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                             if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color='#2563eb', fill_opacity=0.9, popup=folium.Popup(popup_text, max_width=250)).add_to(marker_cluster)
+                                folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, popup=folium.Popup(popup_text, max_width=250)).add_to(marker_cluster)
 
                 elif map_mode == "Ward-wise Exact Count View":
                     for feature in geo_data['features']:
@@ -501,11 +516,16 @@ if check_password():
                     if not filtered_df.empty:
                         for idx, row in filtered_df.iterrows():
                             p_name = str(row.get('Patient_Name', 'N/A')).title()
+                            disease_name = row.get('Disease', 'N/A')
+                            
+                            # 🚀 UPDATED: Points ko unke disease ke pie chart wale color se map kiya gaya hai
+                            point_color = disease_color_map.get(disease_name, '#e53e3e') 
+                            
                             popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
-                                <b style="color: #dc2626; font-size: 14px;">Disease: {row.get('Disease', 'N/A')}</b><br><hr style="margin: 4px 0;">
+                                <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                 <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                             if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, popup=folium.Popup(popup_text, max_width=250), color='#ffffff', weight=1, fill=True, fill_color='#e53e3e', fill_opacity=0.9).add_to(m)
+                                folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, popup=folium.Popup(popup_text, max_width=250), color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(m)
                     
                 folium.LayerControl(position='topright').add_to(m)
 
