@@ -2,7 +2,9 @@ import streamlit as st
 import pandas as pd
 import json
 import folium
-from folium.plugins import MarkerCluster, EasyButton
+from folium.plugins import MarkerCluster
+from branca.element import MacroElement
+from jinja2 import Template
 import streamlit.components.v1 as components  
 import datetime
 import plotly.express as px
@@ -454,7 +456,7 @@ if check_password():
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
                 
                 if geo_data:
-                    # 🛠️ FIX 2: zoom_control=True is restored, so standard + / - buttons appear correctly
+                    # 🛠️ FIX 1: zoom_control=True is strictly active to ensure native Leaflet +/- buttons appear on the top-left!
                     m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=True, attribution_control=False)
                     folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
                     folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
@@ -567,12 +569,39 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX 2 (b): Using Folium's robust plugin for Center Map instead of complex scripts
-                    EasyButton(
-                        icon='<span style="font-size: 18px; line-height: 24px;">🎯</span>',
-                        title='Center Map',
-                        onClick="function(btn, map){ map.setView([21.1458, 79.0882], 11.5, {animate: true, duration: 1.0}); }"
-                    ).add_to(m)
+                    # 🛠️ FIX 2: Custom 'Center Map' JS injected directly as a MacroElement at 'topleft' exactly under the zoom buttons
+                    class CustomMapControls(MacroElement):
+                        _template = Template("""
+                            {% macro script(this, kwargs) %}
+                                var centerControl = L.control({position: 'topleft'});
+                                centerControl.onAdd = function (map) {
+                                    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+                                    var a = L.DomUtil.create('a', '', div);
+                                    a.innerHTML = '🎯'; 
+                                    a.href = '#'; 
+                                    a.title = 'Center Map';
+                                    a.style.fontSize = '18px'; 
+                                    a.style.lineHeight = '32px'; 
+                                    a.style.textAlign = 'center'; 
+                                    a.style.textDecoration = 'none';
+                                    a.style.display = 'block'; 
+                                    a.style.backgroundColor = '#fff'; 
+                                    a.style.color = '#333'; 
+                                    a.style.width = '34px'; 
+                                    a.style.height = '34px';
+                                    a.onmouseover = function(){ this.style.backgroundColor = '#f4f4f4'; };
+                                    a.onmouseout = function(){ this.style.backgroundColor = '#fff'; };
+                                    L.DomEvent.on(a, 'click', function(e) { 
+                                        L.DomEvent.stopPropagation(e); 
+                                        L.DomEvent.preventDefault(e); 
+                                        map.setView([21.1458, 79.0882], 11.5, {animate: true, duration: 1.0}); 
+                                    });
+                                    return div;
+                                };
+                                {{ this._parent.get_name() }}.addControl(centerControl);
+                            {% endmacro %}
+                        """)
+                    m.add_child(CustomMapControls())
 
                     # --- 🚀 SMART DYNAMIC LEGEND ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
@@ -604,7 +633,7 @@ if check_password():
                     <div style="margin-top: 15px;"></div>
                     """
 
-                    # 🛠️ FIX 1: Flex-box wrapper applied. Maximum height is limited, and inner content will auto-scroll perfectly
+                    # Perfect Scrollable Auto-Size Legend Box
                     legend_html = f"""
                     <div style="position: absolute; bottom: 20px; left: 20px; width: 220px; max-height: calc(100% - 40px); background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; display: flex; flex-direction: column;">
                         <div style="overflow-y: auto; padding: 12px; font-family: 'Inter', sans-serif; font-size: 12px; scrollbar-width: thin;">
