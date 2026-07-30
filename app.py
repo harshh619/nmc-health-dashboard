@@ -269,7 +269,6 @@ if check_password():
         @st.fragment
         def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source):
             
-            # 🎨 --- GLOBAL DISEASE COLOR MAPPING (Syncs Pie Chart & Map) ---
             bold_colors = px.colors.qualitative.Bold
             all_diseases = patient_df['Disease'].dropna().unique() if 'Disease' in patient_df.columns else []
             disease_color_map = {d: bold_colors[i % len(bold_colors)] for i, d in enumerate(sorted(all_diseases))}
@@ -284,7 +283,6 @@ if check_password():
                     st.session_state['end_date'] = max_date
 
             with st.sidebar:
-                # --- LIVE DATABASE STATUS INDICATOR WITH FRESHNESS TIMESTAMP ---
                 is_supabase = "Supabase" in data_source
                 indicator_color = "#2ed573" if is_supabase else "#3b82f6"
                 sync_time = datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
@@ -318,7 +316,6 @@ if check_password():
                 </div>
                 """
                 st.markdown(indicator_html, unsafe_allow_html=True)
-                # -------------------------------------
 
                 col_header, col_reset = st.columns([5, 3])
                 with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
@@ -326,30 +323,25 @@ if check_password():
                 
                 filtered_df = patient_df.copy()
                 
-                # Feedback Toast for User interaction
-                def on_filter_change():
-                    st.toast("Applying Filters...", icon="✨")
-
                 if min_date and max_date:
                     st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
                     col1, col2 = st.columns(2)
-                    with col1: start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date", on_change=on_filter_change)
-                    with col2: end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date", on_change=on_filter_change)
+                    # No more on_change for toasts!
+                    with col1: start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
+                    with col2: end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
                     if start_date > end_date:
                         st.error("Error: 'To' date 'From' date se aage ki honi chahiye.")
                     else:
                         filtered_df = filtered_df[(filtered_df['Date'].dt.date >= start_date) & (filtered_df['Date'].dt.date <= end_date)]
 
-                # --- 🔀 MULTI-SELECT DISEASE FILTER ---
                 all_diseases_sorted = sorted([str(x) for x in filtered_df['Disease'].dropna().unique()]) if 'Disease' in filtered_df.columns else []
-                selected_diseases = st.multiselect("Select Disease(s)", options=all_diseases_sorted, key="disease_filter", help="Select one or more diseases to filter and compare data.", on_change=on_filter_change)
+                selected_diseases = st.multiselect("Select Disease(s)", options=all_diseases_sorted, key="disease_filter", help="Select one or more diseases to filter and compare data.")
                 if selected_diseases:
                     filtered_df = filtered_df[filtered_df['Disease'].isin(selected_diseases)]
 
-                # --- 🔀 MULTI-SELECT ZONE & WARD FILTERS ---
                 raw_zones = sorted(mapping_df['Zone'].dropna().unique(), key=lambda x: int(''.join(filter(str.isdigit, str(x))) or 0)) if mapping_df is not None and 'Zone' in mapping_df.columns else []
                 zones_list_clean = [str(z) for z in raw_zones]
-                selected_zones = st.multiselect("Select Zone(s)", options=zones_list_clean, key="zone_filter", help="Select one or more zones for comparative analysis.", on_change=on_filter_change)
+                selected_zones = st.multiselect("Select Zone(s)", options=zones_list_clean, key="zone_filter", help="Select one or more zones for comparative analysis.")
                 
                 if selected_zones:
                     filtered_df = filtered_df[filtered_df['Zone'].isin(selected_zones)]
@@ -358,13 +350,12 @@ if check_password():
                     raw_wards = mapping_df['Ward_Name'].dropna().unique() if mapping_df is not None else []
                     
                 wards_sorted = sorted([str(x) for x in raw_wards])
-                selected_wards = st.multiselect("Select Ward(s)", options=wards_sorted, key="ward_filter", help="Select specific wards/prabhags.", on_change=on_filter_change)
+                selected_wards = st.multiselect("Select Ward(s)", options=wards_sorted, key="ward_filter", help="Select specific wards/prabhags.")
                 if selected_wards:
                     filtered_df = filtered_df[filtered_df['Ward_Name'].isin(selected_wards)]
 
-                # --- 🔀 MULTI-SELECT STATUS FILTER ---
                 status_options_list = sorted([str(x) for x in filtered_df['Status'].dropna().unique()]) if 'Status' in filtered_df.columns else []
-                selected_statuses = st.multiselect("Select Status(es)", options=status_options_list, key="status_filter", help="Filter by patient clinical status.", on_change=on_filter_change)
+                selected_statuses = st.multiselect("Select Status(es)", options=status_options_list, key="status_filter", help="Filter by patient clinical status.")
                 if selected_statuses:
                     filtered_df = filtered_df[filtered_df['Status'].isin(selected_statuses)]
 
@@ -375,7 +366,6 @@ if check_password():
                     zone_summary.columns = ['Zone', 'Cases']
                     st.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
 
-            # --- CONSOLIDATED DASHBOARD METRICS INSIDE CARD CONTAINER ---
             with st.container(border=True):
                 zones_display = ", ".join(selected_zones) if selected_zones else "All Zones"
                 wards_display = ", ".join(selected_wards) if selected_wards else "All Wards"
@@ -388,7 +378,6 @@ if check_password():
                 for idx, (status_name, count_val) in enumerate(status_counts.items()):
                     with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val, help=f"Total patients currently under '{status_name}' condition status.")
 
-            # --- AI HEALTH INSIGHTS ---
             if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
                 top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
                 top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
@@ -404,7 +393,6 @@ if check_password():
                     </div>
                 """, unsafe_allow_html=True)
 
-            # --- ANALYTICAL CHARTS INSIDE CARD CONTAINERS ---
             col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
             
             with col_chart1:
@@ -437,7 +425,6 @@ if check_password():
                         fig_bar.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=265, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
                         st.plotly_chart(fig_bar, use_container_width=True)
 
-            # --- TIMELINE AREA CHART INSIDE CARD CONTAINER ---
             with st.container(border=True):
                 st.markdown("### 📈 Date Trend / Timeline Analysis")
                 if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
@@ -450,7 +437,6 @@ if check_password():
                     fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=250, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
                     st.plotly_chart(fig_timeline, use_container_width=True)
             
-            # --- 🚀 HTML COMPONENTS MAP RENDERING (NO FLASH) ---
             with st.container(border=True):
                 st.markdown("### 📍 Patients Map View")
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
@@ -509,13 +495,11 @@ if check_password():
                         feature['properties']['Zone_Cases'] = zone_cases
                         feature['properties']['fill_color'] = get_density_color(ward_cases)
 
-                    # Used strictly for popups (Markers), not the base map Tooltip
                     m.get_root().html.add_child(folium.Element("<style>.leaflet-popup-content, .leaflet-popup-content-wrapper {font-family: 'Inter', sans-serif !important; font-size: 13px !important;}</style>"))
 
                     popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_wards else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
                     popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_wards else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
 
-                    # 🛠️ FIX 1: name="Base map" added. 🛠️ FIX 2: tooltip= used instead of popup= for auto-hide hover effect!
                     folium.GeoJson(
                         geo_data,
                         name="Base map", 
@@ -530,7 +514,6 @@ if check_password():
                     ).add_to(m)
 
                     if map_mode == "Patient Cluster View":
-                        # 🛠️ FIX 3: name="Cases" added to Cluster
                         marker_cluster = MarkerCluster(name="Cases").add_to(m)
                         if not filtered_df.empty:
                             for idx, row in filtered_df.iterrows():
@@ -545,7 +528,6 @@ if check_password():
                                     folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, popup=folium.Popup(popup_text, max_width=250)).add_to(marker_cluster)
 
                     elif map_mode == "Ward-wise Exact Count View":
-                        # 🛠️ FIX 4: Put markers in a FeatureGroup named "Cases"
                         cases_group = folium.FeatureGroup(name="Cases").add_to(m)
                         for feature in geo_data['features']:
                             ward_cases = feature['properties']['Ward_Cases']
@@ -565,7 +547,6 @@ if check_password():
                                     except Exception: pass
 
                     elif map_mode == "All Cases Points View":
-                        # 🛠️ FIX 5: Put points in a FeatureGroup named "Cases"
                         cases_group = folium.FeatureGroup(name="Cases").add_to(m)
                         if not filtered_df.empty:
                             for idx, row in filtered_df.iterrows():
@@ -581,6 +562,32 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
+                    # 🛠️ FIX 2: Advanced CSS to completely isolate the Layer dropdown from the Zoom buttons!
+                    anti_jump_css = """
+                    <style>
+                        /* Make Layer Control independent from normal flow */
+                        .leaflet-control-layers {
+                            position: absolute !important;
+                            top: 10px !important;
+                            right: 10px !important;
+                            z-index: 1000 !important;
+                        }
+                        /* Push the Zoom Controls down so they sit exactly below where the Layer Icon is */
+                        .leaflet-top.leaflet-right {
+                            padding-top: 50px !important; 
+                        }
+                        /* Style the expanded menu so it smoothly overlaps */
+                        .leaflet-control-layers-expanded {
+                            padding: 10px !important;
+                            border-radius: 8px !important;
+                            border: 1px solid #cbd5e1 !important;
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.15) !important;
+                            background: rgba(255, 255, 255, 0.96) !important;
+                        }
+                    </style>
+                    """
+                    m.get_root().html.add_child(folium.Element(anti_jump_css))
+
                     class CustomMapControls(MacroElement):
                         _template = Template("""
                             {% macro script(this, kwargs) %}
