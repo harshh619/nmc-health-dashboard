@@ -192,7 +192,6 @@ if check_password():
         try:
             from supabase import create_client, Client
             
-            # Using your provided Supabase credentials
             url = "https://oysmagibpobxsipxjzpd.supabase.co"
             key = "sb_secret_yX2l6GXr0lKngsCY_CxSng_phLv7wH_"
             
@@ -372,7 +371,6 @@ if check_password():
                     disease_df = filtered_df['Disease'].value_counts().reset_index()
                     disease_df.columns = ['Disease', 'Count']
                     
-                    # 🚀 UPDATED PIE CHART
                     fig_pie = px.pie(
                         disease_df, names='Disease', values='Count', hole=0.45, 
                         color='Disease', 
@@ -524,19 +522,39 @@ if check_password():
                     
                 folium.LayerControl(position='topright').add_to(m)
 
-                # --- 🚀 NEW DYNAMIC LEGEND GENERATION (Disease + Density) ---
-                disease_legend_items = ""
-                for disease, color in disease_color_map.items():
-                    disease_legend_items += f'<div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:{color}; margin-right:8px; border-radius:50%; border:1px solid #999;"></div><span style="color:#334155; font-weight:500;">{disease}</span></div>'
-
-                legend_html = f"""
-                <div style="position:fixed; bottom:25px; left:20px; width:165px; background-color:rgba(255,255,255,0.95); border:2px solid rgba(0,0,0,0.15); z-index:9999; font-family:'Inter',sans-serif; font-size:12px; padding:12px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.15); pointer-events:auto; max-height: 75vh; overflow-y: auto;">
+                # --- 🚀 SMART DYNAMIC LEGEND (Visible Condition & Counts) ---
+                disease_legend_section = ""
+                
+                # Yeh hissa sirf 'All Cases Points View' par hi chalega
+                if map_mode == "All Cases Points View":
+                    disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     
-                    <!-- 1. Disease Types Legend (Dynamic) -->
+                    disease_legend_items = ""
+                    for disease, color in disease_color_map.items():
+                        count = disease_counts_dict.get(disease, 0)
+                        
+                        # Flexbox design banaya gaya hai takki naam aur count proper alignment me rahe
+                        disease_legend_items += f"""
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                            <div style="display:flex; align-items:center;">
+                                <div style="width:14px; height:14px; background-color:{color}; margin-right:8px; border-radius:50%; border:1px solid #999;"></div>
+                                <span style="color:#334155; font-weight:500;">{disease}</span>
+                            </div>
+                            <span style="color:#1e3a8a; font-weight:700; font-size:11px; background:#f1f5f9; padding:2px 6px; border-radius:8px; border:1px solid #cbd5e1;">{count}</span>
+                        </div>"""
+                    
+                    disease_legend_section = f"""
+                    <!-- 1. Disease Types Legend (Dynamic with counts) -->
                     <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                     {disease_legend_items}
-                    
                     <div style="margin-top: 15px;"></div>
+                    """
+
+                # Legend Box: Yahan box ki choudai (width) '210px' kar di hai takki counts acche se fit ho jayein
+                legend_html = f"""
+                <div style="position:fixed; bottom:25px; left:20px; width:210px; background-color:rgba(255,255,255,0.95); border:2px solid rgba(0,0,0,0.15); z-index:9999; font-family:'Inter',sans-serif; font-size:12px; padding:12px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.15); pointer-events:auto; max-height: 75vh; overflow-y: auto;">
+                    
+                    {disease_legend_section}
                     
                     <!-- 2. Case Density Legend (Static) -->
                     <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
