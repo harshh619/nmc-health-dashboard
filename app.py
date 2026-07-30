@@ -519,7 +519,7 @@ if check_password():
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
                 
                 if geo_data:
-                    # 🚀 [FIXED] Updated Initial Location & Zoom to match the requested framing (image_cb5b5b.png)
+                    # Target center coordinates
                     m = folium.Map(location=[21.130, 79.065], zoom_start=11.7, tiles=None, zoom_control=False, attribution_control=False)
                     
                     folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -659,7 +659,6 @@ if check_password():
                                     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-center-btn');
                                     var a = L.DomUtil.create('a', '', div);
                                     a.innerHTML = '🎯'; a.href = '#'; a.title = 'Center Map';
-                                    /* 🚀 [FIXED] Reset map to new specific coordinates */
                                     L.DomEvent.on(a, 'click', function(e) { L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e); map.setView([21.130, 79.065], 11.7, {animate: true, duration: 1.0}); });
                                     return div;
                                 };
@@ -668,7 +667,7 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 SMART DYNAMIC LEGEND (100% BULLETPROOF CSS FIX) ---
+                    # --- 🚀 SMART DYNAMIC LEGEND (100% FIXED & BULLETPROOF ID METHOD) ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -685,9 +684,32 @@ if check_password():
                     
                     disease_legend_section = f"""<b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">{disease_legend_items}<div style="margin-top: 15px;"></div>"""
                     
-                    # 🚀 [FIXED] Changed max-height to `calc(100% - 50px)` ensuring it strictly stays within map boundaries without hardcoded pixel limits
+                    # 🚀 [FIXED] Strict absolute pixel max-height assigned to an ID ensuring the bottom edge NEVER surpasses map container limits.
                     legend_html = f"""
-                    <div style="position: absolute; bottom: 25px; left: 20px; width: 230px; max-height: calc(100% - 50px); overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px;">
+                    <style>
+                        #custom-map-legend {{
+                            position: absolute; 
+                            bottom: 25px; 
+                            left: 20px; 
+                            width: 230px; 
+                            max-height: 320px; /* Safe pixel limit preventing bottom cut */
+                            overflow-y: auto; 
+                            background-color: rgba(255,255,255,0.95); 
+                            border: 2px solid rgba(0,0,0,0.15); 
+                            z-index: 9999; 
+                            border-radius: 8px; 
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+                            pointer-events: auto; 
+                            padding: 15px; 
+                            font-family: 'Inter', sans-serif; 
+                            font-size: 12px;
+                        }}
+                        #custom-map-legend::-webkit-scrollbar {{ width: 6px; }} 
+                        #custom-map-legend::-webkit-scrollbar-track {{ background: transparent; }} 
+                        #custom-map-legend::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 10px; }} 
+                        #custom-map-legend::-webkit-scrollbar-thumb:hover {{ background: #94a3b8; }}
+                    </style>
+                    <div id="custom-map-legend">
                         {disease_legend_section}
                         <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                         <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
@@ -696,12 +718,6 @@ if check_password():
                         <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
                         <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
                     </div>
-                    <style>
-                        div[style*="max-height: calc"]::-webkit-scrollbar {{ width: 6px; }} 
-                        div[style*="max-height: calc"]::-webkit-scrollbar-track {{ background: transparent; }} 
-                        div[style*="max-height: calc"]::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 10px; }} 
-                        div[style*="max-height: calc"]::-webkit-scrollbar-thumb:hover {{ background: #94a3b8; }}
-                    </style>
                     """
                     m.get_root().html.add_child(folium.Element(legend_html))
                     
