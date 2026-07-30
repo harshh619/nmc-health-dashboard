@@ -558,16 +558,16 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX: Absolute Locked Positioning for Layer Control (Expands Downwards Over Map, Never Pushing Buttons)
+                    # 🛠️ FIX: Completely Fixed Positions without squeezing the Layer popup. 
+                    # Layer Control is normal width, and Zoom/Target are positioned below it with absolute coordinates so they never move.
                     perfect_spacing_css = """
                     <style>
-                        /* Map top-right positioning container */
                         .leaflet-top.leaflet-right {
                             right: 12px !important;
                             top: 12px !important;
                         }
                         
-                        /* Layer control absolute positioning so expanding doesn't affect other elements */
+                        /* Layer control keeps its original clean, normal width */
                         .leaflet-control-layers {
                             position: absolute !important;
                             top: 0px !important;
@@ -580,10 +580,10 @@ if check_password():
                             z-index: 1000 !important;
                         }
                         
-                        /* Zoom Control fixed below Layer Control */
+                        /* Zoom control locked below layer control, regardless of whether layer popup is open or closed */
                         .leaflet-control-zoom {
                             position: absolute !important;
-                            top: 45px !important;
+                            top: 42px !important;
                             right: 0px !important;
                             margin: 0 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
@@ -593,10 +593,10 @@ if check_password():
                             z-index: 999 !important;
                         }
                         
-                        /* Target Button fixed below Zoom Control */
+                        /* Target button locked below zoom control */
                         .custom-center-btn {
                             position: absolute !important;
-                            top: 125px !important;
+                            top: 122px !important;
                             right: 0px !important;
                             margin: 0 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
@@ -604,11 +604,6 @@ if check_password():
                             border-radius: 6px !important;
                             background: white !important;
                             z-index: 998 !important;
-                        }
-                        
-                        .leaflet-control-layers-toggle {
-                            width: 32px !important;
-                            height: 32px !important;
                         }
                         
                         .leaflet-control-zoom-in, .leaflet-control-zoom-out {
