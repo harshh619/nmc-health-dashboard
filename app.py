@@ -652,6 +652,14 @@ if check_password():
                         .leaflet-control-zoom-in, .leaflet-control-zoom-out { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; color: #333 !important; }
                         .custom-center-btn a { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; text-align: center; display: block; text-decoration: none; color: #333; }
                         .custom-center-btn a:hover, .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f4f4f4 !important; }
+                        
+                        /* 🔥 FIX FOR ODD BLACK BOUNDING BOX ON CLICK (Browser Focus Outline) 🔥 */
+                        path.leaflet-interactive:focus, 
+                        .leaflet-container:focus, 
+                        .leaflet-interactive,
+                        svg:focus {
+                            outline: none !important;
+                        }
                     </style>
                     """
                     m.get_root().html.add_child(folium.Element(perfect_spacing_css))
