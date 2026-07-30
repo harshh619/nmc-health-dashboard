@@ -5,7 +5,7 @@ import folium
 from folium.plugins import MarkerCluster
 from branca.element import MacroElement
 from jinja2 import Template
-from streamlit_folium import st_folium
+import streamlit.components.v1 as components  # <-- CHANGED: Using native components instead of st_folium
 import datetime
 import plotly.express as px
 import requests
@@ -31,28 +31,27 @@ st.markdown("""
             animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
         
-        /* 🚀 ADVANCED MAP ANTI-FLASH & FADE-IN FIX */
-        div[data-testid="stIFrame"] {
-            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%) !important;
-            background-size: 200% 100% !important;
-            animation: skeleton-pulse 1.5s infinite ease-in-out !important;
-            border-radius: 10px !important;
-            min-height: 700px !important; /* Locks the height so it never collapses */
+        /* 🚀 ADVANCED HTML MAP ANTI-FLASH & SKELETON FIX */
+        div[data-testid="stHtml"] {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: skeleton-pulse 1.5s infinite ease-in-out;
+            border-radius: 8px !important;
+            min-height: 700px !important; /* Locks container height so it never collapses */
             overflow: hidden !important;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+        }
+        div[data-testid="stHtml"] iframe {
+            opacity: 0;
+            animation: iframe-fade-in 0.6s ease-in-out 0.1s forwards !important;
+            border-radius: 8px !important;
         }
         @keyframes skeleton-pulse {
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
-        iframe {
-            opacity: 0; /* Initial state hidden */
-            animation: iframe-fade-in 0.8s ease-in-out 0.2s forwards !important;
-            background: transparent !important;
-        }
         @keyframes iframe-fade-in {
-            0% { opacity: 0; filter: blur(2px); }
-            100% { opacity: 1; filter: blur(0px); }
+            0% { opacity: 0; }
+            100% { opacity: 1; }
         }
         /* ------------------------------------------- */
 
@@ -330,7 +329,7 @@ if check_password():
                 
                 # Feedback Toast for User interaction
                 def on_filter_change():
-                    st.toast("Applying Filters & Updating Map...", icon="✨")
+                    st.toast("Applying Filters...", icon="✨")
 
                 if min_date and max_date:
                     st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
@@ -452,7 +451,7 @@ if check_password():
                     fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=250, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
                     st.plotly_chart(fig_timeline, use_container_width=True)
             
-            # --- FAST FOLIUM MAP RENDERING ---
+            # --- 🚀 HTML COMPONENTS MAP RENDERING (NO FLASH) ---
             with st.container(border=True):
                 st.markdown("### 📍 Patients Map View")
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
@@ -637,7 +636,8 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
                     
-                    st_folium(m, height=700, use_container_width=True, returned_objects=[], key="nmc_main_map")
+                    # 🚀 FIX: Using native components.html bypasses React unmounting flash!
+                    components.html(m._repr_html_(), height=700)
 
             # --- 6. DATA TABLE WITH EXPORT INSIDE CARD CONTAINER ---
             with st.container(border=True):
