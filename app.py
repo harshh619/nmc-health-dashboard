@@ -121,7 +121,7 @@ def check_password():
     return False
 
 if check_password():
-    # --- HEADER BANNER WITH MSU BRANDING ---
+    # --- HEADER BANNER WITH NEW TITLE & MSU BRANDING ---
     logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px;"><span style="font-size: 32px;">🏥</span></div>'
     try:
         import base64
@@ -134,8 +134,8 @@ if check_password():
         <div class="header-banner">
             {logo_html}
             <div>
-                <h2>Nagpur Municipal Corporation - Health Dashboard</h2>
-                <div class="header-banner-subtitle">Powered by Metropolitan Surveillance Unit (MSU) &bull; Public Health Intelligence Portal</div>
+                <h2>Nagpur Municipal Corporation - Disease Surveillance Portal</h2>
+                <div class="header-banner-subtitle">Powered by Metropolitan Surveillance Unit (MSU)</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
