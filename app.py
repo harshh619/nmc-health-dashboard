@@ -497,7 +497,6 @@ if check_password():
                     popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_wards else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
                     popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_wards else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
 
-                    # 🛠️ FIX 1: Tooltip reverted to default clean style without squished fonts. Auto-hide functionality intact!
                     folium.GeoJson(
                         geo_data,
                         name="Base map", 
@@ -559,61 +558,83 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX 2: Perfected CSS for fixed non-jumping controls!
-                    # Zoom aur Center button ko bilkul absolute lock kar diya hai, jisse unpe dropdown ka asar na pade.
-                    anti_jump_css = """
+                    # 🛠️ FIX: Perfect Stacked Layout with Equal Dimensions & Spacing for Layer, Zoom (+/-), and Target (🎯)
+                    perfect_spacing_css = """
                     <style>
-                        /* Keep Layers Dropdown normal but ensure the text is never squished */
-                        .leaflet-control-layers-expanded {
-                            width: max-content !important;
-                            min-width: 160px !important;
-                            white-space: nowrap !important;
-                            padding: 8px 12px !important;
+                        /* Standardize Leaflet Control Buttons to Exact Same Size & Spacing */
+                        .leaflet-top.leaflet-right {
+                            right: 12px !important;
+                            top: 12px !important;
                         }
-                        /* Lock the Zoom buttons permanently */
-                        .leaflet-top.leaflet-right .leaflet-control-zoom {
-                            position: absolute !important;
-                            top: 55px !important;
-                            right: 10px !important;
-                            margin: 0 !important;
-                            z-index: 900 !important;
+                        
+                        /* Group control boxes cleanly with proper gap */
+                        .leaflet-control-layers, 
+                        .leaflet-control-zoom, 
+                        .custom-center-btn {
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+                            border: 2px solid rgba(0,0,0,0.2) !important;
+                            border-radius: 6px !important;
+                            background: white !important;
+                            margin-bottom: 8px !important; /* Proper gap between buttons */
+                            float: right !important;
+                            clear: both !important;
                         }
-                        /* Lock the Custom Target button permanently just below Zoom */
-                        .leaflet-top.leaflet-right .custom-center-btn {
-                            position: absolute !important;
-                            top: 130px !important;
-                            right: 10px !important;
-                            margin: 0 !important;
-                            z-index: 900 !important;
+                        
+                        /* Fix Layer control box size & prevent squishing */
+                        .leaflet-control-layers {
+                            padding: 6px !important;
+                        }
+                        .leaflet-control-layers-toggle {
+                            width: 32px !important;
+                            height: 32px !important;
+                        }
+                        
+                        /* Uniform size for Zoom (+/-) buttons */
+                        .leaflet-control-zoom-in, .leaflet-control-zoom-out {
+                            width: 34px !important;
+                            height: 34px !important;
+                            line-height: 34px !important;
+                            font-size: 16px !important;
+                            color: #333 !important;
+                        }
+                        
+                        /* Uniform size for Center Target (🎯) button */
+                        .custom-center-btn a {
+                            width: 34px !important;
+                            height: 34px !important;
+                            line-height: 34px !important;
+                            font-size: 16px !important;
+                            text-align: center;
+                            display: block;
+                            text-decoration: none;
+                            color: #333;
+                        }
+                        
+                        /* Hover effects */
+                        .custom-center-btn a:hover, 
+                        .leaflet-control-zoom-in:hover, 
+                        .leaflet-control-zoom-out:hover {
+                            background-color: #f4f4f4 !important;
                         }
                     </style>
                     """
-                    m.get_root().html.add_child(folium.Element(anti_jump_css))
+                    m.get_root().html.add_child(folium.Element(perfect_spacing_css))
 
                     class CustomMapControls(MacroElement):
                         _template = Template("""
                             {% macro script(this, kwargs) %}
+                                // Add standard zoom control inside the topright flow container
                                 L.control.zoom({position: 'topright'}).addTo({{ this._parent.get_name() }});
                                 
+                                // Add custom Center Map button with uniform dimensions
                                 var centerControl = L.control({position: 'topright'});
                                 centerControl.onAdd = function (map) {
-                                    // Added the class 'custom-center-btn' to lock it using CSS above
                                     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-center-btn');
                                     var a = L.DomUtil.create('a', '', div);
                                     a.innerHTML = '🎯'; 
                                     a.href = '#'; 
                                     a.title = 'Center Map';
-                                    a.style.fontSize = '18px'; 
-                                    a.style.lineHeight = '32px'; 
-                                    a.style.textAlign = 'center'; 
-                                    a.style.textDecoration = 'none';
-                                    a.style.display = 'block'; 
-                                    a.style.backgroundColor = '#fff'; 
-                                    a.style.color = '#333'; 
-                                    a.style.width = '34px'; 
-                                    a.style.height = '34px';
-                                    a.onmouseover = function(){ this.style.backgroundColor = '#f4f4f4'; };
-                                    a.onmouseout = function(){ this.style.backgroundColor = '#fff'; };
+                                    
                                     L.DomEvent.on(a, 'click', function(e) { 
                                         L.DomEvent.stopPropagation(e); 
                                         L.DomEvent.preventDefault(e); 
@@ -669,7 +690,6 @@ if check_password():
                         <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
                     </div>
                     <style>
-                        /* Modern Scrollbar applied directly to the legend wrapper */
                         div[style*="max-height: 650px"]::-webkit-scrollbar {{
                             width: 6px;
                         }}
