@@ -522,28 +522,32 @@ if check_password():
                     
                 folium.LayerControl(position='topright').add_to(m)
 
-                # --- 🚀 SMART DYNAMIC LEGEND (Visible in ALL Views with Counts & Sorted) ---
+                # --- 🚀 SMART DYNAMIC LEGEND (Hides zero-count diseases & sorts descending) ---
                 disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                 
+                # Sirf wahi diseases select hongi jinka count > 0 hai
                 sorted_diseases_for_legend = sorted(
-                    [(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items()],
+                    [(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0],
                     key=lambda x: x[2], 
                     reverse=True
                 )
                 
                 disease_legend_items = ""
-                for disease, color, count in sorted_diseases_for_legend:
-                    disease_legend_items += f"""
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-                        <div style="display:flex; align-items:center;">
-                            <div style="width:14px; height:14px; background-color:{color}; margin-right:8px; border-radius:50%; border:1px solid #999;"></div>
-                            <span style="color:#334155; font-weight:500;">{disease}</span>
-                        </div>
-                        <span style="color:#1e3a8a; font-weight:700; font-size:11px; background:#f1f5f9; padding:2px 6px; border-radius:8px; border:1px solid #cbd5e1;">{count}</span>
-                    </div>"""
+                if len(sorted_diseases_for_legend) > 0:
+                    for disease, color, count in sorted_diseases_for_legend:
+                        disease_legend_items += f"""
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                            <div style="display:flex; align-items:center;">
+                                <div style="width:14px; height:14px; background-color:{color}; margin-right:8px; border-radius:50%; border:1px solid #999;"></div>
+                                <span style="color:#334155; font-weight:500;">{disease}</span>
+                            </div>
+                            <span style="color:#1e3a8a; font-weight:700; font-size:11px; background:#f1f5f9; padding:2px 6px; border-radius:8px; border:1px solid #cbd5e1;">{count}</span>
+                        </div>"""
+                else:
+                    disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                 
                 disease_legend_section = f"""
-                <!-- 1. Disease Types Legend (Dynamic, Counts, Sorted) -->
+                <!-- 1. Disease Types Legend (Dynamic, Counts > 0, Sorted) -->
                 <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                 {disease_legend_items}
                 <div style="margin-top: 15px;"></div>
@@ -605,7 +609,7 @@ if check_password():
         # --- PROFESSIONAL FOOTER ---
         st.markdown("""
             <div class="footer-container">
-                <div><b>Nagpur Municipal Corporation (NMC)</b> - Public Health Intelligence & Disease Surveillance Portal</div>
+                <div><b>Nagpur Municipal Corporation (NMC)</b> - Disease Surveillance Portal</div>
                 <div style="margin-top: 4px; color: #64748b;">Designed & Developed by <b>Harsh Wardhan Chandel</b> (Technical Officer I.T., MSU Nagpur)</div>
             </div>
         """, unsafe_allow_html=True)
