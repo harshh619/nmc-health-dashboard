@@ -37,7 +37,7 @@ st.markdown("""
             background-size: 200% 100%;
             animation: skeleton-pulse 1.5s infinite ease-in-out;
             border-radius: 8px !important;
-            min-height: 700px !important;
+            min-height: 800px !important; /* HEIGHT INCREASED TO 800px TO USE EMPTY SPACE */
             overflow: hidden !important;
         }
         div[data-testid="stHtml"] iframe {
@@ -456,7 +456,7 @@ if check_password():
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
                 
                 if geo_data:
-                    # 🛠️ FIX 1: zoom_control=True is strictly active to ensure native Leaflet +/- buttons appear on the top-left!
+                    # Map is initialized with default Top-Left Zoom controls intact
                     m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=True, attribution_control=False)
                     folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
                     folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
@@ -569,7 +569,7 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX 2: Custom 'Center Map' JS injected directly as a MacroElement at 'topleft' exactly under the zoom buttons
+                    # Target Button dynamically injected right below Zoom buttons
                     class CustomMapControls(MacroElement):
                         _template = Template("""
                             {% macro script(this, kwargs) %}
@@ -633,26 +633,41 @@ if check_password():
                     <div style="margin-top: 15px;"></div>
                     """
 
-                    # Perfect Scrollable Auto-Size Legend Box
+                    # Perfect Scrollable Auto-Size Legend Box Fixed
                     legend_html = f"""
-                    <div style="position: absolute; bottom: 20px; left: 20px; width: 220px; max-height: calc(100% - 40px); background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; display: flex; flex-direction: column;">
-                        <div style="overflow-y: auto; padding: 12px; font-family: 'Inter', sans-serif; font-size: 12px; scrollbar-width: thin;">
-                            {disease_legend_section}
-                            
-                            <!-- 2. Case Density Legend -->
-                            <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
-                            <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
-                            <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span></div>
-                            <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#feb24c; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate</span></div>
-                            <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
-                            <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
-                        </div>
-                    </div>"""
+                    <div style="position: absolute; bottom: 30px; left: 20px; width: 230px; max-height: 650px; overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px;">
+                        {disease_legend_section}
+                        
+                        <!-- 2. Case Density Legend -->
+                        <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
+                        <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
+                        <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span></div>
+                        <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#feb24c; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate</span></div>
+                        <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
+                        <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
+                    </div>
+                    <style>
+                        /* Modern Scrollbar applied directly to the legend wrapper */
+                        div[style*="max-height: 650px"]::-webkit-scrollbar {{
+                            width: 6px;
+                        }}
+                        div[style*="max-height: 650px"]::-webkit-scrollbar-track {{
+                            background: transparent; 
+                        }}
+                        div[style*="max-height: 650px"]::-webkit-scrollbar-thumb {{
+                            background: #cbd5e1; 
+                            border-radius: 10px;
+                        }}
+                        div[style*="max-height: 650px"]::-webkit-scrollbar-thumb:hover {{
+                            background: #94a3b8; 
+                        }}
+                    </style>
+                    """
                     
                     m.get_root().html.add_child(folium.Element(legend_html))
                     
-                    # 🚀 Using native components.html bypasses React unmounting flash!
-                    components.html(m._repr_html_(), height=700)
+                    # 🚀 Rendering with an 800px height for optimal space usage
+                    components.html(m._repr_html_(), height=800)
 
             # --- 6. DATA TABLE WITH EXPORT INSIDE CARD CONTAINER ---
             with st.container(border=True):
