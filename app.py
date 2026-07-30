@@ -515,7 +515,6 @@ if check_password():
 
             # --- ROW 4: INTERACTIVE MAP (SCREEN FIT FIX) ---
             with st.container(border=True):
-                # 🚀 [FIXED] Reduced Top/Bottom Margins to save screen space
                 st.markdown("""
                     <style>
                         div[data-testid="stRadio"] { margin-top: -10px; margin-bottom: 0px; }
@@ -674,7 +673,7 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 SMART DYNAMIC LEGEND (COMPACT FIX) ---
+                    # --- 🚀 SMART DYNAMIC LEGEND (SIDE-BY-SIDE 2-COLUMN BULLETPROOF FIX) ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -682,47 +681,65 @@ if check_password():
                     if len(sorted_diseases_for_legend) > 0:
                         for disease, color, count in sorted_diseases_for_legend:
                             disease_legend_items += f"""
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
-                                <div style="display:flex; align-items:center;"><div style="width:12px; height:12px; background-color:{color}; margin-right:8px; border-radius:50%; border:1px solid #999;"></div><span style="color:#334155; font-weight:500;">{disease}</span></div>
-                                <span style="color:#1e3a8a; font-weight:700; font-size:10.5px; background:#f1f5f9; padding:2px 6px; border-radius:8px; border:1px solid #cbd5e1;">{count}</span>
+                            <div class="legend-item">
+                                <div class="legend-item-left"><div class="legend-blob" style="background-color:{color};"></div>{disease}</div>
+                                <div class="legend-item-right">{count}</div>
                             </div>"""
                     else:
                         disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    disease_legend_section = f"""<b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:5px 0; border:none; border-top:1px solid #cbd5e1;">{disease_legend_items}<div style="margin-top: 10px;"></div>"""
-                    
-                    # 🚀 [FIXED] Tighter padding and removed max-height to let it fit within the 720px iframe without scrolling
+                    # 🚀 Using a 2-Column CSS Grid/Flexbox approach to cut height exactly by half!
                     legend_html = f"""
                     <style>
                         #custom-map-legend {{
                             position: absolute; 
                             bottom: 15px; 
                             left: 15px; 
-                            width: 220px; 
                             background-color: rgba(255,255,255,0.95); 
                             border: 2px solid rgba(0,0,0,0.15); 
                             z-index: 9999; 
                             border-radius: 8px; 
                             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
                             pointer-events: auto; 
-                            padding: 10px 12px; 
+                            padding: 12px 16px; 
                             font-family: 'Inter', sans-serif; 
-                            font-size: 11.5px;
+                            display: flex;
+                            flex-direction: row;
+                            gap: 20px;
                         }}
+                        .legend-section {{ display: flex; flex-direction: column; min-width: 150px; justify-content: flex-start; }}
+                        .legend-item {{ display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }}
+                        .legend-item-left {{ display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }}
+                        .legend-item-right {{ color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 8px; border: 1px solid #cbd5e1; }}
+                        .legend-blob {{ width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; }}
+                        .legend-sq {{ width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; }}
+                        .legend-divider {{ border-left: 1px solid #cbd5e1; margin-top: 5px; margin-bottom: 5px; }}
                     </style>
                     <div id="custom-map-legend">
-                        {disease_legend_section}
-                        <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:5px 0; border:none; border-top:1px solid #cbd5e1;">
-                        <div style="display:flex; align-items:center; margin-top:4px;"><div style="width:12px; height:12px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
-                        <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:12px; height:12px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span></div>
-                        <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:12px; height:12px; background-color:#feb24c; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate</span></div>
-                        <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:12px; height:12px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
-                        <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:12px; height:12px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
+                        <!-- Column 1: Disease Types -->
+                        <div class="legend-section">
+                            <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b>
+                            <hr style="margin:5px 0; border:none; border-top:1px solid #cbd5e1;">
+                            {disease_legend_items}
+                        </div>
+                        
+                        <div class="legend-divider"></div>
+                        
+                        <!-- Column 2: Case Density -->
+                        <div class="legend-section">
+                            <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">📊 Case Density</b>
+                            <hr style="margin:5px 0; border:none; border-top:1px solid #cbd5e1;">
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#bd0026;"></div>High / Critical</div></div>
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#fc4e2a;"></div>Moderate-High</div></div>
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#feb24c;"></div>Moderate</div></div>
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#ffeda0;"></div>Low Cases</div></div>
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#ebedef;"></div>Zero Cases</div></div>
+                        </div>
                     </div>
                     """
                     m.get_root().html.add_child(folium.Element(legend_html))
                     
-                    # 🚀 [FIXED] Reduced height back to 720px for perfect screen fit
+                    # 720px height maintained, ab legend ki height side-by-side ki wajah se aadhi ho chuki hai.
                     components.html(m._repr_html_(), height=720)
 
             # --- ROW 5: DATA TABLE WITH EXPORT ---
