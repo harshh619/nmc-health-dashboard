@@ -37,7 +37,7 @@ st.markdown("""
             background-size: 200% 100%;
             animation: skeleton-pulse 1.5s infinite ease-in-out;
             border-radius: 8px !important;
-            min-height: 800px !important; /* HEIGHT INCREASED TO 800px TO USE EMPTY SPACE */
+            min-height: 800px !important; 
             overflow: hidden !important;
         }
         div[data-testid="stHtml"] iframe {
@@ -456,8 +456,8 @@ if check_password():
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
                 
                 if geo_data:
-                    # Map is initialized with default Top-Left Zoom controls intact
-                    m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=True, attribution_control=False)
+                    # 🛠️ FIX 1: Zoom Control is set to False here so we can custom-inject it to the 'topright' later!
+                    m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
                     folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
                     folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
                     folium.TileLayer('OpenStreetMap', name='Default Map', control=True).add_to(m)
@@ -567,13 +567,18 @@ if check_password():
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
                                     folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, popup=folium.Popup(popup_text, max_width=250), color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(m)
                             
+                    # 🛠️ The Layer control renders first at topright
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # Target Button dynamically injected right below Zoom buttons
+                    # 🛠️ FIX 2: Custom JS injected afterwards. Since it targets 'topright', Leaflet stacks Zoom and Target neatly under the Layer icon!
                     class CustomMapControls(MacroElement):
                         _template = Template("""
                             {% macro script(this, kwargs) %}
-                                var centerControl = L.control({position: 'topleft'});
+                                // Manually add default Zoom Control to top-right
+                                L.control.zoom({position: 'topright'}).addTo({{ this._parent.get_name() }});
+                                
+                                // Target Button dynamically injected below Zoom buttons
+                                var centerControl = L.control({position: 'topright'});
                                 centerControl.onAdd = function (map) {
                                     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
                                     var a = L.DomUtil.create('a', '', div);
@@ -633,9 +638,9 @@ if check_password():
                     <div style="margin-top: 15px;"></div>
                     """
 
-                    # Perfect Scrollable Auto-Size Legend Box Fixed
+                    # 🛠️ FIX 3: Set 'bottom: 45px;' to completely lift the legend visually away from the bottom boundary line.
                     legend_html = f"""
-                    <div style="position: absolute; bottom: 30px; left: 20px; width: 230px; max-height: 650px; overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px;">
+                    <div style="position: absolute; bottom: 45px; left: 25px; width: 230px; max-height: 650px; overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px; margin-bottom: 10px;">
                         {disease_legend_section}
                         
                         <!-- 2. Case Density Legend -->
