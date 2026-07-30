@@ -558,8 +558,7 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX: Proper Standard Layer Box Width + Absolutely Fixed Icon Stacking Positions 
-                    # Layer popup expands naturally over the map without altering narrow widths, and Zoom/Target icons have fixed absolute positions.
+                    # 🛠️ FIX: Perfect Equal Spacing and Equal Dimensions for Layer, Zoom, and Target Controls!
                     perfect_spacing_css = """
                     <style>
                         .leaflet-top.leaflet-right {
@@ -567,7 +566,7 @@ if check_password():
                             top: 12px !important;
                         }
                         
-                        /* Layer control naturally positioned at top-right with natural standard width */
+                        /* Layer Control at top */
                         .leaflet-control-layers {
                             position: absolute !important;
                             top: 0px !important;
@@ -580,18 +579,10 @@ if check_password():
                             background: white !important;
                         }
                         
-                        /* Ensure expanded layer box keeps its normal comfortable width and never shrinks/squeezes */
-                        .leaflet-control-layers-expanded {
-                            min-width: 160px !important;
-                            padding: 10px 12px !important;
-                            color: #333 !important;
-                            background: white !important;
-                        }
-                        
-                        /* Zoom control locked at exact fixed coordinate below layer control */
+                        /* Zoom Control placed lower down with proper gap */
                         .leaflet-control-zoom {
                             position: absolute !important;
-                            top: 46px !important;
+                            top: 48px !important;
                             right: 0px !important;
                             margin: 0 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
@@ -601,10 +592,10 @@ if check_password():
                             z-index: 999 !important;
                         }
                         
-                        /* Target button locked at exact fixed coordinate below zoom control */
+                        /* Target Button placed with exact same distance below Zoom Control */
                         .custom-center-btn {
                             position: absolute !important;
-                            top: 126px !important;
+                            top: 138px !important;
                             right: 0px !important;
                             margin: 0 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
