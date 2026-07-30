@@ -384,7 +384,7 @@ if check_password():
             with col_divider: st.markdown("<div class='vertical-divider'></div>", unsafe_allow_html=True)
                     
             with col_chart2:
-                st.markdown("### 🏢 Top Affected Wards")
+                st.markdown("### 🏢 Top Wards by Total Case Volume")
                 if 'Ward_Name' in filtered_df.columns and not filtered_df.empty:
                     ward_df = filtered_df['Ward_Name'].value_counts().head(8).reset_index()
                     ward_df.columns = ['Ward', 'Cases']
@@ -525,7 +525,6 @@ if check_password():
                 # --- 🚀 SMART DYNAMIC LEGEND (Visible in ALL Views with Counts & Sorted) ---
                 disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                 
-                # 🚀 YAHAN SORTING LOGIC ADD KIYA GAYA HAI: Descending by Count
                 sorted_diseases_for_legend = sorted(
                     [(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items()],
                     key=lambda x: x[2], 
