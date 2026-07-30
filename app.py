@@ -156,9 +156,9 @@ if check_password():
 
         temp, humidity, rainfall = get_nagpur_weather()
         w_col1, w_col2, w_col3 = st.columns(3)
-        with w_col1: st.metric("🌡️ Nagpur Temperature", f"{temp} °C", delta="Live Weather")
-        with w_col2: st.metric("💧 Relative Humidity", f"{humidity} %", delta="Vector-Borne Risk Factor")
-        with w_col3: st.metric("🌧️ Precipitation / Rainfall", f"{rainfall} mm", delta="Waterlogging Index")
+        with w_col1: st.metric("🌡️ Nagpur Temperature", f"{temp} °C", delta="Live Weather", help="Current ambient temperature in Nagpur recorded via Open-Meteo API.")
+        with w_col2: st.metric("💧 Relative Humidity", f"{humidity} %", delta="Vector-Borne Risk Factor", help="High humidity levels correlate with increased mosquito breeding and vector-borne disease risks.")
+        with w_col3: st.metric("🌧️ Precipitation / Rainfall", f"{rainfall} mm", delta="Waterlogging Index", help="Recent rainfall accumulation contributing to potential water stagnation zones.")
 
     # --- 2. OPTIMIZED STATIC DATA LOADING ---
     @st.cache_data(ttl=86400)
@@ -251,18 +251,19 @@ if check_password():
             disease_color_map = {d: bold_colors[i % len(bold_colors)] for i, d in enumerate(sorted(all_diseases))}
             
             def clear_filters():
-                st.session_state['disease_filter'] = "All"
-                st.session_state['zone_filter'] = "All"
-                st.session_state['ward_filter'] = "All"
-                st.session_state['status_filter'] = "All"
+                st.session_state['disease_filter'] = []
+                st.session_state['zone_filter'] = []
+                st.session_state['ward_filter'] = []
+                st.session_state['status_filter'] = []
                 if min_date and max_date:
                     st.session_state['start_date'] = min_date
                     st.session_state['end_date'] = max_date
 
             with st.sidebar:
-                # --- LIVE DATABASE STATUS INDICATOR ---
+                # --- LIVE DATABASE STATUS INDICATOR WITH FRESHNESS TIMESTAMP ---
                 is_supabase = "Supabase" in data_source
                 indicator_color = "#2ed573" if is_supabase else "#3b82f6"
+                sync_time = datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
                 
                 indicator_html = f"""
                 <style>
@@ -274,7 +275,7 @@ if check_password():
                 .db-indicator-box {{
                     display: flex; align-items: center; padding: 10px 14px;
                     background-color: {indicator_color}15; border-radius: 8px;
-                    border: 1px solid {indicator_color}33; margin-bottom: 15px;
+                    border: 1px solid {indicator_color}33; margin-bottom: 4px;
                 }}
                 .db-blob {{
                     background: {indicator_color}; border-radius: 50%; height: 10px; width: 10px; min-width: 10px;
@@ -287,6 +288,9 @@ if check_password():
                 <div class="db-indicator-box">
                     <div class="db-blob"></div>
                     <div class="db-text">Live: {data_source}</div>
+                </div>
+                <div style="font-size: 11px; color: #64748b; margin-bottom: 15px; text-align: right;">
+                    ⏱️ Synced: <b>{sync_time}</b>
                 </div>
                 """
                 st.markdown(indicator_html, unsafe_allow_html=True)
@@ -308,27 +312,33 @@ if check_password():
                     else:
                         filtered_df = filtered_df[(filtered_df['Date'].dt.date >= start_date) & (filtered_df['Date'].dt.date <= end_date)]
 
-                disease_options = ["All"] + sorted([str(x) for x in filtered_df['Disease'].dropna().unique()]) if 'Disease' in filtered_df.columns else ["All"]
-                selected_disease = st.selectbox("Select Disease", disease_options, key="disease_filter")
-                if selected_disease != "All": filtered_df = filtered_df[filtered_df['Disease'] == selected_disease]
+                # --- 🔀 MULTI-SELECT DISEASE FILTER ---
+                all_diseases_sorted = sorted([str(x) for x in filtered_df['Disease'].dropna().unique()]) if 'Disease' in filtered_df.columns else []
+                selected_diseases = st.multiselect("Select Disease(s)", options=all_diseases_sorted, key="disease_filter", help="Select one or more diseases to filter and compare data.")
+                if selected_diseases:
+                    filtered_df = filtered_df[filtered_df['Disease'].isin(selected_diseases)]
 
-                raw_zones = mapping_df['Zone'].dropna().unique()
-                zones_list = ["All"] + sorted([str(x) for x in raw_zones], key=lambda x: int(''.join(filter(str.isdigit, str(x))) or 0))
-                selected_zone = st.selectbox("Select Zone", zones_list, key="zone_filter")
-
-                if selected_zone != "All":
-                    filtered_df = filtered_df[filtered_df['Zone'] == selected_zone]
-                    raw_wards = mapping_df[mapping_df['Zone'] == selected_zone]['Ward_Name'].dropna().unique()
+                # --- 🔀 MULTI-SELECT ZONE & WARD FILTERS ---
+                raw_zones = sorted(mapping_df['Zone'].dropna().unique(), key=lambda x: int(''.join(filter(str.isdigit, str(x))) or 0)) if mapping_df is not None and 'Zone' in mapping_df.columns else []
+                zones_list_clean = [str(z) for z in raw_zones]
+                selected_zones = st.multiselect("Select Zone(s)", options=zones_list_clean, key="zone_filter", help="Select one or more zones for comparative analysis.")
+                
+                if selected_zones:
+                    filtered_df = filtered_df[filtered_df['Zone'].isin(selected_zones)]
+                    raw_wards = mapping_df[mapping_df['Zone'].isin(selected_zones)]['Ward_Name'].dropna().unique()
                 else:
-                    raw_wards = mapping_df['Ward_Name'].dropna().unique()
+                    raw_wards = mapping_df['Ward_Name'].dropna().unique() if mapping_df is not None else []
                     
-                wards_list = ["All"] + sorted([str(x) for x in raw_wards])
-                selected_ward = st.selectbox("Select Ward", wards_list, key="ward_filter")
-                if selected_ward != "All": filtered_df = filtered_df[filtered_df['Ward_Name'] == selected_ward]
+                wards_sorted = sorted([str(x) for x in raw_wards])
+                selected_wards = st.multiselect("Select Ward(s)", options=wards_sorted, key="ward_filter", help="Select specific wards/prabhags.")
+                if selected_wards:
+                    filtered_df = filtered_df[filtered_df['Ward_Name'].isin(selected_wards)]
 
-                status_options = ["All"] + sorted([str(x) for x in filtered_df['Status'].dropna().unique()]) if 'Status' in filtered_df.columns else ["All"]
-                selected_status = st.selectbox("Select Patient Status", status_options, key="status_filter")
-                if selected_status != "All": filtered_df = filtered_df[filtered_df['Status'] == selected_status]
+                # --- 🔀 MULTI-SELECT STATUS FILTER ---
+                status_options_list = sorted([str(x) for x in filtered_df['Status'].dropna().unique()]) if 'Status' in filtered_df.columns else []
+                selected_statuses = st.multiselect("Select Status(es)", options=status_options_list, key="status_filter", help="Filter by patient clinical status.")
+                if selected_statuses:
+                    filtered_df = filtered_df[filtered_df['Status'].isin(selected_statuses)]
 
                 st.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
                 st.markdown("<h3 style='margin-top:0px; margin-bottom: 5px; font-size: 15px;'>📊 Zone-wise Cases</h3>", unsafe_allow_html=True)
@@ -339,14 +349,16 @@ if check_password():
 
             # --- CONSOLIDATED DASHBOARD METRICS INSIDE CARD CONTAINER ---
             with st.container(border=True):
-                st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{selected_zone} Zone` ➔ `{selected_ward}`</span>", unsafe_allow_html=True)
+                zones_display = ", ".join(selected_zones) if selected_zones else "All Zones"
+                wards_display = ", ".join(selected_wards) if selected_wards else "All Wards"
+                st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{zones_display}` ➔ `{wards_display}`</span>", unsafe_allow_html=True)
                 
                 status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
                 total_cols = 1 + len(status_counts)
                 metric_cols = st.columns(total_cols)
-                with metric_cols[0]: st.metric("Total Cases (Filtered)", len(filtered_df))
+                with metric_cols[0]: st.metric("Total Cases (Filtered)", len(filtered_df), help="Total number of patient records matching current filter criteria.")
                 for idx, (status_name, count_val) in enumerate(status_counts.items()):
-                    with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val)
+                    with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val, help=f"Total patients currently under '{status_name}' condition status.")
 
             # --- AI HEALTH INSIGHTS ---
             if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
@@ -454,15 +466,18 @@ if check_password():
                         elif cases < max_ward_cases * 0.7: return "#fc4e2a"  
                         else: return "#bd0026"
 
-                    selected_ward_clean = clean_ward_fast(selected_ward) if selected_ward != "All" else "All"
+                    first_selected_ward = selected_wards[0] if selected_wards else "All"
+                    selected_ward_clean = clean_ward_fast(first_selected_ward) if first_selected_ward != "All" else "All"
                     
                     for feature in geo_data['features']:
                         clean_ward = feature['properties']['Clean_Ward'] 
                         zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
                         ward_cases = clean_ward_counts.get(clean_ward, 0)
                         
-                        if selected_ward != "All": zone_cases = ward_cases if clean_ward == selected_ward_clean else 0
-                        else: zone_cases = clean_zone_counts.get(zone_name, 0)
+                        if selected_wards: 
+                            zone_cases = ward_cases if clean_ward in [clean_ward_fast(w) for w in selected_wards] else 0
+                        else: 
+                            zone_cases = clean_zone_counts.get(zone_name, 0)
                         
                         feature['properties']['Clean_Zone'] = zone_name
                         feature['properties']['Ward_Cases'] = ward_cases
@@ -471,8 +486,8 @@ if check_password():
 
                     m.get_root().html.add_child(folium.Element("<style>.leaflet-popup-content, .leaflet-popup-content-wrapper {font-family: 'Inter', sans-serif !important; font-size: 13px !important;}</style>"))
 
-                    popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_ward != "All" else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
-                    popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_ward != "All" else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
+                    popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_wards else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
+                    popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_wards else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
 
                     folium.GeoJson(
                         geo_data,
@@ -508,7 +523,7 @@ if check_password():
                                         lats = [p[1] for p in ring]
                                         center_lat, center_lon = sum(lats) / len(lats), sum(lons) / len(lons)
                                         badge = f"""<div style="background-color:#e53e3e; border:2px solid #fff; color:#fff; font-weight:bold; font-size:11px; width:24px; height:24px; line-height:20px; border-radius:50%; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.4); transform:translate(-50%, -50%);">{ward_cases}</div>"""
-                                        extra_str = "" if selected_ward != "All" else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
+                                        extra_str = "" if selected_wards else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
                                         popup = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px;"><b>Ward No :</b> {feature['properties']['Clean_Ward']}<br><b>Total Cases :</b> {ward_cases}<br><b>Zone No :</b> {feature['properties']['Clean_Zone']}{extra_str}</div>"""
                                         folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), popup=folium.Popup(popup, max_width=200)).add_to(m)
                                     except Exception: pass
