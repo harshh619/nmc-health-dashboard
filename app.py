@@ -373,7 +373,7 @@ if check_password():
                     zone_summary.columns = ['Zone', 'Cases']
                     st.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
 
-            # 🚀 [OPTION 2 FEATURE] - COMPARATIVE PERIOD ANALYSIS (MOM GROWTH DELTA)
+            # 🚀 [OPTION 2 FEATURE] - COMPARATIVE PERIOD ANALYSIS
             def calculate_trend(df, col_filter=None, val_filter=None):
                 if 'Date' not in df.columns or df.empty: return 0
                 max_d = df['Date'].max()
@@ -513,15 +513,14 @@ if check_password():
                         fig_gen.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=240, showlegend=False)
                         st.plotly_chart(fig_gen, use_container_width=True)
 
-
-            # --- ROW 4: INTERACTIVE MAP (PERFECT CENTERING & LEGEND FIX) ---
+            # --- ROW 4: INTERACTIVE MAP ---
             with st.container(border=True):
                 st.markdown("### 📍 Patients Map View")
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
                 
                 if geo_data:
-                    # 🚀 [FIXED] Updated Initial Location & Zoom to perfectly center Nagpur Wards
-                    m = folium.Map(location=[21.115, 79.055], zoom_start=11.2, tiles=None, zoom_control=False, attribution_control=False)
+                    # 🚀 [FIXED] Updated Initial Location & Zoom to match the requested framing (image_cb5b5b.png)
+                    m = folium.Map(location=[21.130, 79.065], zoom_start=11.7, tiles=None, zoom_control=False, attribution_control=False)
                     
                     folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
                     folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
@@ -660,8 +659,8 @@ if check_password():
                                     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-center-btn');
                                     var a = L.DomUtil.create('a', '', div);
                                     a.innerHTML = '🎯'; a.href = '#'; a.title = 'Center Map';
-                                    /* 🚀 [FIXED] Reset map to new perfectly centered coordinates */
-                                    L.DomEvent.on(a, 'click', function(e) { L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e); map.setView([21.115, 79.055], 11.2, {animate: true, duration: 1.0}); });
+                                    /* 🚀 [FIXED] Reset map to new specific coordinates */
+                                    L.DomEvent.on(a, 'click', function(e) { L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e); map.setView([21.130, 79.065], 11.7, {animate: true, duration: 1.0}); });
                                     return div;
                                 };
                                 {{ this._parent.get_name() }}.addControl(centerControl);
@@ -669,7 +668,7 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 SMART DYNAMIC LEGEND (ABSOLUTE PIXEL HEIGHT FIX) ---
+                    # --- 🚀 SMART DYNAMIC LEGEND (100% BULLETPROOF CSS FIX) ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -686,9 +685,9 @@ if check_password():
                     
                     disease_legend_section = f"""<b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">{disease_legend_items}<div style="margin-top: 15px;"></div>"""
                     
-                    # 🚀 [FIXED] Changed max-height to 450px and bottom to 40px so it strictly stays inside the 750px map iframe
+                    # 🚀 [FIXED] Changed max-height to `calc(100% - 50px)` ensuring it strictly stays within map boundaries without hardcoded pixel limits
                     legend_html = f"""
-                    <div style="position: absolute; bottom: 40px; left: 20px; width: 230px; max-height: 450px; overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px; margin-bottom: 10px;">
+                    <div style="position: absolute; bottom: 25px; left: 20px; width: 230px; max-height: calc(100% - 50px); overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px;">
                         {disease_legend_section}
                         <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                         <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
@@ -698,10 +697,10 @@ if check_password():
                         <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
                     </div>
                     <style>
-                        div[style*="max-height: 450px"]::-webkit-scrollbar {{ width: 6px; }} 
-                        div[style*="max-height: 450px"]::-webkit-scrollbar-track {{ background: transparent; }} 
-                        div[style*="max-height: 450px"]::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 10px; }} 
-                        div[style*="max-height: 450px"]::-webkit-scrollbar-thumb:hover {{ background: #94a3b8; }}
+                        div[style*="max-height: calc"]::-webkit-scrollbar {{ width: 6px; }} 
+                        div[style*="max-height: calc"]::-webkit-scrollbar-track {{ background: transparent; }} 
+                        div[style*="max-height: calc"]::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 10px; }} 
+                        div[style*="max-height: calc"]::-webkit-scrollbar-thumb:hover {{ background: #94a3b8; }}
                     </style>
                     """
                     m.get_root().html.add_child(folium.Element(legend_html))
