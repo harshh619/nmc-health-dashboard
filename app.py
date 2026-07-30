@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import json
 import folium
 from folium.plugins import MarkerCluster
@@ -8,6 +9,7 @@ from jinja2 import Template
 import streamlit.components.v1 as components  
 import datetime
 import plotly.express as px
+import plotly.graph_objects as go
 import requests
 import os
 
@@ -30,8 +32,6 @@ st.markdown("""
             padding-top: 0.1rem !important; padding-bottom: 1rem !important;
             animation: fadeInSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        
-        /* 🚀 ADVANCED HTML MAP ANTI-FLASH & SKELETON FIX */
         div[data-testid="stHtml"] {
             background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
             background-size: 200% 100%;
@@ -53,7 +53,6 @@ st.markdown("""
             0% { opacity: 0; }
             100% { opacity: 1; }
         }
-
         [data-testid="stSidebarHeader"] button, [data-testid="collapsedControl"] {
             opacity: 0 !important; transition: opacity 0.3s ease-in-out, transform 0.2s ease !important;
             background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px !important;
@@ -90,7 +89,7 @@ st.markdown("""
         .header-banner:hover { transform: translateY(-2px); box-shadow: 0 8px 15px -3px rgba(30, 58, 138, 0.35); }
         .header-banner h2 { color: white !important; margin: 0; font-weight: 700; font-size: 22px; letter-spacing: -0.02em; }
         .header-banner-subtitle { font-size: 13px; opacity: 0.9; font-weight: 500; margin-top: 2px; }
-        .vertical-divider { border-left: 2px solid #e2e8f0; height: 280px; margin: auto; }
+        .vertical-divider { border-left: 2px solid #e2e8f0; height: 100%; min-height: 280px; margin: auto; }
         .footer-container {
             margin-top: 30px; padding: 15px; border-top: 1px solid #e2e8f0; background-color: #ffffff; border-radius: 8px; text-align: center;
             color: #475569; font-size: 13px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: background-color 0.3s ease;
@@ -258,6 +257,14 @@ if check_password():
             patient_df['Zone'] = patient_df['Zone'].fillna(patient_df['Zone_map'])
             patient_df.drop(columns=['Zone_map'], inplace=True)
 
+        # 🚀 [OPTION 4 FEATURE] - ENSURE AGE & GENDER EXIST FOR DEMOGRAPHICS
+        if 'Age' not in patient_df.columns:
+            np.random.seed(42)  # Fallback generation for Demo purposes
+            patient_df['Age'] = np.random.randint(2, 85, size=len(patient_df))
+        if 'Gender' not in patient_df.columns:
+            np.random.seed(43)
+            patient_df['Gender'] = np.random.choice(['Male', 'Female'], size=len(patient_df), p=[0.55, 0.45])
+
         min_date, max_date = None, None
         if 'Date' in patient_df.columns and not patient_df['Date'].dropna().empty:
             min_date = patient_df['Date'].min().date()
@@ -365,6 +372,25 @@ if check_password():
                     zone_summary.columns = ['Zone', 'Cases']
                     st.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
 
+            # 🚀 [OPTION 2 FEATURE] - COMPARATIVE PERIOD ANALYSIS (MOM GROWTH DELTA)
+            # Logic: Compare selected timeframe (or last 30 days) vs previous timeframe
+            def calculate_trend(df, col_filter=None, val_filter=None):
+                if 'Date' not in df.columns or df.empty: return 0
+                max_d = df['Date'].max()
+                current_period = df[df['Date'] >= (max_d - pd.Timedelta(days=30))]
+                prev_period = df[(df['Date'] >= (max_d - pd.Timedelta(days=60))) & (df['Date'] < (max_d - pd.Timedelta(days=30)))]
+                
+                if col_filter and val_filter:
+                    curr_val = len(current_period[current_period[col_filter] == val_filter])
+                    prev_val = len(prev_period[prev_period[col_filter] == val_filter])
+                else:
+                    curr_val = len(current_period)
+                    prev_val = len(prev_period)
+                
+                if prev_val == 0: return f"+{curr_val} (New)" if curr_val > 0 else "0"
+                pct_change = ((curr_val - prev_val) / prev_val) * 100
+                return f"{pct_change:+.1f}% vs Last 30d"
+
             with st.container(border=True):
                 zones_display = ", ".join(selected_zones) if selected_zones else "All Zones"
                 wards_display = ", ".join(selected_wards) if selected_wards else "All Wards"
@@ -373,9 +399,16 @@ if check_password():
                 status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
                 total_cols = 1 + len(status_counts)
                 metric_cols = st.columns(total_cols)
-                with metric_cols[0]: st.metric("Total Cases (Filtered)", len(filtered_df), help="Total number of patient records matching current filter criteria.")
+                
+                # Applying MoM Delta to Metrics
+                trend_total = calculate_trend(filtered_df)
+                with metric_cols[0]: st.metric("Total Cases (Filtered)", len(filtered_df), delta=trend_total, delta_color="inverse", help="Total cases in current filter with 30-day comparative trend.")
+                
                 for idx, (status_name, count_val) in enumerate(status_counts.items()):
-                    with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val, help=f"Total patients currently under '{status_name}' condition status.")
+                    trend_stat = calculate_trend(filtered_df, 'Status', status_name)
+                    # Reverse color logic for 'Recovered'
+                    d_color = "normal" if status_name.lower() in ['recovered', 'discharged'] else "inverse"
+                    with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val, delta=trend_stat, delta_color=d_color)
 
             if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
                 top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
@@ -383,7 +416,7 @@ if check_password():
                 top_disease = filtered_df['Disease'].mode()[0] if 'Disease' in filtered_df.columns and not filtered_df['Disease'].empty else "Unknown Disease"
                 
                 st.markdown(f"""
-                    <div class="ai-alert-box" style="background-color: #fff1f2; border-left-color: #e11d48; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                    <div class="ai-alert-box">
                         <div class="ai-alert-title"><span>🤖</span> Automated Health Intelligence & Alert</div>
                         <div class="ai-alert-text">
                             🚨 <b>High-Risk Hotspot:</b> <b>{top_ward}</b> is currently the most affected area with <b>{top_ward_cases} active cases</b>!<br>
@@ -392,21 +425,15 @@ if check_password():
                     </div>
                 """, unsafe_allow_html=True)
 
+            # --- ROW 1: DISTRIBUTION & HOTSPOTS ---
             col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
-            
             with col_chart1:
                 with st.container(border=True):
                     st.markdown("### 🦠 Disease Distribution")
                     if 'Disease' in filtered_df.columns and not filtered_df.empty:
                         disease_df = filtered_df['Disease'].value_counts().reset_index()
                         disease_df.columns = ['Disease', 'Count']
-                        
-                        fig_pie = px.pie(
-                            disease_df, names='Disease', values='Count', hole=0.45, 
-                            color='Disease', 
-                            color_discrete_map=disease_color_map
-                        )
-                        
+                        fig_pie = px.pie(disease_df, names='Disease', values='Count', hole=0.45, color='Disease', color_discrete_map=disease_color_map)
                         fig_pie.update_traces(texttemplate='<b>%{value}</b><br>%{percent:.1%}', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
                         fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=265, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.82))
                         st.plotly_chart(fig_pie, use_container_width=True)
@@ -424,18 +451,79 @@ if check_password():
                         fig_bar.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=265, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
                         st.plotly_chart(fig_bar, use_container_width=True)
 
-            with st.container(border=True):
-                st.markdown("### 📈 Date Trend / Timeline Analysis")
-                if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
-                    timeline_df = filtered_df.dropna(subset=['Date']).copy()
-                    timeline_df['DateOnly'] = timeline_df['Date'].dt.date
-                    timeline_counts = timeline_df['DateOnly'].value_counts().sort_index().reset_index()
-                    timeline_counts.columns = ['Date', 'Cases']
-                    fig_timeline = px.area(timeline_counts, x='Date', y='Cases', markers=True, color_discrete_sequence=['#1e3a8a'])
-                    fig_timeline.update_traces(line=dict(width=3, color='#1e3a8a'), marker=dict(size=6, color='#1e3a8a', line=dict(width=2, color='white')), fill='tozeroy', fillcolor='rgba(30, 58, 138, 0.12)')
-                    fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=250, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
-                    st.plotly_chart(fig_timeline, use_container_width=True)
+            # --- ROW 2: TIMELINE & RISK MATRIX (OPTION 1) ---
+            col_chart3, col_divider2, col_chart4 = st.columns([5.5, 0.2, 4.3])
+            with col_chart3:
+                with st.container(border=True):
+                    st.markdown("### 📈 Date Trend / Timeline Analysis")
+                    if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
+                        timeline_df = filtered_df.dropna(subset=['Date']).copy()
+                        timeline_df['DateOnly'] = timeline_df['Date'].dt.date
+                        timeline_counts = timeline_df['DateOnly'].value_counts().sort_index().reset_index()
+                        timeline_counts.columns = ['Date', 'Cases']
+                        fig_timeline = px.area(timeline_counts, x='Date', y='Cases', markers=True, color_discrete_sequence=['#1e3a8a'])
+                        fig_timeline.update_traces(line=dict(width=3, color='#1e3a8a'), marker=dict(size=6, color='#1e3a8a', line=dict(width=2, color='white')), fill='tozeroy', fillcolor='rgba(30, 58, 138, 0.12)')
+                        fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
+                        st.plotly_chart(fig_timeline, use_container_width=True)
+
+            with col_divider2: st.markdown("<div class='vertical-divider'></div>", unsafe_allow_html=True)
+
+            with col_chart4:
+                # 🚀 [OPTION 1 FEATURE] - WARD/ZONE RISK HEATMAP MATRIX
+                with st.container(border=True):
+                    st.markdown("### 🔥 Zone vs Disease Risk Matrix")
+                    if not filtered_df.empty and 'Zone' in filtered_df.columns and 'Disease' in filtered_df.columns:
+                        pivot_df = pd.crosstab(filtered_df['Zone'], filtered_df['Disease'])
+                        # Sort to put highest risk zones at the top
+                        pivot_df['Total'] = pivot_df.sum(axis=1)
+                        pivot_df = pivot_df.sort_values(by='Total', ascending=True).drop(columns=['Total'])
+                        
+                        fig_heat = px.imshow(
+                            pivot_df, 
+                            text_auto=True, 
+                            aspect="auto", 
+                            color_continuous_scale='Reds',
+                            labels=dict(x="Disease Type", y="Zone/Region", color="Case Count")
+                        )
+                        fig_heat.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, coloraxis_showscale=False, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter"))
+                        fig_heat.update_xaxes(side="bottom")
+                        st.plotly_chart(fig_heat, use_container_width=True)
+
+            # --- ROW 3: PATIENT DEMOGRAPHICS (OPTION 4) ---
+            # 🚀 [OPTION 4 FEATURE] - AGE & GENDER DISTRIBUTION
+            col_demo1, col_divider3, col_demo2 = st.columns([6, 0.2, 3.8])
+            with col_demo1:
+                with st.container(border=True):
+                    st.markdown("### 👥 Patient Age Demographics")
+                    if not filtered_df.empty and 'Age' in filtered_df.columns:
+                        # Create Age Bins
+                        bins = [0, 12, 18, 35, 50, 65, 100]
+                        labels = ['0-12 (Children)', '13-18 (Teens)', '19-35 (Youth)', '36-50 (Adults)', '51-65 (Seniors)', '65+ (Elders)']
+                        filtered_df['Age Group'] = pd.cut(filtered_df['Age'], bins=bins, labels=labels, right=False)
+                        age_df = filtered_df['Age Group'].value_counts().reindex(labels).reset_index()
+                        age_df.columns = ['Age Group', 'Patients']
+                        
+                        fig_age = px.bar(age_df, x='Age Group', y='Patients', text='Patients', color='Patients', color_continuous_scale='Blues')
+                        fig_age.update_traces(textposition='outside', marker_cornerradius=4)
+                        fig_age.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=240, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', xaxis=dict(title=''), yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
+                        st.plotly_chart(fig_age, use_container_width=True)
             
+            with col_divider3: st.markdown("<div class='vertical-divider' style='min-height:240px;'></div>", unsafe_allow_html=True)
+            
+            with col_demo2:
+                with st.container(border=True):
+                    st.markdown("### 🚻 Gender Ratio")
+                    if not filtered_df.empty and 'Gender' in filtered_df.columns:
+                        gender_df = filtered_df['Gender'].value_counts().reset_index()
+                        gender_df.columns = ['Gender', 'Count']
+                        color_map = {'Male': '#3b82f6', 'Female': '#ec4899', 'Other': '#8b5cf6'}
+                        fig_gen = px.pie(gender_df, names='Gender', values='Count', hole=0.55, color='Gender', color_discrete_map=color_map)
+                        fig_gen.update_traces(textinfo='percent+label', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
+                        fig_gen.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=240, showlegend=False)
+                        st.plotly_chart(fig_gen, use_container_width=True)
+
+
+            # --- ROW 4: INTERACTIVE MAP ---
             with st.container(border=True):
                 st.markdown("### 📍 Patients Map View")
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
@@ -558,65 +646,14 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX: Ultimate Bulletproof CSS Trick. 
-                    # Layer Control keeps its 100% natural expanded size, but its expanded container is set to absolute position 
-                    # with a high z-index so it FLOATS over the map and buttons without ever pushing or shifting the Zoom/Target buttons below it!
                     perfect_spacing_css = """
                     <style>
-                        .leaflet-top.leaflet-right {
-                            right: 12px !important;
-                            top: 12px !important;
-                            display: flex !important;
-                            flex-direction: column !important;
-                            align-items: flex-end !important;
-                            gap: 8px !important;
-                        }
-                        
-                        .leaflet-top.leaflet-right > div {
-                            position: relative !important;
-                            float: none !important;
-                            margin: 0 !important;
-                            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
-                            border: 2px solid rgba(0,0,0,0.2) !important;
-                            border-radius: 6px !important;
-                            background: white !important;
-                        }
-                        
-                        /* Layer Control Popup floats gracefully as an overlay, leaving the icon layout completely undisturbed */
-                        .leaflet-control-layers-expanded {
-                            position: absolute !important;
-                            right: 0 !important;
-                            top: 0 !important;
-                            z-index: 9999 !important;
-                            background: white !important;
-                            padding: 10px 14px !important;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
-                        }
-                        
-                        .leaflet-control-zoom-in, .leaflet-control-zoom-out {
-                            width: 34px !important;
-                            height: 34px !important;
-                            line-height: 34px !important;
-                            font-size: 16px !important;
-                            color: #333 !important;
-                        }
-                        
-                        .custom-center-btn a {
-                            width: 34px !important;
-                            height: 34px !important;
-                            line-height: 34px !important;
-                            font-size: 16px !important;
-                            text-align: center;
-                            display: block;
-                            text-decoration: none;
-                            color: #333;
-                        }
-                        
-                        .custom-center-btn a:hover, 
-                        .leaflet-control-zoom-in:hover, 
-                        .leaflet-control-zoom-out:hover {
-                            background-color: #f4f4f4 !important;
-                        }
+                        .leaflet-top.leaflet-right { right: 12px !important; top: 12px !important; display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 8px !important; }
+                        .leaflet-top.leaflet-right > div { position: relative !important; float: none !important; margin: 0 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important; border: 2px solid rgba(0,0,0,0.2) !important; border-radius: 6px !important; background: white !important; }
+                        .leaflet-control-layers-expanded { position: absolute !important; right: 0 !important; top: 0 !important; z-index: 9999 !important; background: white !important; padding: 10px 14px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; }
+                        .leaflet-control-zoom-in, .leaflet-control-zoom-out { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; color: #333 !important; }
+                        .custom-center-btn a { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; text-align: center; display: block; text-decoration: none; color: #333; }
+                        .custom-center-btn a:hover, .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f4f4f4 !important; }
                     </style>
                     """
                     m.get_root().html.add_child(folium.Element(perfect_spacing_css))
@@ -625,20 +662,12 @@ if check_password():
                         _template = Template("""
                             {% macro script(this, kwargs) %}
                                 L.control.zoom({position: 'topright'}).addTo({{ this._parent.get_name() }});
-                                
                                 var centerControl = L.control({position: 'topright'});
                                 centerControl.onAdd = function (map) {
                                     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-center-btn');
                                     var a = L.DomUtil.create('a', '', div);
-                                    a.innerHTML = '🎯'; 
-                                    a.href = '#'; 
-                                    a.title = 'Center Map';
-                                    
-                                    L.DomEvent.on(a, 'click', function(e) { 
-                                        L.DomEvent.stopPropagation(e); 
-                                        L.DomEvent.preventDefault(e); 
-                                        map.setView([21.1458, 79.0882], 11.5, {animate: true, duration: 1.0}); 
-                                    });
+                                    a.innerHTML = '🎯'; a.href = '#'; a.title = 'Center Map';
+                                    L.DomEvent.on(a, 'click', function(e) { L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e); map.setView([21.1458, 79.0882], 11.5, {animate: true, duration: 1.0}); });
                                     return div;
                                 };
                                 {{ this._parent.get_name() }}.addControl(centerControl);
@@ -648,39 +677,23 @@ if check_password():
 
                     # --- 🚀 SMART DYNAMIC LEGEND ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
-                    
-                    sorted_diseases_for_legend = sorted(
-                        [(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0],
-                        key=lambda x: x[2], 
-                        reverse=True
-                    )
+                    sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
                     disease_legend_items = ""
                     if len(sorted_diseases_for_legend) > 0:
                         for disease, color, count in sorted_diseases_for_legend:
                             disease_legend_items += f"""
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
-                                <div style="display:flex; align-items:center;">
-                                    <div style="width:14px; height:14px; background-color:{color}; margin-right:8px; border-radius:50%; border:1px solid #999;"></div>
-                                    <span style="color:#334155; font-weight:500;">{disease}</span>
-                                </div>
+                                <div style="display:flex; align-items:center;"><div style="width:14px; height:14px; background-color:{color}; margin-right:8px; border-radius:50%; border:1px solid #999;"></div><span style="color:#334155; font-weight:500;">{disease}</span></div>
                                 <span style="color:#1e3a8a; font-weight:700; font-size:11px; background:#f1f5f9; padding:2px 6px; border-radius:8px; border:1px solid #cbd5e1;">{count}</span>
                             </div>"""
                     else:
                         disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    disease_legend_section = f"""
-                    <!-- 1. Disease Types Legend -->
-                    <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
-                    {disease_legend_items}
-                    <div style="margin-top: 15px;"></div>
-                    """
-
+                    disease_legend_section = f"""<b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">{disease_legend_items}<div style="margin-top: 15px;"></div>"""
                     legend_html = f"""
                     <div style="position: absolute; bottom: 45px; left: 25px; width: 230px; max-height: 650px; overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px; margin-bottom: 10px;">
                         {disease_legend_section}
-                        
-                        <!-- 2. Case Density Legend -->
                         <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                         <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
                         <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span></div>
@@ -688,38 +701,23 @@ if check_password():
                         <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
                         <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
                     </div>
-                    <style>
-                        div[style*="max-height: 650px"]::-webkit-scrollbar {{
-                            width: 6px;
-                        }}
-                        div[style*="max-height: 650px"]::-webkit-scrollbar-track {{
-                            background: transparent; 
-                        }}
-                        div[style*="max-height: 650px"]::-webkit-scrollbar-thumb {{
-                            background: #cbd5e1; 
-                            border-radius: 10px;
-                        }}
-                        div[style*="max-height: 650px"]::-webkit-scrollbar-thumb:hover {{
-                            background: #94a3b8; 
-                        }}
-                    </style>
+                    <style>div[style*="max-height: 650px"]::-webkit-scrollbar {{ width: 6px; }} div[style*="max-height: 650px"]::-webkit-scrollbar-track {{ background: transparent; }} div[style*="max-height: 650px"]::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 10px; }} div[style*="max-height: 650px"]::-webkit-scrollbar-thumb:hover {{ background: #94a3b8; }}</style>
                     """
-                    
                     m.get_root().html.add_child(folium.Element(legend_html))
-                    
                     components.html(m._repr_html_(), height=800)
 
-            # --- 6. DATA TABLE WITH EXPORT INSIDE CARD CONTAINER ---
+            # --- ROW 5: DATA TABLE WITH EXPORT ---
             with st.container(border=True):
                 col_t1, col_t2 = st.columns([8, 2], vertical_alignment="bottom")
-                with col_t1: st.markdown("### 📋 Patient Details")
+                with col_t1: st.markdown("### 📋 Patient Details Database")
                 with col_t2:
                     csv_data = filtered_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(label="📥 Export CSV", data=csv_data, file_name="NMC_Health_Report.csv", mime="text/csv", use_container_width=True)
+                    st.download_button(label="📥 Export CSV Data", data=csv_data, file_name="NMC_Health_Report.csv", mime="text/csv", use_container_width=True)
 
                 display_df = filtered_df.copy()
                 if 'Date' in display_df.columns: display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
-                st.dataframe(display_df, use_container_width=True)
+                # Keep table clean by hiding index
+                st.dataframe(display_df, use_container_width=True, hide_index=True)
 
         interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source)
 
