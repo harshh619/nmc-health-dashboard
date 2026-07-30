@@ -60,11 +60,11 @@ st.markdown("""
             background-color: #ffffff !important; border: 1px solid #cbd5e1 !important; border-radius: 8px !important;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important; color: #1e3a8a !important; z-index: 99999 !important;
         }
-        [data-testid="collapsedControl"] { margin-top: 10px; margin-left: 10px; }
-        .stApp:hover [data-testid="stSidebarHeader"] button, .stApp:hover [data-testid="collapsedControl"] { opacity: 1 !important; }
         [data-testid="stSidebarHeader"] button:hover, [data-testid="collapsedControl"]:hover {
             background-color: #1e3a8a !important; color: #ffffff !important; transform: scale(1.08) !important;
         }
+        [data-testid="stSidebarHeader"] button, [data-testid="collapsedControl"] { margin-top: 10px; margin-left: 10px; }
+        .stApp:hover [data-testid="stSidebarHeader"] button, .stApp:hover [data-testid="collapsedControl"] { opacity: 1 !important; }
         header[data-testid="stHeader"] { background: transparent !important; height: 0px !important; }
         header[data-testid="stHeader"] .stAppToolbar { opacity: 0; transition: opacity 0.3s ease; }
         header[data-testid="stHeader"]:hover .stAppToolbar { opacity: 1; }
@@ -673,9 +673,12 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 SMART DYNAMIC LEGEND (LEAFLET NATIVE CONTROL - 100% BULLETPROOF) ---
-                    # Ab hum absolute raw HTML div use nahi karenge. Usse iframe borders element ko cut kar dete hain.
-                    # Hum Leaflet ke official `L.control` API ko use karenge jisse legend strictly map padding ke andar fit hoga.
+                    # --- 🚀 SMART DYNAMIC LEGEND (LEAFLET NATIVE CONTROL + SCROLLABLE LIST FIX) ---
+                    # Native L.control API map ke andar hi legend ko ek internal UI element ki tarah treat karta hai.
+                    # Lekin agar disease list lambi ho jaaye toh legend map ke fixed-height container se bahar
+                    # nikal sakta hai aur clip ho sakta hai. Isliye disease list wale column ko capped
+                    # max-height + internal scrollbar diya gaya hai, taaki legend box kabhi bhi map se bahar
+                    # na nikle, chahe diseases 3 ho ya 30.
                     
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
@@ -691,12 +694,19 @@ if check_password():
                     else:
                         disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    # 🚀 Fix: Removed raw `absolute` wrapper. Styled standard container.
                     legend_css_native = """
                     <style>
                         /* Ye force karega control ko map ke absolute bottom border se upar rehne ke liye */
                         .leaflet-bottom.leaflet-left { margin-bottom: 25px !important; margin-left: 10px !important; }
-                        
+
+                        /* 🚀 SAFETY NET: Leaflet ke control containers par overflow clip hata do,
+                           taaki agar kabhi legend map bounds se bahar bhi jaaye, cut na ho */
+                        .leaflet-control-container,
+                        .leaflet-bottom,
+                        .leaflet-left {
+                            overflow: visible !important;
+                        }
+
                         .native-leaflet-legend {
                             background-color: rgba(255,255,255,0.95);
                             border: 2px solid rgba(0,0,0,0.15);
@@ -706,8 +716,25 @@ if check_password():
                             font-family: 'Inter', sans-serif;
                             display: flex;
                             flex-direction: row;
+                            /* 🚀 Legend ki total height ko map ke andar hi cap kar do */
+                            max-height: 260px;
                         }
-                        .legend-col-left { display: flex; flex-direction: column; min-width: 155px; padding-right: 25px; border-right: 1px solid #cbd5e1; }
+                        .legend-col-left {
+                            display: flex;
+                            flex-direction: column;
+                            min-width: 155px;
+                            padding-right: 25px;
+                            border-right: 1px solid #cbd5e1;
+                            /* 🚀 Sirf disease list scroll karegi, box nahi grow hoga */
+                            max-height: 230px;
+                            overflow-y: auto;
+                            overflow-x: hidden;
+                        }
+                        /* Thin custom scrollbar taaki UI clean rahe */
+                        .legend-col-left::-webkit-scrollbar { width: 5px; }
+                        .legend-col-left::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+                        .legend-col-left::-webkit-scrollbar-track { background: transparent; }
+
                         .legend-col-right { display: flex; flex-direction: column; min-width: 140px; padding-left: 25px; }
                         .legend-item { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
                         .legend-item-left { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }
@@ -720,7 +747,7 @@ if check_password():
                     
                     inner_html = f"""
                         <div class="legend-col-left">
-                            <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b>
+                            <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px; position:sticky; top:0; background:rgba(255,255,255,0.95); padding-bottom:4px;">🦠 Disease Types</b>
                             <hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                             {disease_legend_items}
                         </div>
