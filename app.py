@@ -688,12 +688,12 @@ if check_password():
                     else:
                         disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    # 🚀 Fix: Shifted bottom to 30px, added separator border, extended bottom/side padding
+                    # 🚀 Fix: Shifted bottom to 55px (completely clear of bottom line) and compressed inner gap slightly
                     legend_html = f"""
                     <style>
                         #custom-map-legend {{
                             position: absolute; 
-                            bottom: 30px; /* 🚀 Upar shift kiya jisse niche se cut nahi hoga */
+                            bottom: 55px; /* 🚀 Upar shift kiya gya h taaki base line se touch na ho */
                             left: 20px; 
                             background-color: rgba(255,255,255,0.95); 
                             border: 2px solid rgba(0,0,0,0.15); 
@@ -701,7 +701,7 @@ if check_password():
                             border-radius: 8px; 
                             box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
                             pointer-events: auto; 
-                            padding: 16px 20px 20px 20px; /* 🚀 Extra bottom and side padding */
+                            padding: 14px 18px 18px 18px; /* 🚀 Inner padding optimized */
                             font-family: 'Inter', sans-serif; 
                             display: flex;
                             flex-direction: row;
@@ -710,16 +710,16 @@ if check_password():
                             display: flex; 
                             flex-direction: column; 
                             min-width: 160px; 
-                            padding-right: 30px; /* 🚀 Spacing before divider */
-                            border-right: 1px solid #cbd5e1; /* 🚀 Divider Line */
+                            padding-right: 30px; 
+                            border-right: 1px solid #cbd5e1; 
                         }}
                         .legend-col-right {{ 
                             display: flex; 
                             flex-direction: column; 
                             min-width: 140px; 
-                            padding-left: 30px; /* 🚀 Spacing after divider */
+                            padding-left: 30px; 
                         }}
-                        .legend-item {{ display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }} /* 🚀 Increased gap between items */
+                        .legend-item {{ display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }} /* 🚀 Items me gap slightly compact kiya */
                         .legend-item-left {{ display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }}
                         .legend-item-right {{ color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; }}
                         .legend-blob {{ width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; }}
