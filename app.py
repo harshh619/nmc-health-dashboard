@@ -2,10 +2,8 @@ import streamlit as st
 import pandas as pd
 import json
 import folium
-from folium.plugins import MarkerCluster
-from branca.element import MacroElement
-from jinja2 import Template
-import streamlit.components.v1 as components  # <-- CHANGED: Using native components instead of st_folium
+from folium.plugins import MarkerCluster, EasyButton
+import streamlit.components.v1 as components  
 import datetime
 import plotly.express as px
 import requests
@@ -37,7 +35,7 @@ st.markdown("""
             background-size: 200% 100%;
             animation: skeleton-pulse 1.5s infinite ease-in-out;
             border-radius: 8px !important;
-            min-height: 700px !important; /* Locks container height so it never collapses */
+            min-height: 700px !important;
             overflow: hidden !important;
         }
         div[data-testid="stHtml"] iframe {
@@ -53,7 +51,6 @@ st.markdown("""
             0% { opacity: 0; }
             100% { opacity: 1; }
         }
-        /* ------------------------------------------- */
 
         [data-testid="stSidebarHeader"] button, [data-testid="collapsedControl"] {
             opacity: 0 !important; transition: opacity 0.3s ease-in-out, transform 0.2s ease !important;
@@ -457,7 +454,8 @@ if check_password():
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
                 
                 if geo_data:
-                    m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
+                    # 🛠️ FIX 2: zoom_control=True is restored, so standard + / - buttons appear correctly
+                    m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=True, attribution_control=False)
                     folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
                     folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
                     folium.TileLayer('OpenStreetMap', name='Default Map', control=True).add_to(m)
@@ -568,6 +566,13 @@ if check_password():
                                     folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, popup=folium.Popup(popup_text, max_width=250), color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(m)
                             
                     folium.LayerControl(position='topright').add_to(m)
+                    
+                    # 🛠️ FIX 2 (b): Using Folium's robust plugin for Center Map instead of complex scripts
+                    EasyButton(
+                        icon='<span style="font-size: 18px; line-height: 24px;">🎯</span>',
+                        title='Center Map',
+                        onClick="function(btn, map){ map.setView([21.1458, 79.0882], 11.5, {animate: true, duration: 1.0}); }"
+                    ).add_to(m)
 
                     # --- 🚀 SMART DYNAMIC LEGEND ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
@@ -599,44 +604,25 @@ if check_password():
                     <div style="margin-top: 15px;"></div>
                     """
 
+                    # 🛠️ FIX 1: Flex-box wrapper applied. Maximum height is limited, and inner content will auto-scroll perfectly
                     legend_html = f"""
-                    <div style="position:fixed; bottom:25px; left:20px; width:210px; background-color:rgba(255,255,255,0.95); border:2px solid rgba(0,0,0,0.15); z-index:9999; font-family:'Inter',sans-serif; font-size:12px; padding:12px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.15); pointer-events:auto; max-height: 75vh; overflow-y: auto;">
-                        
-                        {disease_legend_section}
-                        
-                        <!-- 2. Case Density Legend -->
-                        <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
-                        <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
-                        <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span></div>
-                        <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#feb24c; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate</span></div>
-                        <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
-                        <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
+                    <div style="position: absolute; bottom: 20px; left: 20px; width: 220px; max-height: calc(100% - 40px); background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; display: flex; flex-direction: column;">
+                        <div style="overflow-y: auto; padding: 12px; font-family: 'Inter', sans-serif; font-size: 12px; scrollbar-width: thin;">
+                            {disease_legend_section}
+                            
+                            <!-- 2. Case Density Legend -->
+                            <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
+                            <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
+                            <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span></div>
+                            <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#feb24c; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate</span></div>
+                            <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
+                            <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
+                        </div>
                     </div>"""
                     
                     m.get_root().html.add_child(folium.Element(legend_html))
-
-                    class CustomMapControls(MacroElement):
-                        _template = Template("""
-                            {% macro script(this, kwargs) %}
-                                L.control.zoom({position: 'bottomright'}).addTo({{ this._parent.get_name() }});
-                                var centerControl = L.control({position: 'bottomright'});
-                                centerControl.onAdd = function (map) {
-                                    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-                                    var a = L.DomUtil.create('a', '', div);
-                                    a.innerHTML = '🎯'; a.href = '#'; a.title = 'Center Map';
-                                    a.style.fontSize = '18px'; a.style.lineHeight = '30px'; a.style.textAlign = 'center'; a.style.textDecoration = 'none';
-                                    a.style.display = 'block'; a.style.backgroundColor = '#fff'; a.style.color = '#333'; a.style.width = '30px'; a.style.height = '30px';
-                                    a.onmouseover = function(){ this.style.backgroundColor = '#f4f4f4'; };
-                                    a.onmouseout = function(){ this.style.backgroundColor = '#fff'; };
-                                    L.DomEvent.on(a, 'click', function(e) { L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e); map.setView([21.1458, 79.0882], 11.5, {animate: true, duration: 1.0}); });
-                                    return div;
-                                };
-                                {{ this._parent.get_name() }}.addControl(centerControl);
-                            {% endmacro %}
-                        """)
-                    m.add_child(CustomMapControls())
                     
-                    # 🚀 FIX: Using native components.html bypasses React unmounting flash!
+                    # 🚀 Using native components.html bypasses React unmounting flash!
                     components.html(m._repr_html_(), height=700)
 
             # --- 6. DATA TABLE WITH EXPORT INSIDE CARD CONTAINER ---
