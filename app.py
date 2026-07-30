@@ -558,38 +558,59 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX: Perfect Stacked Layout with Equal Dimensions & Spacing for Layer, Zoom (+/-), and Target (🎯)
+                    # 🛠️ FIX: Absolute Locked Positioning for Layer Control (Expands Downwards Over Map, Never Pushing Buttons)
                     perfect_spacing_css = """
                     <style>
-                        /* Standardize Leaflet Control Buttons to Exact Same Size & Spacing */
+                        /* Map top-right positioning container */
                         .leaflet-top.leaflet-right {
                             right: 12px !important;
                             top: 12px !important;
                         }
                         
-                        /* Group control boxes cleanly with proper gap */
-                        .leaflet-control-layers, 
-                        .leaflet-control-zoom, 
-                        .custom-center-btn {
+                        /* Layer control absolute positioning so expanding doesn't affect other elements */
+                        .leaflet-control-layers {
+                            position: absolute !important;
+                            top: 0px !important;
+                            right: 0px !important;
+                            margin: 0 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
                             border: 2px solid rgba(0,0,0,0.2) !important;
                             border-radius: 6px !important;
                             background: white !important;
-                            margin-bottom: 8px !important; /* Proper gap between buttons */
-                            float: right !important;
-                            clear: both !important;
+                            z-index: 1000 !important;
                         }
                         
-                        /* Fix Layer control box size & prevent squishing */
-                        .leaflet-control-layers {
-                            padding: 6px !important;
+                        /* Zoom Control fixed below Layer Control */
+                        .leaflet-control-zoom {
+                            position: absolute !important;
+                            top: 45px !important;
+                            right: 0px !important;
+                            margin: 0 !important;
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+                            border: 2px solid rgba(0,0,0,0.2) !important;
+                            border-radius: 6px !important;
+                            background: white !important;
+                            z-index: 999 !important;
                         }
+                        
+                        /* Target Button fixed below Zoom Control */
+                        .custom-center-btn {
+                            position: absolute !important;
+                            top: 125px !important;
+                            right: 0px !important;
+                            margin: 0 !important;
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+                            border: 2px solid rgba(0,0,0,0.2) !important;
+                            border-radius: 6px !important;
+                            background: white !important;
+                            z-index: 998 !important;
+                        }
+                        
                         .leaflet-control-layers-toggle {
                             width: 32px !important;
                             height: 32px !important;
                         }
                         
-                        /* Uniform size for Zoom (+/-) buttons */
                         .leaflet-control-zoom-in, .leaflet-control-zoom-out {
                             width: 34px !important;
                             height: 34px !important;
@@ -598,7 +619,6 @@ if check_password():
                             color: #333 !important;
                         }
                         
-                        /* Uniform size for Center Target (🎯) button */
                         .custom-center-btn a {
                             width: 34px !important;
                             height: 34px !important;
@@ -610,7 +630,6 @@ if check_password():
                             color: #333;
                         }
                         
-                        /* Hover effects */
                         .custom-center-btn a:hover, 
                         .leaflet-control-zoom-in:hover, 
                         .leaflet-control-zoom-out:hover {
@@ -623,10 +642,8 @@ if check_password():
                     class CustomMapControls(MacroElement):
                         _template = Template("""
                             {% macro script(this, kwargs) %}
-                                // Add standard zoom control inside the topright flow container
                                 L.control.zoom({position: 'topright'}).addTo({{ this._parent.get_name() }});
                                 
-                                // Add custom Center Map button with uniform dimensions
                                 var centerControl = L.control({position: 'topright'});
                                 centerControl.onAdd = function (map) {
                                     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-center-btn');
