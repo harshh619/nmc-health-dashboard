@@ -248,7 +248,6 @@ if check_password():
             # 🎨 --- GLOBAL DISEASE COLOR MAPPING (Syncs Pie Chart & Map) ---
             bold_colors = px.colors.qualitative.Bold
             all_diseases = patient_df['Disease'].dropna().unique() if 'Disease' in patient_df.columns else []
-            # Har disease ko alphabetically sort karke ek fix color assign kar rahe hain
             disease_color_map = {d: bold_colors[i % len(bold_colors)] for i, d in enumerate(sorted(all_diseases))}
             
             def clear_filters():
@@ -373,7 +372,7 @@ if check_password():
                     disease_df = filtered_df['Disease'].value_counts().reset_index()
                     disease_df.columns = ['Disease', 'Count']
                     
-                    # 🚀 UPDATED PIE CHART: Ab yeh global mapping ke colors use karega
+                    # 🚀 UPDATED PIE CHART
                     fig_pie = px.pie(
                         disease_df, names='Disease', values='Count', hole=0.45, 
                         color='Disease', 
@@ -484,8 +483,6 @@ if check_password():
                         for idx, row in filtered_df.iterrows():
                             p_name = str(row.get('Patient_Name', 'N/A')).title()
                             disease_name = row.get('Disease', 'N/A')
-                            
-                            # 🚀 UPDATED: Cluster Markers bhi Disease ke specific color me aayenge
                             point_color = disease_color_map.get(disease_name, '#2563eb')
                             
                             popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
@@ -517,8 +514,6 @@ if check_password():
                         for idx, row in filtered_df.iterrows():
                             p_name = str(row.get('Patient_Name', 'N/A')).title()
                             disease_name = row.get('Disease', 'N/A')
-                            
-                            # 🚀 UPDATED: Points ko unke disease ke pie chart wale color se map kiya gaya hai
                             point_color = disease_color_map.get(disease_name, '#e53e3e') 
                             
                             popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
@@ -529,8 +524,21 @@ if check_password():
                     
                 folium.LayerControl(position='topright').add_to(m)
 
-                legend_html = """
-                <div style="position:fixed; bottom:25px; left:20px; width:155px; background-color:rgba(255,255,255,0.95); border:2px solid rgba(0,0,0,0.15); z-index:9999; font-family:'Inter',sans-serif; font-size:12px; padding:12px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.15); pointer-events:auto;">
+                # --- 🚀 NEW DYNAMIC LEGEND GENERATION (Disease + Density) ---
+                disease_legend_items = ""
+                for disease, color in disease_color_map.items():
+                    disease_legend_items += f'<div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:{color}; margin-right:8px; border-radius:50%; border:1px solid #999;"></div><span style="color:#334155; font-weight:500;">{disease}</span></div>'
+
+                legend_html = f"""
+                <div style="position:fixed; bottom:25px; left:20px; width:165px; background-color:rgba(255,255,255,0.95); border:2px solid rgba(0,0,0,0.15); z-index:9999; font-family:'Inter',sans-serif; font-size:12px; padding:12px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.15); pointer-events:auto; max-height: 75vh; overflow-y: auto;">
+                    
+                    <!-- 1. Disease Types Legend (Dynamic) -->
+                    <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
+                    {disease_legend_items}
+                    
+                    <div style="margin-top: 15px;"></div>
+                    
+                    <!-- 2. Case Density Legend (Static) -->
                     <b style="color:#1e3a8a; font-size:13px; display:flex; align-items:center; gap:5px;">📊 Case Density</b><hr style="margin:6px 0; border:none; border-top:1px solid #cbd5e1;">
                     <div style="display:flex; align-items:center; margin-top:5px;"><div style="width:14px; height:14px; background-color:#bd0026; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">High / Critical</span></div>
                     <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#fc4e2a; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Moderate-High</span></div>
@@ -538,6 +546,7 @@ if check_password():
                     <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ffeda0; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Low Cases</span></div>
                     <div style="display:flex; align-items:center; margin-top:6px;"><div style="width:14px; height:14px; background-color:#ebedef; margin-right:8px; border:1px solid #999; border-radius:3px;"></div><span style="color:#334155; font-weight:500;">Zero Cases</span></div>
                 </div>"""
+                
                 m.get_root().html.add_child(folium.Element(legend_html))
 
                 class CustomMapControls(MacroElement):
