@@ -558,9 +558,8 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX: Original normal width restored for Layer Control. 
-                    # Zoom and Target buttons are placed in fixed floating positions below it, 
-                    # so expanding the layer menu will float *over* them without pushing/shifting them.
+                    # 🛠️ FIX: Perfect layout styling! Layer popup keeps its natural size and expands cleanly as an overlay.
+                    # All three icons (Layers, Zoom, Target) are locked to absolute topright positions with equal box size (34x34) and consistent gap.
                     perfect_spacing_css = """
                     <style>
                         .leaflet-top.leaflet-right {
@@ -568,19 +567,30 @@ if check_password():
                             top: 12px !important;
                         }
                         
-                        /* Layer control keeps its default standard natural width */
+                        /* Layer control naturally positioned at top-right without forcing narrow width */
                         .leaflet-control-layers {
                             position: absolute !important;
                             top: 0px !important;
                             right: 0px !important;
                             margin: 0 !important;
                             z-index: 1000 !important;
+                            box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+                            border: 2px solid rgba(0,0,0,0.2) !important;
+                            border-radius: 6px !important;
+                            background: white !important;
                         }
                         
-                        /* Zoom control placed below layer control with absolute positioning */
+                        /* Layer expanded box keeps its default comfortable size */
+                        .leaflet-control-layers-expanded {
+                            padding: 8px 12px !important;
+                            color: #333 !important;
+                            background: white !important;
+                        }
+                        
+                        /* Zoom control locked below layer control */
                         .leaflet-control-zoom {
                             position: absolute !important;
-                            top: 48px !important;
+                            top: 45px !important;
                             right: 0px !important;
                             margin: 0 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
@@ -590,10 +600,10 @@ if check_password():
                             z-index: 999 !important;
                         }
                         
-                        /* Target button placed below zoom control with absolute positioning */
+                        /* Target button locked below zoom control with exact same spacing */
                         .custom-center-btn {
                             position: absolute !important;
-                            top: 128px !important;
+                            top: 125px !important;
                             right: 0px !important;
                             margin: 0 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
