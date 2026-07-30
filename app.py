@@ -558,9 +558,9 @@ if check_password():
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX: Absolute Positioning Wrapper using CSS. 
-                    # Layer Control sits naturally at top-right without size deformation, 
-                    # while Zoom & Target buttons are locked below it using absolute positioning so they NEVER shift when Layer popup expands/collapses.
+                    # 🛠️ FIX: Smart CSS Overlay Trick. 
+                    # Layer Control is given a fixed positioning where it expands OVER the map and zoom/target buttons below it 
+                    # using absolute z-indexing, so it keeps its exact ideal size from "Perfect.png" without ever shifting the icons!
                     perfect_spacing_css = """
                     <style>
                         .leaflet-top.leaflet-right {
@@ -568,23 +568,30 @@ if check_password():
                             top: 12px !important;
                         }
                         
-                        /* Layer Control stays native, letting the popup expand naturally without narrowing */
+                        /* Layer control is positioned at top-right with high z-index and auto height/width expansion */
                         .leaflet-control-layers {
                             position: absolute !important;
                             top: 0px !important;
                             right: 0px !important;
                             margin: 0 !important;
-                            z-index: 1000 !important;
+                            z-index: 1005 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
                             border: 2px solid rgba(0,0,0,0.2) !important;
                             border-radius: 6px !important;
                             background: white !important;
                         }
                         
-                        /* Zoom Control strictly locked at a fixed coordinate below Layer Control */
+                        /* Expanded Layer popup maintains its ideal natural dimensions */
+                        .leaflet-control-layers-expanded {
+                            padding: 10px 14px !important;
+                            background: white !important;
+                            color: #333 !important;
+                        }
+                        
+                        /* Zoom Control locked securely in place below the layer control */
                         .leaflet-control-zoom {
                             position: absolute !important;
-                            top: 45px !important;
+                            top: 42px !important;
                             right: 0px !important;
                             margin: 0 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
@@ -594,10 +601,10 @@ if check_password():
                             z-index: 999 !important;
                         }
                         
-                        /* Target Button strictly locked below Zoom Control with uniform spacing */
+                        /* Target Button locked securely below Zoom Control */
                         .custom-center-btn {
                             position: absolute !important;
-                            top: 132px !important;
+                            top: 122px !important;
                             right: 0px !important;
                             margin: 0 !important;
                             box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
