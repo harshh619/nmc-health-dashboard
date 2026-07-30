@@ -456,7 +456,6 @@ if check_password():
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
                 
                 if geo_data:
-                    # 🛠️ FIX 1: Zoom Control is set to False here so we can custom-inject it to the 'topright' later!
                     m = folium.Map(location=[21.1458, 79.0882], zoom_start=11.5, tiles=None, zoom_control=False, attribution_control=False)
                     folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
                     folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
@@ -510,20 +509,29 @@ if check_password():
                         feature['properties']['Zone_Cases'] = zone_cases
                         feature['properties']['fill_color'] = get_density_color(ward_cases)
 
+                    # Used strictly for popups (Markers), not the base map Tooltip
                     m.get_root().html.add_child(folium.Element("<style>.leaflet-popup-content, .leaflet-popup-content-wrapper {font-family: 'Inter', sans-serif !important; font-size: 13px !important;}</style>"))
 
                     popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_wards else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
                     popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_wards else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
 
+                    # 🛠️ FIX 1: name="Base map" added. 🛠️ FIX 2: tooltip= used instead of popup= for auto-hide hover effect!
                     folium.GeoJson(
                         geo_data,
+                        name="Base map", 
                         style_function=lambda feature: {'color': '#444444', 'weight': 1, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.60},
                         highlight_function=lambda feature: {'color': '#000000', 'weight': 2.5, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.80},
-                        popup=folium.GeoJsonPopup(fields=popup_fields, aliases=popup_aliases, labels=True, style="font-family: 'Inter', sans-serif; font-size: 13px;")
+                        tooltip=folium.GeoJsonTooltip(
+                            fields=popup_fields, 
+                            aliases=popup_aliases, 
+                            labels=True, 
+                            style="font-family: 'Inter', sans-serif; font-size: 13px; background-color: rgba(255, 255, 255, 0.95); border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); padding: 8px;"
+                        )
                     ).add_to(m)
 
                     if map_mode == "Patient Cluster View":
-                        marker_cluster = MarkerCluster().add_to(m)
+                        # 🛠️ FIX 3: name="Cases" added to Cluster
+                        marker_cluster = MarkerCluster(name="Cases").add_to(m)
                         if not filtered_df.empty:
                             for idx, row in filtered_df.iterrows():
                                 p_name = str(row.get('Patient_Name', 'N/A')).title()
@@ -537,6 +545,8 @@ if check_password():
                                     folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, popup=folium.Popup(popup_text, max_width=250)).add_to(marker_cluster)
 
                     elif map_mode == "Ward-wise Exact Count View":
+                        # 🛠️ FIX 4: Put markers in a FeatureGroup named "Cases"
+                        cases_group = folium.FeatureGroup(name="Cases").add_to(m)
                         for feature in geo_data['features']:
                             ward_cases = feature['properties']['Ward_Cases']
                             if ward_cases > 0:
@@ -551,10 +561,12 @@ if check_password():
                                         badge = f"""<div style="background-color:#e53e3e; border:2px solid #fff; color:#fff; font-weight:bold; font-size:11px; width:24px; height:24px; line-height:20px; border-radius:50%; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.4); transform:translate(-50%, -50%);">{ward_cases}</div>"""
                                         extra_str = "" if selected_wards else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
                                         popup = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px;"><b>Ward No :</b> {feature['properties']['Clean_Ward']}<br><b>Total Cases :</b> {ward_cases}<br><b>Zone No :</b> {feature['properties']['Clean_Zone']}{extra_str}</div>"""
-                                        folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), popup=folium.Popup(popup, max_width=200)).add_to(m)
+                                        folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), popup=folium.Popup(popup, max_width=200)).add_to(cases_group)
                                     except Exception: pass
 
                     elif map_mode == "All Cases Points View":
+                        # 🛠️ FIX 5: Put points in a FeatureGroup named "Cases"
+                        cases_group = folium.FeatureGroup(name="Cases").add_to(m)
                         if not filtered_df.empty:
                             for idx, row in filtered_df.iterrows():
                                 p_name = str(row.get('Patient_Name', 'N/A')).title()
@@ -565,19 +577,15 @@ if check_password():
                                     <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                     <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, popup=folium.Popup(popup_text, max_width=250), color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(m)
+                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, popup=folium.Popup(popup_text, max_width=250), color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(cases_group)
                             
-                    # 🛠️ The Layer control renders first at topright
                     folium.LayerControl(position='topright').add_to(m)
                     
-                    # 🛠️ FIX 2: Custom JS injected afterwards. Since it targets 'topright', Leaflet stacks Zoom and Target neatly under the Layer icon!
                     class CustomMapControls(MacroElement):
                         _template = Template("""
                             {% macro script(this, kwargs) %}
-                                // Manually add default Zoom Control to top-right
                                 L.control.zoom({position: 'topright'}).addTo({{ this._parent.get_name() }});
                                 
-                                // Target Button dynamically injected below Zoom buttons
                                 var centerControl = L.control({position: 'topright'});
                                 centerControl.onAdd = function (map) {
                                     var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
@@ -638,7 +646,6 @@ if check_password():
                     <div style="margin-top: 15px;"></div>
                     """
 
-                    # 🛠️ FIX 3: Set 'bottom: 45px;' to completely lift the legend visually away from the bottom boundary line.
                     legend_html = f"""
                     <div style="position: absolute; bottom: 45px; left: 25px; width: 230px; max-height: 650px; overflow-y: auto; background-color: rgba(255,255,255,0.95); border: 2px solid rgba(0,0,0,0.15); z-index: 9999; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); pointer-events: auto; padding: 15px; font-family: 'Inter', sans-serif; font-size: 12px; margin-bottom: 10px;">
                         {disease_legend_section}
@@ -671,7 +678,6 @@ if check_password():
                     
                     m.get_root().html.add_child(folium.Element(legend_html))
                     
-                    # 🚀 Rendering with an 800px height for optimal space usage
                     components.html(m._repr_html_(), height=800)
 
             # --- 6. DATA TABLE WITH EXPORT INSIDE CARD CONTAINER ---
