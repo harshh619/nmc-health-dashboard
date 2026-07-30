@@ -673,7 +673,7 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 THE FINAL BULLETPROOF LEGEND SOLUTION ---
+                    # --- 🚀 THE 100% BULLETPROOF DIRECT DOM INJECTION FIX ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -688,33 +688,33 @@ if check_password():
                     else:
                         disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    legend_css_native = """
-                        .native-leaflet-legend {
-                            background-color: rgba(255,255,255,0.95);
+                    legend_css_bulletproof = """
+                        .custom-floating-legend {
+                            position: absolute !important;
+                            bottom: 40px !important;  /* Strictly pins the bottom edge of the iframe container */
+                            left: 20px !important;
+                            z-index: 99999 !important; /* Forces it above everything else */
+                            background-color: rgba(255, 255, 255, 0.95);
                             border: 2px solid rgba(0,0,0,0.15);
                             border-radius: 8px;
-                            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
                             padding: 15px;
                             font-family: 'Inter', sans-serif;
                             display: flex;
                             flex-direction: row;
-                            /* 🔥 Margin pushes box strictly up from the iframe bottom base */
-                            margin-bottom: 35px !important; 
-                            margin-left: 20px !important;
+                            max-height: 550px; /* Fully limits the box size to never cross the 720px iframe height */
+                            overflow-y: auto; /* Internal scrolling if items exceed max-height */
+                            pointer-events: auto;
                         }
+                        
+                        /* Clean custom scrollbar logic */
+                        .custom-floating-legend::-webkit-scrollbar { width: 6px; }
+                        .custom-floating-legend::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+                        .custom-floating-legend::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+                        
                         .legend-col-left { display: flex; flex-direction: column; min-width: 175px; padding-right: 20px; border-right: 1px solid #cbd5e1; }
                         .legend-col-right { display: flex; flex-direction: column; min-width: 145px; padding-left: 20px; }
                         
-                        /* 🔥 SCROLLABLE LIST FIX: No matter how many items, box height will NEVER exceed this */
-                        .scrollable-list {
-                            max-height: 250px; 
-                            overflow-y: auto;
-                            padding-right: 6px;
-                        }
-                        /* Clean Scrollbar Design */
-                        .scrollable-list::-webkit-scrollbar { width: 4px; }
-                        .scrollable-list::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
-
                         .legend-item { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
                         .legend-item-left { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }
                         .legend-item-right { color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; }
@@ -726,10 +726,7 @@ if check_password():
                         <div class="legend-col-left">
                             <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b>
                             <hr style="margin:8px 0; border:none; border-top:1px solid #cbd5e1;">
-                            <!-- 🔥 Ye specific column scrollable hoga agar items 15+ hain -->
-                            <div class="scrollable-list">
-                                {disease_legend_items}
-                            </div>
+                            {disease_legend_items}
                         </div>
                         
                         <div class="legend-col-right">
@@ -743,7 +740,7 @@ if check_password():
                         </div>
                     """
 
-                    class NativeLegendControl(MacroElement):
+                    class BulletproofLegend(MacroElement):
                         def __init__(self, html, css):
                             super().__init__()
                             self.html = html
@@ -751,24 +748,24 @@ if check_password():
 
                         _template = Template("""
                             {% macro script(this, kwargs) %}
-                                // 🔥 Leaflet Control hamesha map boundaries respect karta hai
-                                var legendControl = L.control({position: 'bottomleft'});
-                                legendControl.onAdd = function (map) {
-                                    var div = L.DomUtil.create('div', 'native-leaflet-legend');
-                                    div.innerHTML = `
-                                        <style>{{ this.css }}</style>
-                                        {{ this.html }}
-                                    `;
-                                    // 🔥 Prevents map zoom/drag when scrolling inside legend
-                                    L.DomEvent.disableClickPropagation(div);
-                                    L.DomEvent.disableScrollPropagation(div);
-                                    return div;
-                                };
-                                {{ this._parent.get_name() }}.addControl(legendControl);
+                                // 🔥 Bypassing Leaflet's control system entirely.
+                                // We are injecting this directly into the map container's root so its layout cannot be messed with.
+                                var legendDiv = L.DomUtil.create('div', 'custom-floating-legend');
+                                legendDiv.innerHTML = `
+                                    <style>{{ this.css }}</style>
+                                    {{ this.html }}
+                                `;
+                                
+                                var mapContainer = {{ this._parent.get_name() }}.getContainer();
+                                mapContainer.appendChild(legendDiv);
+                                
+                                // Prevent map interactions when interacting with the legend itself
+                                L.DomEvent.disableClickPropagation(legendDiv);
+                                L.DomEvent.disableScrollPropagation(legendDiv);
                             {% endmacro %}
                         """)
                     
-                    m.add_child(NativeLegendControl(inner_html, legend_css_native))
+                    m.add_child(BulletproofLegend(inner_html, legend_css_bulletproof))
 
                     components.html(m._repr_html_(), height=720)
 
