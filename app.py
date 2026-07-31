@@ -675,10 +675,10 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 THE 100% BULLETPROOF TOP-ANCHORED MATH OVERLAY ---
-                    # Hmara Iframe 720px ka hai. Hum is legend ko exactly 320px TOP se start karenge. 
-                    # Max-height 360px hai. So 320+360 = 680px. 
-                    # Ye kabhi bhi 720px ko touch nahi karega, humesha 40px safe rahega.
+                    # --- 🚀 THE 100% BULLETPROOF BOTTOM-ALIGNED MATH OVERLAY ---
+                    # MAGIC TRICK: Fixed Height Parent Container + align-items: flex-end
+                    # Parent container strictly occupies exactly 320px to 680px from the top.
+                    # As items grow, flex-end forces them to build "upwards" from the 680px baseline.
                     
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
@@ -705,21 +705,22 @@ if check_password():
                             .disease-scroll::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 4px; }}
                         </style>
                         <div style="
-                            position: fixed; 
-                            top: 320px; /* MAGIC NUMBER: Starts safely in the middle-bottom */
+                            position: absolute; 
+                            top: 320px;       /* Fixed safe top start point */
+                            height: 360px;    /* 🚀 NEW: FIXED HEIGHT CONTAINER forces a rigid baseline at exactly 680px */
                             left: 15px; 
                             z-index: 999999; 
                             display: flex; 
                             flex-direction: row; 
-                            align-items: flex-start; /* Tops will perfectly align now */
+                            align-items: flex-end; /* 🚀 NEW: Bottom-aligns items inside this 360px box */
                             gap: 15px; 
                             pointer-events: none;
                         ">
-                            <!-- Disease Types Box (Grows down until 360px limit) -->
-                            <div class="disease-scroll" style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 220px; max-height: 360px; overflow-y: auto; overflow-x: hidden;">
-                                <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px;">🦠 Disease Types</p>
-                                <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px;"></div>
-                                <div style="display: flex; flex-direction: column; gap: 7px;">
+                            <!-- Disease Types Box (Grows UPWARDS inside the fixed container) -->
+                            <div class="disease-scroll" style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 220px; max-height: 100%; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column;">
+                                <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px; flex-shrink: 0;">🦠 Disease Types</p>
+                                <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px; flex-shrink: 0;"></div>
+                                <div style="display: flex; flex-direction: column; gap: 7px; overflow-y: auto;">
                                     {disease_html_rows}
                                 </div>
                             </div>
