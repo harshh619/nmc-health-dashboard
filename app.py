@@ -582,6 +582,7 @@ if check_password():
                     popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_wards else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
                     popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_wards else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
 
+                    # 🚀 GEOJSON WITH ADDED INLINE STYLE (Fall back protection)
                     folium.GeoJson(
                         geo_data,
                         name="Base map", 
@@ -590,7 +591,8 @@ if check_password():
                         tooltip=folium.GeoJsonTooltip(
                             fields=popup_fields, 
                             aliases=popup_aliases, 
-                            labels=True
+                            labels=True,
+                            style="font-family: 'Inter', sans-serif; font-size: 13px;"
                         )
                     ).add_to(m)
 
@@ -606,7 +608,6 @@ if check_password():
                                     <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                     <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    # 🚀 POPUP REPLACED WITH TOOLTIP 
                                     folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, tooltip=popup_text).add_to(marker_cluster)
 
                     elif map_mode == "Ward-wise Exact Count View":
@@ -625,7 +626,6 @@ if check_password():
                                         badge = f"""<div style="background-color:#e53e3e; border:2px solid #fff; color:#fff; font-weight:bold; font-size:11px; width:24px; height:24px; line-height:20px; border-radius:50%; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.4); transform:translate(-50%, -50%);">{ward_cases}</div>"""
                                         extra_str = "" if selected_wards else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
                                         popup = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px;"><b>Ward No :</b> {feature['properties']['Clean_Ward']}<br><b>Total Cases :</b> {ward_cases}<br><b>Zone No :</b> {feature['properties']['Clean_Zone']}{extra_str}</div>"""
-                                        # 🚀 POPUP REPLACED WITH TOOLTIP 
                                         folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), tooltip=popup).add_to(cases_group)
                                     except Exception: pass
 
@@ -641,11 +641,11 @@ if check_password():
                                     <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                     <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    # 🚀 POPUP REPLACED WITH TOOLTIP 
                                     folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, tooltip=popup_text, color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(cases_group)
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
+                    # 🚀 CSS OVERRIDE FOR LEAFLET DEFAULT TOOLTIPS
                     perfect_spacing_css = """
                     <style>
                         html, body, #map { margin: 0 !important; padding: 0 !important; height: 100% !important; overflow: hidden !important; }
@@ -657,6 +657,34 @@ if check_password():
                         .custom-center-btn a { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; text-align: center; display: block; text-decoration: none; color: #333; }
                         .custom-center-btn a:hover, .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f4f4f4 !important; }
                         path.leaflet-interactive:focus, .leaflet-container:focus, .leaflet-interactive, svg:focus { outline: none !important; }
+                        
+                        /* 🚀 WARD HOVER TOOLTIP STYLING FIX */
+                        .leaflet-tooltip {
+                            font-family: 'Inter', sans-serif !important;
+                            font-size: 13px !important;
+                            background-color: rgba(255, 255, 255, 0.95) !important;
+                            border: 1px solid #cbd5e1 !important;
+                            border-radius: 8px !important;
+                            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+                            padding: 10px 14px !important;
+                            color: #334155 !important;
+                        }
+                        .leaflet-tooltip table { 
+                            margin: 0 !important; 
+                            border-spacing: 0 !important; 
+                        }
+                        .leaflet-tooltip th { 
+                            font-weight: 700 !important; 
+                            color: #0f172a !important; 
+                            padding-right: 12px !important; 
+                            padding-bottom: 4px !important; 
+                            text-align: left !important; 
+                        }
+                        .leaflet-tooltip td { 
+                            font-weight: 500 !important; 
+                            color: #334155 !important; 
+                            padding-bottom: 4px !important; 
+                        }
                     </style>
                     """
                     m.get_root().html.add_child(folium.Element(perfect_spacing_css))
@@ -705,13 +733,13 @@ if check_password():
                         </style>
                         <div style="
                             position: absolute; 
-                            top: 345px;       /* 🚀 SHIFTED DOWN: 345px (Top) + 360px (Height) = 705px Baseline */
+                            top: 345px;       
                             height: 360px;    
-                            left: 15px;       /* 15px left margin */
+                            left: 15px;       
                             z-index: 999999; 
                             display: flex; 
                             flex-direction: row; 
-                            align-items: flex-end; /* Bottom-aligns items inside this 360px box */
+                            align-items: flex-end; 
                             gap: 15px; 
                             pointer-events: none;
                         ">
