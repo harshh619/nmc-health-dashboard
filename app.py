@@ -222,7 +222,6 @@ if check_password():
             key = "sb_secret_yX2l6GXr0lKngsCY_CxSng_phLv7wH_"
             
             supabase: Client = create_client(url, key)
-            # 🚀 FIX: explicitly added .limit(10000) to override default 1000 rows limit
             response = supabase.table("patients_data").select("*").limit(10000).execute()
             
             patient_df = pd.DataFrame(response.data)
@@ -278,6 +277,9 @@ if check_password():
         @st.fragment
         def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source):
             
+            # 🚀 FIX: Setting explicit timezone for IST (UTC + 5:30)
+            ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+            
             bold_colors = px.colors.qualitative.Bold
             all_diseases = patient_df['Disease'].dropna().unique() if 'Disease' in patient_df.columns else []
             disease_color_map = {d: bold_colors[i % len(bold_colors)] for i, d in enumerate(sorted(all_diseases))}
@@ -289,12 +291,14 @@ if check_password():
                 st.session_state['status_filter'] = []
                 if min_date and max_date:
                     st.session_state['start_date'] = min_date
-                    st.session_state['end_date'] = datetime.datetime.now().date()
+                    st.session_state['end_date'] = datetime.datetime.now(ist_tz).date()
 
             with st.sidebar:
                 is_supabase = "Supabase" in data_source
                 indicator_color = "#2ed573" if is_supabase else "#3b82f6"
-                sync_time = datetime.datetime.now().strftime("%d %b %Y, %I:%M %p")
+                
+                # 🚀 FIX: Time is now properly fetching in IST, not server's UTC
+                sync_time = datetime.datetime.now(ist_tz).strftime("%d %b %Y, %I:%M %p")
                 
                 indicator_html = f"""
                 <style>
@@ -321,7 +325,7 @@ if check_password():
                     <div class="db-text">Live: {data_source}</div>
                 </div>
                 <div style="font-size: 11px; color: #64748b; margin-bottom: 15px; text-align: right;">
-                    ⏱️ Synced: <b>{sync_time}</b>
+                    ⏱️ Synced: <b>{sync_time}</b> (IST)
                 </div>
                 """
                 st.markdown(indicator_html, unsafe_allow_html=True)
@@ -335,13 +339,12 @@ if check_password():
                 if min_date and max_date:
                     st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
                     
-                    # 🚀 FIX: Calender logic - Default "To" date is strictly set to TODAY
-                    today_date = datetime.datetime.now().date()
+                    # 🚀 FIX: Calendar 'Today' is also calculated in IST
+                    today_date = datetime.datetime.now(ist_tz).date()
                     upper_bound = max(max_date, today_date) if max_date else today_date
                     
                     col1, col2 = st.columns(2)
                     with col1: start_date = st.date_input("From", value=min_date, max_value=upper_bound, format="DD/MM/YYYY", key="start_date")
-                    # Value explicitly set to upper_bound (which resolves to today_date by default behavior we want)
                     with col2: end_date = st.date_input("To", value=upper_bound, max_value=upper_bound, format="DD/MM/YYYY", key="end_date")
                     
                     if start_date > end_date:
