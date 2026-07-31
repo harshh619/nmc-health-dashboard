@@ -606,7 +606,8 @@ if check_password():
                                     <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                     <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, popup=folium.Popup(popup_text, max_width=250)).add_to(marker_cluster)
+                                    # 🚀 POPUP REPLACED WITH TOOLTIP 
+                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, tooltip=popup_text).add_to(marker_cluster)
 
                     elif map_mode == "Ward-wise Exact Count View":
                         cases_group = folium.FeatureGroup(name="Cases").add_to(m)
@@ -624,7 +625,8 @@ if check_password():
                                         badge = f"""<div style="background-color:#e53e3e; border:2px solid #fff; color:#fff; font-weight:bold; font-size:11px; width:24px; height:24px; line-height:20px; border-radius:50%; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.4); transform:translate(-50%, -50%);">{ward_cases}</div>"""
                                         extra_str = "" if selected_wards else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
                                         popup = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px;"><b>Ward No :</b> {feature['properties']['Clean_Ward']}<br><b>Total Cases :</b> {ward_cases}<br><b>Zone No :</b> {feature['properties']['Clean_Zone']}{extra_str}</div>"""
-                                        folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), popup=folium.Popup(popup, max_width=200)).add_to(cases_group)
+                                        # 🚀 POPUP REPLACED WITH TOOLTIP 
+                                        folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), tooltip=popup).add_to(cases_group)
                                     except Exception: pass
 
                     elif map_mode == "All Cases Points View":
@@ -639,7 +641,8 @@ if check_password():
                                     <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                     <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, popup=folium.Popup(popup_text, max_width=250), color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(cases_group)
+                                    # 🚀 POPUP REPLACED WITH TOOLTIP 
+                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, tooltip=popup_text, color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(cases_group)
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
@@ -676,10 +679,6 @@ if check_password():
                     m.add_child(CustomMapControls())
 
                     # --- 🚀 THE 100% BULLETPROOF BOTTOM-ALIGNED MATH OVERLAY ---
-                    # PERFECT SYMMETRY: Container exactly occupies 345px to 705px (from the top).
-                    # Iframe height is 720px. 720px - 705px = 15px exact margin from bottom.
-                    # As items grow, flex-end forces them to build "upwards" from the 705px baseline.
-                    
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
