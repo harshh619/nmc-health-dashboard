@@ -681,7 +681,7 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 INDEPENDENT FLOATING LEGENDS (UPWARD GROWTH FIX) ---
+                    # --- 🚀 THE 100% BULLETPROOF IFRAME BODY INJECTION (FIXED POSITION) ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -696,41 +696,38 @@ if check_password():
                     else:
                         disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    legend_css_absolute = """
-                        /* Disease Box: Pinned strictly to bottom-left, expands upwards automatically */
+                    legend_css_fixed = """
+                        /* Using FIXED limits it to the IFRAME window, completely bypassing Leaflet's layout */
                         .legend-box-disease {
-                            position: absolute !important;
-                            bottom: 30px !important;   /* Locks the bottom edge completely */
-                            top: auto !important;      /* Forces upwards growth as height increases */
+                            position: fixed !important;
+                            bottom: 25px !important;   /* Perfect gap from the bottom of the iframe */
                             left: 20px !important;
-                            z-index: 99999 !important;
+                            z-index: 999999 !important;
                             background-color: rgba(255, 255, 255, 0.95);
                             border: 2px solid rgba(0,0,0,0.15);
                             border-radius: 8px;
                             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
                             padding: 15px;
                             font-family: 'Inter', sans-serif;
-                            pointer-events: auto;
-                            min-width: 195px;
-                            max-height: 400px;         /* Cap height to ~15 items */
-                            overflow-y: auto;          /* Internal scroll triggered when limit crossed */
+                            box-sizing: border-box !important;
+                            width: 220px !important;   /* Exact fixed width */
+                            max-height: 420px !important; /* Forces upward growth until limit is reached */
+                            overflow-y: auto !important;
                         }
                         
-                        /* Density Box: Independent element, pinned strictly to bottom, spaced to the right */
                         .legend-box-density {
-                            position: absolute !important;
-                            bottom: 30px !important;   /* Exact same bottom alignment as Disease box */
-                            top: auto !important;
-                            left: 235px !important;    /* Shifted perfectly to the right to leave a clean gap */
-                            z-index: 99999 !important;
+                            position: fixed !important;
+                            bottom: 25px !important;   /* Exact same horizontal alignment */
+                            left: 255px !important;    /* 20px (left) + 220px (width) + 15px (gap) = 255px */
+                            z-index: 999999 !important;
                             background-color: rgba(255, 255, 255, 0.95);
                             border: 2px solid rgba(0,0,0,0.15);
                             border-radius: 8px;
                             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
                             padding: 15px;
                             font-family: 'Inter', sans-serif;
-                            pointer-events: auto;
-                            min-width: 175px;
+                            box-sizing: border-box !important;
+                            width: 175px !important;   /* Exact fixed width */
                         }
                         
                         /* Clean custom scrollbar for Disease Box */
@@ -764,7 +761,7 @@ if check_password():
                         <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#ebedef;"></div>Zero Cases</div></div>
                     """
 
-                    class AbsoluteSplitLegend(MacroElement):
+                    class AbsoluteFixedLegends(MacroElement):
                         def __init__(self, dis_html, den_html, css):
                             super().__init__()
                             self.dis_html = dis_html
@@ -779,18 +776,19 @@ if check_password():
                                 document.head.appendChild(cssStyle);
                                 
                                 // 🔥 Creating 2 totally separate floating DIVs
-                                var diseaseDiv = L.DomUtil.create('div', 'legend-box-disease');
+                                var diseaseDiv = document.createElement('div');
+                                diseaseDiv.className = 'legend-box-disease';
                                 diseaseDiv.innerHTML = `{{ this.dis_html }}`;
                                 
-                                var densityDiv = L.DomUtil.create('div', 'legend-box-density');
+                                var densityDiv = document.createElement('div');
+                                densityDiv.className = 'legend-box-density';
                                 densityDiv.innerHTML = `{{ this.den_html }}`;
                                 
-                                // Injecting both directly into the map container
-                                var mapContainer = {{ this._parent.get_name() }}.getContainer();
-                                mapContainer.appendChild(diseaseDiv);
-                                mapContainer.appendChild(densityDiv);
+                                // 🔥 THE FIX: Injecting directly into the HTML body, bypassing Leaflet completely!
+                                document.body.appendChild(diseaseDiv);
+                                document.body.appendChild(densityDiv);
                                 
-                                // Preventing zoom/scroll when user uses mouse inside the Legends
+                                // Disable Leaflet map dragging/zooming when clicking inside legends
                                 L.DomEvent.disableClickPropagation(diseaseDiv);
                                 L.DomEvent.disableScrollPropagation(diseaseDiv);
                                 L.DomEvent.disableClickPropagation(densityDiv);
@@ -798,7 +796,7 @@ if check_password():
                             {% endmacro %}
                         """)
                     
-                    m.add_child(AbsoluteSplitLegend(inner_disease_html, inner_density_html, legend_css_absolute))
+                    m.add_child(AbsoluteFixedLegends(inner_disease_html, inner_density_html, legend_css_fixed))
 
                     components.html(m._repr_html_(), height=720)
 
