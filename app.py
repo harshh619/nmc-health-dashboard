@@ -513,7 +513,7 @@ if check_password():
                         fig_gen.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=240, showlegend=False)
                         st.plotly_chart(fig_gen, use_container_width=True)
 
-            # --- ROW 4: INTERACTIVE MAP ---
+            # --- ROW 4: INTERACTIVE MAP (SCREEN FIT FIX) ---
             with st.container(border=True):
                 st.markdown("""
                     <style>
@@ -525,6 +525,7 @@ if check_password():
                 map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
                 
                 if geo_data:
+                    # Target center coordinates
                     m = folium.Map(location=[21.130, 79.065], zoom_start=11.7, tiles=None, zoom_control=False, attribution_control=False)
                     
                     folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
@@ -651,7 +652,14 @@ if check_password():
                         .leaflet-control-zoom-in, .leaflet-control-zoom-out { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; color: #333 !important; }
                         .custom-center-btn a { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; text-align: center; display: block; text-decoration: none; color: #333; }
                         .custom-center-btn a:hover, .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f4f4f4 !important; }
-                        path.leaflet-interactive:focus, .leaflet-container:focus, .leaflet-interactive, svg:focus { outline: none !important; }
+                        
+                        /* 🔥 FIX FOR ODD BLACK BOUNDING BOX ON CLICK (Browser Focus Outline) 🔥 */
+                        path.leaflet-interactive:focus, 
+                        .leaflet-container:focus, 
+                        .leaflet-interactive,
+                        svg:focus {
+                            outline: none !important;
+                        }
                     </style>
                     """
                     m.get_root().html.add_child(folium.Element(perfect_spacing_css))
@@ -673,7 +681,7 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 THE BULLETPROOF INDEPENDENT HTML OVERLAY ---
+                    # --- 🚀 NATIVE LEAFLET CONTROL FLEXBOX FIX (100% BULLETPROOF) ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -681,74 +689,106 @@ if check_password():
                     if len(sorted_diseases_for_legend) > 0:
                         for disease, color, count in sorted_diseases_for_legend:
                             disease_html_rows += f"""
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;">
-                                    <div style="width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; flex-shrink: 0; background-color:{color};"></div>
-                                    {disease}
-                                </div>
-                                <div style="color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1;">{count}</div>
+                            <div class="lgd-item">
+                                <div class="lgd-left"><div class="lgd-circle" style="background-color:{color};"></div>{disease}</div>
+                                <div class="lgd-right">{count}</div>
                             </div>"""
                     else:
                         disease_html_rows = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    # HTML directly injected into Map container, bypassing Leaflet rules
-                    pure_html_legend = f"""
-                    <div id="independent-overlay">
-                        <style>
-                            .disease-scroll::-webkit-scrollbar {{ width: 5px; }}
-                            .disease-scroll::-webkit-scrollbar-track {{ background: #f1f5f9; border-radius: 4px; margin: 4px 0; }}
-                            .disease-scroll::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 4px; }}
-                        </style>
-                        <div style="position: absolute; bottom: 40px; left: 15px; z-index: 999999; display: flex; flex-direction: row; align-items: flex-end; gap: 15px; pointer-events: none;">
-                            
-                            <!-- Disease Types Box (Grows UPWARDS until 350px limit) -->
-                            <div class="disease-scroll" style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 220px; max-height: 350px; overflow-y: auto; overflow-x: hidden;">
-                                <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px;">🦠 Disease Types</p>
-                                <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px;"></div>
-                                <div style="display: flex; flex-direction: column; gap: 7px;">
-                                    {disease_html_rows}
-                                </div>
-                            </div>
-
-                            <!-- Case Density Box -->
-                            <div style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 175px;">
-                                <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px;">📊 Case Density</p>
-                                <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px;"></div>
-                                <div style="display: flex; flex-direction: column; gap: 7px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#bd0026;"></div>High / Critical</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#fc4e2a;"></div>Moderate-High</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#feb24c;"></div>Moderate</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#ffeda0;"></div>Low Cases</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#ebedef;"></div>Zero Cases</div></div>
-                                </div>
-                            </div>
-                            
-                        </div>
-                    </div>
-                    """
-
-                    class PureHTMLOverlay(MacroElement):
-                        def __init__(self, html):
+                    class NativeFlexLegend(MacroElement):
+                        def __init__(self, disease_items):
                             super().__init__()
-                            self.html = html
+                            self.disease_items = disease_items
 
                         _template = Template("""
                             {% macro script(this, kwargs) %}
-                                // Inject HTML as a direct child of the map iframe body, completely skipping Leaflet's control panels
-                                var mapContainer = {{ this._parent.get_name() }}.getContainer();
-                                var overlayWrapper = document.createElement('div');
-                                overlayWrapper.innerHTML = `{{ this.html }}`;
-                                var actualElement = overlayWrapper.firstElementChild;
-                                
-                                mapContainer.appendChild(actualElement);
-                                
-                                // Disable map zooming/dragging when scrolling inside the legends
-                                L.DomEvent.disableClickPropagation(actualElement);
-                                L.DomEvent.disableScrollPropagation(actualElement);
+                                // Create a single NATIVE Leaflet control positioned strictly at the bottom-left
+                                var customLegendControl = L.control({position: 'bottomleft'});
+
+                                customLegendControl.onAdd = function (map) {
+                                    var wrapper = L.DomUtil.create('div', 'custom-legends-wrapper');
+                                    
+                                    // Prevent map drag and zoom when interacting with legends
+                                    L.DomEvent.disableClickPropagation(wrapper);
+                                    L.DomEvent.disableScrollPropagation(wrapper);
+
+                                    wrapper.innerHTML = `
+                                        <style>
+                                            /* Flexbox forces the two boxes side-by-side inside the single Leaflet control slot */
+                                            .custom-legends-wrapper {
+                                                display: flex !important;
+                                                flex-direction: row !important;
+                                                align-items: flex-end !important; /* Bottoms align perfectly */
+                                                gap: 15px !important;
+                                                margin-bottom: 25px !important;   /* Clean padding from extreme bottom edge */
+                                                margin-left: 10px !important;     /* Clean padding from extreme left edge */
+                                            }
+                                            
+                                            .legend-card {
+                                                background-color: rgba(255, 255, 255, 0.95);
+                                                border: 2px solid rgba(0,0,0,0.15);
+                                                border-radius: 8px;
+                                                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                                                padding: 15px;
+                                                font-family: 'Inter', sans-serif;
+                                                box-sizing: border-box;
+                                            }
+                                            
+                                            .legend-disease {
+                                                width: 220px;
+                                                max-height: 420px; /* Limit height to ~15 items */
+                                                overflow-y: auto;  /* Triggers scroll after limit */
+                                            }
+                                            
+                                            .legend-density {
+                                                width: 175px;
+                                                /* No max-height, it stays small and fixed */
+                                            }
+                                            
+                                            /* Clean custom scrollbar logic */
+                                            .legend-disease::-webkit-scrollbar { width: 5px; }
+                                            .legend-disease::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; margin: 5px 0; }
+                                            .legend-disease::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+                                            
+                                            /* Internal item styling */
+                                            .lgd-item { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
+                                            .lgd-left { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }
+                                            .lgd-right { color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; }
+                                            .lgd-circle { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; flex-shrink: 0; }
+                                            .lgd-square { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; }
+                                            .lgd-header { color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px; font-weight: 700; margin: 0; }
+                                            .lgd-hr { margin:8px 0; border:none; border-top:1px solid #cbd5e1; }
+                                        </style>
+                                        
+                                        <!-- Box 1: Disease Legend -->
+                                        <div class="legend-card legend-disease">
+                                            <p class="lgd-header">🦠 Disease Types</p>
+                                            <hr class="lgd-hr">
+                                            {{ this.disease_items }}
+                                        </div>
+                                        
+                                        <!-- Box 2: Density Legend -->
+                                        <div class="legend-card legend-density">
+                                            <p class="lgd-header">📊 Case Density</p>
+                                            <hr class="lgd-hr">
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#bd0026;"></div>High / Critical</div></div>
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#fc4e2a;"></div>Moderate-High</div></div>
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#feb24c;"></div>Moderate</div></div>
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#ffeda0;"></div>Low Cases</div></div>
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#ebedef;"></div>Zero Cases</div></div>
+                                        </div>
+                                    `;
+                                    
+                                    return wrapper;
+                                };
+
+                                // Append directly to the map instance using Leaflet's built in control system
+                                customLegendControl.addTo({{ this._parent.get_name() }});
                             {% endmacro %}
                         """)
                     
-                    m.add_child(PureHTMLOverlay(pure_html_legend))
+                    m.add_child(NativeFlexLegend(disease_html_rows))
 
                     components.html(m._repr_html_(), height=720)
 
