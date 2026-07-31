@@ -681,122 +681,114 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 THE 100% BULLETPROOF IFRAME BODY INJECTION (FIXED POSITION) ---
+                    # --- 🚀 NATIVE LEAFLET CONTROL FLEXBOX FIX (100% BULLETPROOF) ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
-                    disease_legend_items = ""
+                    disease_html_rows = ""
                     if len(sorted_diseases_for_legend) > 0:
                         for disease, color, count in sorted_diseases_for_legend:
-                            disease_legend_items += f"""
-                            <div class="legend-item">
-                                <div class="legend-item-left"><div class="legend-blob" style="background-color:{color};"></div>{disease}</div>
-                                <div class="legend-item-right">{count}</div>
+                            disease_html_rows += f"""
+                            <div class="lgd-item">
+                                <div class="lgd-left"><div class="lgd-circle" style="background-color:{color};"></div>{disease}</div>
+                                <div class="lgd-right">{count}</div>
                             </div>"""
                     else:
-                        disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
+                        disease_html_rows = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    legend_css_fixed = """
-                        /* Using FIXED limits it to the IFRAME window, completely bypassing Leaflet's layout */
-                        .legend-box-disease {
-                            position: fixed !important;
-                            bottom: 25px !important;   /* Perfect gap from the bottom of the iframe */
-                            left: 20px !important;
-                            z-index: 999999 !important;
-                            background-color: rgba(255, 255, 255, 0.95);
-                            border: 2px solid rgba(0,0,0,0.15);
-                            border-radius: 8px;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                            padding: 15px;
-                            font-family: 'Inter', sans-serif;
-                            box-sizing: border-box !important;
-                            width: 220px !important;   /* Exact fixed width */
-                            max-height: 420px !important; /* Forces upward growth until limit is reached */
-                            overflow-y: auto !important;
-                        }
-                        
-                        .legend-box-density {
-                            position: fixed !important;
-                            bottom: 25px !important;   /* Exact same horizontal alignment */
-                            left: 255px !important;    /* 20px (left) + 220px (width) + 15px (gap) = 255px */
-                            z-index: 999999 !important;
-                            background-color: rgba(255, 255, 255, 0.95);
-                            border: 2px solid rgba(0,0,0,0.15);
-                            border-radius: 8px;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                            padding: 15px;
-                            font-family: 'Inter', sans-serif;
-                            box-sizing: border-box !important;
-                            width: 175px !important;   /* Exact fixed width */
-                        }
-                        
-                        /* Clean custom scrollbar for Disease Box */
-                        .legend-box-disease::-webkit-scrollbar { width: 5px; }
-                        .legend-box-disease::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; margin: 5px 0;}
-                        .legend-box-disease::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-                        
-                        /* Internal Items */
-                        .legend-item { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
-                        .legend-item-left { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }
-                        .legend-item-right { color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; }
-                        .legend-blob { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; flex-shrink: 0; }
-                        .legend-sq { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; }
-                    """
-
-                    inner_disease_html = f"""
-                        <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b>
-                        <hr style="margin:8px 0; border:none; border-top:1px solid #cbd5e1;">
-                        <div style="display: flex; flex-direction: column;">
-                            {disease_legend_items}
-                        </div>
-                    """
-
-                    inner_density_html = f"""
-                        <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">📊 Case Density</b>
-                        <hr style="margin:8px 0; border:none; border-top:1px solid #cbd5e1;">
-                        <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#bd0026;"></div>High / Critical</div></div>
-                        <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#fc4e2a;"></div>Moderate-High</div></div>
-                        <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#feb24c;"></div>Moderate</div></div>
-                        <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#ffeda0;"></div>Low Cases</div></div>
-                        <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#ebedef;"></div>Zero Cases</div></div>
-                    """
-
-                    class AbsoluteFixedLegends(MacroElement):
-                        def __init__(self, dis_html, den_html, css):
+                    class NativeFlexLegend(MacroElement):
+                        def __init__(self, disease_items):
                             super().__init__()
-                            self.dis_html = dis_html
-                            self.den_html = den_html
-                            self.css = css
+                            self.disease_items = disease_items
 
                         _template = Template("""
                             {% macro script(this, kwargs) %}
-                                // 🔥 Injecting CSS globally into the Map context
-                                var cssStyle = document.createElement('style');
-                                cssStyle.innerHTML = `{{ this.css }}`;
-                                document.head.appendChild(cssStyle);
-                                
-                                // 🔥 Creating 2 totally separate floating DIVs
-                                var diseaseDiv = document.createElement('div');
-                                diseaseDiv.className = 'legend-box-disease';
-                                diseaseDiv.innerHTML = `{{ this.dis_html }}`;
-                                
-                                var densityDiv = document.createElement('div');
-                                densityDiv.className = 'legend-box-density';
-                                densityDiv.innerHTML = `{{ this.den_html }}`;
-                                
-                                // 🔥 THE FIX: Injecting directly into the HTML body, bypassing Leaflet completely!
-                                document.body.appendChild(diseaseDiv);
-                                document.body.appendChild(densityDiv);
-                                
-                                // Disable Leaflet map dragging/zooming when clicking inside legends
-                                L.DomEvent.disableClickPropagation(diseaseDiv);
-                                L.DomEvent.disableScrollPropagation(diseaseDiv);
-                                L.DomEvent.disableClickPropagation(densityDiv);
-                                L.DomEvent.disableScrollPropagation(densityDiv);
+                                // Create a single NATIVE Leaflet control positioned strictly at the bottom-left
+                                var customLegendControl = L.control({position: 'bottomleft'});
+
+                                customLegendControl.onAdd = function (map) {
+                                    var wrapper = L.DomUtil.create('div', 'custom-legends-wrapper');
+                                    
+                                    // Prevent map drag and zoom when interacting with legends
+                                    L.DomEvent.disableClickPropagation(wrapper);
+                                    L.DomEvent.disableScrollPropagation(wrapper);
+
+                                    wrapper.innerHTML = `
+                                        <style>
+                                            /* Flexbox forces the two boxes side-by-side inside the single Leaflet control slot */
+                                            .custom-legends-wrapper {
+                                                display: flex !important;
+                                                flex-direction: row !important;
+                                                align-items: flex-end !important; /* Bottoms align perfectly */
+                                                gap: 15px !important;
+                                                margin-bottom: 25px !important;   /* Clean padding from extreme bottom edge */
+                                                margin-left: 10px !important;     /* Clean padding from extreme left edge */
+                                            }
+                                            
+                                            .legend-card {
+                                                background-color: rgba(255, 255, 255, 0.95);
+                                                border: 2px solid rgba(0,0,0,0.15);
+                                                border-radius: 8px;
+                                                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                                                padding: 15px;
+                                                font-family: 'Inter', sans-serif;
+                                                box-sizing: border-box;
+                                            }
+                                            
+                                            .legend-disease {
+                                                width: 220px;
+                                                max-height: 420px; /* Limit height to ~15 items */
+                                                overflow-y: auto;  /* Triggers scroll after limit */
+                                            }
+                                            
+                                            .legend-density {
+                                                width: 175px;
+                                                /* No max-height, it stays small and fixed */
+                                            }
+                                            
+                                            /* Clean custom scrollbar logic */
+                                            .legend-disease::-webkit-scrollbar { width: 5px; }
+                                            .legend-disease::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; margin: 5px 0; }
+                                            .legend-disease::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+                                            
+                                            /* Internal item styling */
+                                            .lgd-item { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
+                                            .lgd-left { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }
+                                            .lgd-right { color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; }
+                                            .lgd-circle { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; flex-shrink: 0; }
+                                            .lgd-square { width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; }
+                                            .lgd-header { color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px; font-weight: 700; margin: 0; }
+                                            .lgd-hr { margin:8px 0; border:none; border-top:1px solid #cbd5e1; }
+                                        </style>
+                                        
+                                        <!-- Box 1: Disease Legend -->
+                                        <div class="legend-card legend-disease">
+                                            <p class="lgd-header">🦠 Disease Types</p>
+                                            <hr class="lgd-hr">
+                                            {{ this.disease_items }}
+                                        </div>
+                                        
+                                        <!-- Box 2: Density Legend -->
+                                        <div class="legend-card legend-density">
+                                            <p class="lgd-header">📊 Case Density</p>
+                                            <hr class="lgd-hr">
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#bd0026;"></div>High / Critical</div></div>
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#fc4e2a;"></div>Moderate-High</div></div>
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#feb24c;"></div>Moderate</div></div>
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#ffeda0;"></div>Low Cases</div></div>
+                                            <div class="lgd-item"><div class="lgd-left"><div class="lgd-square" style="background-color:#ebedef;"></div>Zero Cases</div></div>
+                                        </div>
+                                    `;
+                                    
+                                    return wrapper;
+                                };
+
+                                // Append directly to the map instance using Leaflet's built in control system
+                                customLegendControl.addTo({{ this._parent.get_name() }});
                             {% endmacro %}
                         """)
                     
-                    m.add_child(AbsoluteFixedLegends(inner_disease_html, inner_density_html, legend_css_fixed))
+                    m.add_child(NativeFlexLegend(disease_html_rows))
 
                     components.html(m._repr_html_(), height=720)
 
