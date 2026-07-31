@@ -333,9 +333,15 @@ if check_password():
                 
                 if min_date and max_date:
                     st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
+                    
+                    # 🚀 FIX: Calender logic to allow selection up to 'Today'
+                    today_date = datetime.datetime.now().date()
+                    allowed_max_date = max(max_date, today_date)
+                    
                     col1, col2 = st.columns(2)
-                    with col1: start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="start_date")
-                    with col2: end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=max_date, format="DD/MM/YYYY", key="end_date")
+                    with col1: start_date = st.date_input("From", value=min_date, min_value=min_date, max_value=allowed_max_date, format="DD/MM/YYYY", key="start_date")
+                    with col2: end_date = st.date_input("To", value=max_date, min_value=min_date, max_value=allowed_max_date, format="DD/MM/YYYY", key="end_date")
+                    
                     if start_date > end_date:
                         st.error("Error: 'To' date 'From' date se aage ki honi chahiye.")
                     else:
@@ -606,8 +612,7 @@ if check_password():
                                     <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                     <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    # 🚀 FIX 1: Popup ki jagah Tooltip
-                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, tooltip=popup_text).add_to(marker_cluster)
+                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, popup=folium.Popup(popup_text, max_width=250)).add_to(marker_cluster)
 
                     elif map_mode == "Ward-wise Exact Count View":
                         cases_group = folium.FeatureGroup(name="Cases").add_to(m)
@@ -625,8 +630,7 @@ if check_password():
                                         badge = f"""<div style="background-color:#e53e3e; border:2px solid #fff; color:#fff; font-weight:bold; font-size:11px; width:24px; height:24px; line-height:20px; border-radius:50%; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.4); transform:translate(-50%, -50%);">{ward_cases}</div>"""
                                         extra_str = "" if selected_wards else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
                                         popup = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px;"><b>Ward No :</b> {feature['properties']['Clean_Ward']}<br><b>Total Cases :</b> {ward_cases}<br><b>Zone No :</b> {feature['properties']['Clean_Zone']}{extra_str}</div>"""
-                                        # 🚀 FIX 1: Popup ki jagah Tooltip
-                                        folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), tooltip=popup).add_to(cases_group)
+                                        folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), popup=folium.Popup(popup, max_width=200)).add_to(cases_group)
                                     except Exception: pass
 
                     elif map_mode == "All Cases Points View":
@@ -641,8 +645,7 @@ if check_password():
                                     <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                     <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    # 🚀 FIX 1: Popup ki jagah Tooltip
-                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, tooltip=popup_text, color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(cases_group)
+                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, popup=folium.Popup(popup_text, max_width=250), color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(cases_group)
                             
                     folium.LayerControl(position='topright').add_to(m)
                     
@@ -657,22 +660,6 @@ if check_password():
                         .custom-center-btn a { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; text-align: center; display: block; text-decoration: none; color: #333; }
                         .custom-center-btn a:hover, .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f4f4f4 !important; }
                         path.leaflet-interactive:focus, .leaflet-container:focus, .leaflet-interactive, svg:focus { outline: none !important; }
-
-                        /* 🚀 FIX 2: GLOBAL TOOLTIP STYLING (NOWRAP added to fix squishing) */
-                        .leaflet-tooltip {
-                            font-family: 'Inter', sans-serif !important;
-                            font-size: 13px !important;
-                            background-color: rgba(255, 255, 255, 0.95) !important;
-                            border: 1px solid #cbd5e1 !important;
-                            border-radius: 8px !important;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-                            padding: 10px 14px !important;
-                            color: #334155 !important;
-                            white-space: nowrap !important; 
-                        }
-                        .leaflet-tooltip table { margin: 0 !important; border-spacing: 0 !important; border: none !important; }
-                        .leaflet-tooltip th { font-weight: 700 !important; color: #0f172a !important; padding-right: 12px !important; padding-bottom: 4px !important; text-align: left !important; border: none !important; }
-                        .leaflet-tooltip td { font-weight: 500 !important; color: #334155 !important; padding-bottom: 4px !important; border: none !important;}
                     </style>
                     """
                     m.get_root().html.add_child(folium.Element(perfect_spacing_css))
@@ -694,98 +681,86 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # ==============================================================================
-                    # 🚀 THE EXACT ORIGINAL BULLETPROOF LEGEND PROVIDED BY YOU (UNTOUCHED)
-                    # ==============================================================================
-                    # --- 🚀 THE 100% BULLETPROOF BOTTOM-ALIGNED MATH OVERLAY ---
-                    # PERFECT SYMMETRY: Container exactly occupies 345px to 705px (from the top).
-                    # Iframe height is 720px. 720px - 705px = 15px exact margin from bottom.
-                    # As items grow, flex-end forces them to build "upwards" from the 705px baseline.
-                    
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
-                    disease_html_rows = ""
+                    disease_legend_items = ""
                     if len(sorted_diseases_for_legend) > 0:
                         for disease, color, count in sorted_diseases_for_legend:
-                            disease_html_rows += f"""
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;">
-                                    <div style="width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; flex-shrink: 0; background-color:{color};"></div>
-                                    {disease}
-                                </div>
-                                <div style="color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1;">{count}</div>
+                            disease_legend_items += f"""
+                            <div class="legend-item">
+                                <div class="legend-item-left"><div class="legend-blob" style="background-color:{color};"></div>{disease}</div>
+                                <div class="legend-item-right">{count}</div>
                             </div>"""
                     else:
-                        disease_html_rows = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
+                        disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    pure_html_legend = f"""
-                    <div id="independent-overlay">
-                        <style>
-                            .disease-scroll::-webkit-scrollbar {{ width: 5px; }}
-                            .disease-scroll::-webkit-scrollbar-track {{ background: #f1f5f9; border-radius: 4px; margin: 4px 0; }}
-                            .disease-scroll::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 4px; }}
-                        </style>
-                        <div style="
+                    legend_html = f"""
+                    <style>
+                        #custom-map-legend {{
                             position: absolute; 
-                            top: 345px;       /* 🚀 SHIFTED DOWN: 345px (Top) + 360px (Height) = 705px Baseline */
-                            height: 360px;    
-                            left: 15px;       /* 15px left margin */
-                            z-index: 999999; 
+                            bottom: 40px; 
+                            left: 20px; 
+                            background-color: rgba(255,255,255,0.95); 
+                            border: 2px solid rgba(0,0,0,0.15); 
+                            z-index: 9999; 
+                            border-radius: 8px; 
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+                            pointer-events: auto; 
+                            padding: 16px 20px 20px 20px; 
+                            font-family: 'Inter', sans-serif; 
+                            display: flex;
+                            flex-direction: row;
+                            align-items: flex-end; /* Keeps both columns locked to the bottom */
+                        }}
+                        .legend-col-left {{ 
                             display: flex; 
-                            flex-direction: row; 
-                            align-items: flex-end; /* Bottom-aligns items inside this 360px box */
-                            gap: 15px; 
-                            pointer-events: none;
-                        ">
-                            <!-- Disease Types Box (Grows UPWARDS inside the fixed container) -->
-                            <div class="disease-scroll" style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 220px; max-height: 100%; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column;">
-                                <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px; flex-shrink: 0;">🦠 Disease Types</p>
-                                <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px; flex-shrink: 0;"></div>
-                                <div style="display: flex; flex-direction: column; gap: 7px; overflow-y: auto;">
-                                    {disease_html_rows}
-                                </div>
-                            </div>
+                            flex-direction: column; 
+                            min-width: 160px; 
+                            padding-right: 30px; 
+                            border-right: 1px solid #cbd5e1; 
+                            max-height: 350px; /* Safe limit to prevent clipping */
+                            overflow-y: auto;  /* Auto scroll if limit reached */
+                        }}
+                        /* Clean Scrollbar */
+                        .legend-col-left::-webkit-scrollbar {{ width: 5px; }}
+                        .legend-col-left::-webkit-scrollbar-track {{ background: #f1f5f9; border-radius: 4px; margin-right:5px;}}
+                        .legend-col-left::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 4px; }}
 
-                            <!-- Case Density Box -->
-                            <div style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 175px;">
-                                <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px;">📊 Case Density</p>
-                                <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px;"></div>
-                                <div style="display: flex; flex-direction: column; gap: 7px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#bd0026;"></div>High / Critical</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#fc4e2a;"></div>Moderate-High</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#feb24c;"></div>Moderate</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#ffeda0;"></div>Low Cases</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#ebedef;"></div>Zero Cases</div></div>
-                                </div>
-                            </div>
+                        .legend-col-right {{ 
+                            display: flex; 
+                            flex-direction: column; 
+                            min-width: 140px; 
+                            padding-left: 30px; 
+                        }}
+                        .legend-item {{ display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }} 
+                        .legend-item-left {{ display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }}
+                        .legend-item-right {{ color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1; }}
+                        .legend-blob {{ width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; flex-shrink: 0;}}
+                        .legend-sq {{ width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0;}}
+                    </style>
+                    <div id="custom-map-legend">
+                        <!-- Column 1: Disease Types -->
+                        <div class="legend-col-left">
+                            <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px; margin-bottom:5px; flex-shrink:0;">🦠 Disease Types</b>
+                            <hr style="margin:0 0 6px 0; border:none; border-top:1px solid #cbd5e1; flex-shrink:0;">
+                            {disease_legend_items}
+                        </div>
+                        
+                        <!-- Column 2: Case Density -->
+                        <div class="legend-col-right">
+                            <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px; margin-bottom:5px;">📊 Case Density</b>
+                            <hr style="margin:0 0 6px 0; border:none; border-top:1px solid #cbd5e1;">
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#bd0026;"></div>High / Critical</div></div>
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#fc4e2a;"></div>Moderate-High</div></div>
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#feb24c;"></div>Moderate</div></div>
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#ffeda0;"></div>Low Cases</div></div>
+                            <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#ebedef;"></div>Zero Cases</div></div>
                         </div>
                     </div>
                     """
-
-                    class PureHTMLOverlay(MacroElement):
-                        def __init__(self, html):
-                            super().__init__()
-                            self.html = html
-
-                        _template = Template("""
-                            {% macro script(this, kwargs) %}
-                                var overlayWrapper = document.createElement('div');
-                                overlayWrapper.innerHTML = `{{ this.html }}`;
-                                
-                                // Directly append to BODY of iframe.
-                                document.body.appendChild(overlayWrapper.firstElementChild);
-                                
-                                var el = document.getElementById('independent-overlay');
-                                L.DomEvent.disableClickPropagation(el);
-                                L.DomEvent.disableScrollPropagation(el);
-                            {% endmacro %}
-                        """)
+                    m.get_root().html.add_child(folium.Element(legend_html))
                     
-                    m.add_child(PureHTMLOverlay(pure_html_legend))
-                    # ==============================================================================
-
-                    # Map height fixed at 720
                     components.html(m._repr_html_(), height=720)
 
             # --- ROW 5: DATA TABLE WITH EXPORT ---
