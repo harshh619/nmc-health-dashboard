@@ -222,7 +222,8 @@ if check_password():
             key = "sb_secret_yX2l6GXr0lKngsCY_CxSng_phLv7wH_"
             
             supabase: Client = create_client(url, key)
-            response = supabase.table("patients_data").select("*").execute()
+            # 🚀 FIX: explicitly added .limit(10000) to override default 1000 rows limit
+            response = supabase.table("patients_data").select("*").limit(10000).execute()
             
             patient_df = pd.DataFrame(response.data)
             
@@ -288,7 +289,7 @@ if check_password():
                 st.session_state['status_filter'] = []
                 if min_date and max_date:
                     st.session_state['start_date'] = min_date
-                    st.session_state['end_date'] = max_date
+                    st.session_state['end_date'] = datetime.datetime.now().date()
 
             with st.sidebar:
                 is_supabase = "Supabase" in data_source
@@ -334,14 +335,14 @@ if check_password():
                 if min_date and max_date:
                     st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
                     
-                    # 🚀 FIX: Calender ab Today tak puri tarah unlocked hai!
+                    # 🚀 FIX: Calender logic - Default "To" date is strictly set to TODAY
                     today_date = datetime.datetime.now().date()
-                    upper_bound = max(max_date, today_date) 
+                    upper_bound = max(max_date, today_date) if max_date else today_date
                     
                     col1, col2 = st.columns(2)
-                    # min_value hata diya gaya hai taaki restriction na aaye
                     with col1: start_date = st.date_input("From", value=min_date, max_value=upper_bound, format="DD/MM/YYYY", key="start_date")
-                    with col2: end_date = st.date_input("To", value=max_date, max_value=upper_bound, format="DD/MM/YYYY", key="end_date")
+                    # Value explicitly set to upper_bound (which resolves to today_date by default behavior we want)
+                    with col2: end_date = st.date_input("To", value=upper_bound, max_value=upper_bound, format="DD/MM/YYYY", key="end_date")
                     
                     if start_date > end_date:
                         st.error("Error: 'To' date 'From' date se aage ki honi chahiye.")
@@ -613,7 +614,6 @@ if check_password():
                                     <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                     <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    # 🚀 FIX: Popup ki jagah finally pure hover TOOLTIP ka use hua hai
                                     folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, tooltip=popup_text).add_to(marker_cluster)
 
                     elif map_mode == "Ward-wise Exact Count View":
@@ -632,7 +632,6 @@ if check_password():
                                         badge = f"""<div style="background-color:#e53e3e; border:2px solid #fff; color:#fff; font-weight:bold; font-size:11px; width:24px; height:24px; line-height:20px; border-radius:50%; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.4); transform:translate(-50%, -50%);">{ward_cases}</div>"""
                                         extra_str = "" if selected_wards else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
                                         popup = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px;"><b>Ward No :</b> {feature['properties']['Clean_Ward']}<br><b>Total Cases :</b> {ward_cases}<br><b>Zone No :</b> {feature['properties']['Clean_Zone']}{extra_str}</div>"""
-                                        # 🚀 FIX: Popup ki jagah pure hover TOOLTIP
                                         folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), tooltip=popup).add_to(cases_group)
                                     except Exception: pass
 
@@ -648,7 +647,6 @@ if check_password():
                                     <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
                                     <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
                                 if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    # 🚀 FIX: Popup ki jagah pure hover TOOLTIP
                                     folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, tooltip=popup_text, color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(cases_group)
                             
                     folium.LayerControl(position='topright').add_to(m)
@@ -665,7 +663,6 @@ if check_password():
                         .custom-center-btn a:hover, .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f4f4f4 !important; }
                         path.leaflet-interactive:focus, .leaflet-container:focus, .leaflet-interactive, svg:focus { outline: none !important; }
 
-                        /* 🚀 FIX: TOOLTIP FONT STYLE PROPERLY CONFIGURED (NOWRAP applied to prevent squishing) */
                         .leaflet-tooltip {
                             font-family: 'Inter', sans-serif !important;
                             font-size: 13px !important;
@@ -701,9 +698,6 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # ========================================================================================
-                    # 🚀 THE ORIGINAL BULLETPROOF LEGEND EXACTLY PASTED FROM YOUR PROVIDED STABLE CODE
-                    # ========================================================================================
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -730,17 +724,17 @@ if check_password():
                         </style>
                         <div style="
                             position: absolute; 
-                            top: 345px;       /* 🚀 SHIFTED DOWN: 345px (Top) + 360px (Height) = 705px Baseline */
+                            top: 345px;       
                             height: 360px;    
-                            left: 15px;       /* 15px left margin */
+                            left: 15px;       
                             z-index: 999999; 
                             display: flex; 
                             flex-direction: row; 
-                            align-items: flex-end; /* Bottom-aligns items inside this 360px box */
+                            align-items: flex-end; 
                             gap: 15px; 
                             pointer-events: none;
                         ">
-                            <!-- Disease Types Box (Grows UPWARDS inside the fixed container) -->
+                            <!-- Disease Types Box -->
                             <div class="disease-scroll" style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 220px; max-height: 100%; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column;">
                                 <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px; flex-shrink: 0;">🦠 Disease Types</p>
                                 <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px; flex-shrink: 0;"></div>
@@ -775,7 +769,6 @@ if check_password():
                                 var overlayWrapper = document.createElement('div');
                                 overlayWrapper.innerHTML = `{{ this.html }}`;
                                 
-                                // Directly append to BODY of iframe.
                                 document.body.appendChild(overlayWrapper.firstElementChild);
                                 
                                 var el = document.getElementById('independent-overlay');
