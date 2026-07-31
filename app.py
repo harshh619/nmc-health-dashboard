@@ -645,7 +645,6 @@ if check_password():
                     
                     perfect_spacing_css = """
                     <style>
-                        /* Essential reset to guarantee no iframe scrolling cuts our legends */
                         html, body, #map { margin: 0 !important; padding: 0 !important; height: 100% !important; overflow: hidden !important; }
                         
                         .leaflet-top.leaflet-right { right: 12px !important; top: 12px !important; display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 8px !important; }
@@ -676,7 +675,11 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 THE 100% BULLETPROOF CSS TRANSFORM TRICK OVERLAY ---
+                    # --- 🚀 THE 100% BULLETPROOF TOP-ANCHORED MATH OVERLAY ---
+                    # Hmara Iframe 720px ka hai. Hum is legend ko exactly 320px TOP se start karenge. 
+                    # Max-height 360px hai. So 320+360 = 680px. 
+                    # Ye kabhi bhi 720px ko touch nahi karega, humesha 40px safe rahega.
+                    
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -694,9 +697,6 @@ if check_password():
                     else:
                         disease_html_rows = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    # HTML injected using the translateY(-100%) hack. 
-                    # This calculates the position from the TOP (which is always accurate in iframes), 
-                    # and then shifts the element UP by exactly its own height!
                     pure_html_legend = f"""
                     <div id="independent-overlay">
                         <style>
@@ -705,19 +705,18 @@ if check_password():
                             .disease-scroll::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 4px; }}
                         </style>
                         <div style="
-                            position: absolute; 
-                            top: calc(100% - 25px); /* Pin to the exact bottom edge reference from top */
+                            position: fixed; 
+                            top: 320px; /* MAGIC NUMBER: Starts safely in the middle-bottom */
                             left: 15px; 
-                            transform: translateY(-100%); /* Pull the box UP by its own height! */
                             z-index: 999999; 
                             display: flex; 
                             flex-direction: row; 
-                            align-items: flex-end; /* Ensures bottoms are perfectly level */
+                            align-items: flex-start; /* Tops will perfectly align now */
                             gap: 15px; 
                             pointer-events: none;
                         ">
-                            <!-- Disease Types Box -->
-                            <div class="disease-scroll" style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 220px; max-height: 400px; overflow-y: auto; overflow-x: hidden;">
+                            <!-- Disease Types Box (Grows down until 360px limit) -->
+                            <div class="disease-scroll" style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 220px; max-height: 360px; overflow-y: auto; overflow-x: hidden;">
                                 <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px;">🦠 Disease Types</p>
                                 <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px;"></div>
                                 <div style="display: flex; flex-direction: column; gap: 7px;">
@@ -748,20 +747,21 @@ if check_password():
 
                         _template = Template("""
                             {% macro script(this, kwargs) %}
-                                var mapContainer = {{ this._parent.get_name() }}.getContainer();
                                 var overlayWrapper = document.createElement('div');
                                 overlayWrapper.innerHTML = `{{ this.html }}`;
-                                var actualElement = overlayWrapper.firstElementChild;
                                 
-                                mapContainer.appendChild(actualElement);
+                                // Directly append to BODY of iframe.
+                                document.body.appendChild(overlayWrapper.firstElementChild);
                                 
-                                L.DomEvent.disableClickPropagation(actualElement);
-                                L.DomEvent.disableScrollPropagation(actualElement);
+                                var el = document.getElementById('independent-overlay');
+                                L.DomEvent.disableClickPropagation(el);
+                                L.DomEvent.disableScrollPropagation(el);
                             {% endmacro %}
                         """)
                     
                     m.add_child(PureHTMLOverlay(pure_html_legend))
 
+                    # Map height fixed at 720
                     components.html(m._repr_html_(), height=720)
 
             # --- ROW 5: DATA TABLE WITH EXPORT ---
