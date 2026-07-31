@@ -676,9 +676,9 @@ if check_password():
                     m.add_child(CustomMapControls())
 
                     # --- 🚀 THE 100% BULLETPROOF BOTTOM-ALIGNED MATH OVERLAY ---
-                    # MAGIC TRICK: Fixed Height Parent Container + align-items: flex-end
-                    # Parent container strictly occupies exactly 320px to 680px from the top.
-                    # As items grow, flex-end forces them to build "upwards" from the 680px baseline.
+                    # PERFECT SYMMETRY: Container exactly occupies 345px to 705px (from the top).
+                    # Iframe height is 720px. 720px - 705px = 15px exact margin from bottom.
+                    # As items grow, flex-end forces them to build "upwards" from the 705px baseline.
                     
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
@@ -706,13 +706,13 @@ if check_password():
                         </style>
                         <div style="
                             position: absolute; 
-                            top: 320px;       /* Fixed safe top start point */
-                            height: 360px;    /* 🚀 NEW: FIXED HEIGHT CONTAINER forces a rigid baseline at exactly 680px */
-                            left: 15px; 
+                            top: 345px;       /* 🚀 SHIFTED DOWN: 345px (Top) + 360px (Height) = 705px Baseline */
+                            height: 360px;    
+                            left: 15px;       /* 15px left margin */
                             z-index: 999999; 
                             display: flex; 
                             flex-direction: row; 
-                            align-items: flex-end; /* 🚀 NEW: Bottom-aligns items inside this 360px box */
+                            align-items: flex-end; /* Bottom-aligns items inside this 360px box */
                             gap: 15px; 
                             pointer-events: none;
                         ">
