@@ -681,7 +681,7 @@ if check_password():
                         """)
                     m.add_child(CustomMapControls())
 
-                    # --- 🚀 THE 100% BULLETPROOF DIRECT DOM INJECTION FIX ---
+                    # --- 🚀 THE SPLIT SEPARATE CONTAINERS LEGEND FIX ---
                     disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
                     sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
                     
@@ -696,32 +696,44 @@ if check_password():
                     else:
                         disease_legend_items = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
                     
-                    legend_css_bulletproof = """
-                        .custom-floating-legend {
+                    legend_css_split = """
+                        .legend-wrapper {
                             position: absolute !important;
-                            bottom: 40px !important;  /* Strictly pins the bottom edge of the iframe container */
+                            bottom: 40px !important;  /* Strictly pins the bottom edge */
                             left: 20px !important;
                             z-index: 99999 !important; /* Forces it above everything else */
+                            display: flex;
+                            flex-direction: row;       /* Places both boxes side by side */
+                            align-items: flex-end;     /* Ensures both boxes sit on the exact same bottom line */
+                            gap: 15px;                 /* 🔥 Adds 15px pixel gap between the two boxes */
+                            pointer-events: none;      /* Lets user click on map between the boxes */
+                        }
+                        
+                        .legend-box {
                             background-color: rgba(255, 255, 255, 0.95);
                             border: 2px solid rgba(0,0,0,0.15);
                             border-radius: 8px;
                             box-shadow: 0 4px 12px rgba(0,0,0,0.2);
                             padding: 15px;
                             font-family: 'Inter', sans-serif;
-                            display: flex;
-                            flex-direction: row;
-                            max-height: 550px; /* Fully limits the box size to never cross the 720px iframe height */
-                            overflow-y: auto; /* Internal scrolling if items exceed max-height */
-                            pointer-events: auto;
+                            pointer-events: auto;      /* Restores clicking inside the boxes */
+                        }
+
+                        .legend-box-disease {
+                            min-width: 195px;
+                            max-height: 420px;         /* 🔥 Limits height to approx 15 items exactly */
+                            overflow-y: auto;          /* 🔥 Adds internal scrollbar if diseases exceed limit */
                         }
                         
-                        /* Clean custom scrollbar logic */
-                        .custom-floating-legend::-webkit-scrollbar { width: 6px; }
-                        .custom-floating-legend::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
-                        .custom-floating-legend::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+                        .legend-box-density {
+                            min-width: 175px;
+                            /* No max-height needed, it is fixed size */
+                        }
                         
-                        .legend-col-left { display: flex; flex-direction: column; min-width: 175px; padding-right: 20px; border-right: 1px solid #cbd5e1; }
-                        .legend-col-right { display: flex; flex-direction: column; min-width: 145px; padding-left: 20px; }
+                        /* Clean custom scrollbar for Disease Box */
+                        .legend-box-disease::-webkit-scrollbar { width: 5px; }
+                        .legend-box-disease::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; margin-top: 5px; margin-bottom: 5px;}
+                        .legend-box-disease::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
                         
                         .legend-item { display: flex; justify-content: space-between; align-items: center; margin-top: 7px; }
                         .legend-item-left { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500; }
@@ -731,13 +743,13 @@ if check_password():
                     """
 
                     inner_html = f"""
-                        <div class="legend-col-left">
+                        <div class="legend-box legend-box-disease">
                             <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">🦠 Disease Types</b>
                             <hr style="margin:8px 0; border:none; border-top:1px solid #cbd5e1;">
                             {disease_legend_items}
                         </div>
                         
-                        <div class="legend-col-right">
+                        <div class="legend-box legend-box-density">
                             <b style="color:#1e3a8a; font-size:12.5px; display:flex; align-items:center; gap:5px;">📊 Case Density</b>
                             <hr style="margin:8px 0; border:none; border-top:1px solid #cbd5e1;">
                             <div class="legend-item"><div class="legend-item-left"><div class="legend-sq" style="background-color:#bd0026;"></div>High / Critical</div></div>
@@ -748,7 +760,7 @@ if check_password():
                         </div>
                     """
 
-                    class BulletproofLegend(MacroElement):
+                    class SplitLegend(MacroElement):
                         def __init__(self, html, css):
                             super().__init__()
                             self.html = html
@@ -756,9 +768,7 @@ if check_password():
 
                         _template = Template("""
                             {% macro script(this, kwargs) %}
-                                // 🔥 Bypassing Leaflet's control system entirely.
-                                // We are injecting this directly into the map container's root so its layout cannot be messed with.
-                                var legendDiv = L.DomUtil.create('div', 'custom-floating-legend');
+                                var legendDiv = L.DomUtil.create('div', 'legend-wrapper');
                                 legendDiv.innerHTML = `
                                     <style>{{ this.css }}</style>
                                     {{ this.html }}
@@ -773,7 +783,7 @@ if check_password():
                             {% endmacro %}
                         """)
                     
-                    m.add_child(BulletproofLegend(inner_html, legend_css_bulletproof))
+                    m.add_child(SplitLegend(inner_html, legend_css_split))
 
                     components.html(m._repr_html_(), height=720)
 
