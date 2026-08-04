@@ -277,7 +277,6 @@ if check_password():
         @st.fragment
         def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source):
             
-            # 🚀 FIX: Setting explicit timezone for IST (UTC + 5:30)
             ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
             
             bold_colors = px.colors.qualitative.Bold
@@ -297,7 +296,6 @@ if check_password():
                 is_supabase = "Supabase" in data_source
                 indicator_color = "#2ed573" if is_supabase else "#3b82f6"
                 
-                # 🚀 FIX: Time is now properly fetching in IST, not server's UTC
                 sync_time = datetime.datetime.now(ist_tz).strftime("%d %b %Y, %I:%M %p")
                 
                 indicator_html = f"""
@@ -324,12 +322,18 @@ if check_password():
                     <div class="db-blob"></div>
                     <div class="db-text">Live: {data_source}</div>
                 </div>
-                <div style="font-size: 11px; color: #64748b; margin-bottom: 15px; text-align: right;">
+                <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-align: right;">
                     ⏱️ Synced: <b>{sync_time}</b> (IST)
                 </div>
                 """
                 st.markdown(indicator_html, unsafe_allow_html=True)
+                
+                if st.button("🔄 Sync Live Data", use_container_width=True, help="Force refresh data from database"):
+                    st.cache_data.clear()
+                    st.rerun()
 
+                st.markdown("<br>", unsafe_allow_html=True)
+                
                 col_header, col_reset = st.columns([5, 3])
                 with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
                 with col_reset: st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
@@ -339,7 +343,6 @@ if check_password():
                 if min_date and max_date:
                     st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
                     
-                    # 🚀 FIX: Calendar 'Today' is also calculated in IST
                     today_date = datetime.datetime.now(ist_tz).date()
                     upper_bound = max(max_date, today_date) if max_date else today_date
                     
@@ -352,14 +355,27 @@ if check_password():
                     else:
                         filtered_df = filtered_df[(filtered_df['Date'].dt.date >= start_date) & (filtered_df['Date'].dt.date <= end_date)]
 
+                # 🚀 UI FIX: Added placeholder="Type to search..." so users know they can search by typing
                 all_diseases_sorted = sorted([str(x) for x in filtered_df['Disease'].dropna().unique()]) if 'Disease' in filtered_df.columns else []
-                selected_diseases = st.multiselect("Select Disease(s)", options=all_diseases_sorted, key="disease_filter", help="Select one or more diseases to filter and compare data.")
+                selected_diseases = st.multiselect(
+                    "Select Disease(s)", 
+                    options=all_diseases_sorted, 
+                    key="disease_filter", 
+                    help="Type to search or select one/more diseases from the list.",
+                    placeholder="Type to search..."
+                )
                 if selected_diseases:
                     filtered_df = filtered_df[filtered_df['Disease'].isin(selected_diseases)]
 
                 raw_zones = sorted(mapping_df['Zone'].dropna().unique(), key=lambda x: int(''.join(filter(str.isdigit, str(x))) or 0)) if mapping_df is not None and 'Zone' in mapping_df.columns else []
                 zones_list_clean = [str(z) for z in raw_zones]
-                selected_zones = st.multiselect("Select Zone(s)", options=zones_list_clean, key="zone_filter", help="Select one or more zones for comparative analysis.")
+                selected_zones = st.multiselect(
+                    "Select Zone(s)", 
+                    options=zones_list_clean, 
+                    key="zone_filter", 
+                    help="Type to search or select one/more zones.",
+                    placeholder="Type to search..."
+                )
                 
                 if selected_zones:
                     filtered_df = filtered_df[filtered_df['Zone'].isin(selected_zones)]
@@ -368,12 +384,24 @@ if check_password():
                     raw_wards = mapping_df['Ward_Name'].dropna().unique() if mapping_df is not None else []
                     
                 wards_sorted = sorted([str(x) for x in raw_wards])
-                selected_wards = st.multiselect("Select Ward(s)", options=wards_sorted, key="ward_filter", help="Select specific wards/prabhags.")
+                selected_wards = st.multiselect(
+                    "Select Ward(s)", 
+                    options=wards_sorted, 
+                    key="ward_filter", 
+                    help="Type to search or select specific wards/prabhags.",
+                    placeholder="Type to search..."
+                )
                 if selected_wards:
                     filtered_df = filtered_df[filtered_df['Ward_Name'].isin(selected_wards)]
 
                 status_options_list = sorted([str(x) for x in filtered_df['Status'].dropna().unique()]) if 'Status' in filtered_df.columns else []
-                selected_statuses = st.multiselect("Select Status(es)", options=status_options_list, key="status_filter", help="Filter by patient clinical status.")
+                selected_statuses = st.multiselect(
+                    "Select Status(es)", 
+                    options=status_options_list, 
+                    key="status_filter", 
+                    help="Type to search or filter by patient clinical status.",
+                    placeholder="Type to search..."
+                )
                 if selected_statuses:
                     filtered_df = filtered_df[filtered_df['Status'].isin(selected_statuses)]
 
