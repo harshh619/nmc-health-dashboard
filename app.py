@@ -222,6 +222,7 @@ if check_password():
             key = "sb_secret_yX2l6GXr0lKngsCY_CxSng_phLv7wH_"
             
             supabase: Client = create_client(url, key)
+            # 🚀 FIX: Limit set to 10000 to fetch all records beyond default 1000 limit
             response = supabase.table("patients_data").select("*").limit(10000).execute()
             
             patient_df = pd.DataFrame(response.data)
@@ -328,12 +329,13 @@ if check_password():
                 """
                 st.markdown(indicator_html, unsafe_allow_html=True)
                 
+                # 🚀 Sync Live Data Button
                 if st.button("🔄 Sync Live Data", use_container_width=True, help="Force refresh data from database"):
                     st.cache_data.clear()
                     st.rerun()
 
                 st.markdown("<br>", unsafe_allow_html=True)
-                
+
                 col_header, col_reset = st.columns([5, 3])
                 with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
                 with col_reset: st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
@@ -355,13 +357,12 @@ if check_password():
                     else:
                         filtered_df = filtered_df[(filtered_df['Date'].dt.date >= start_date) & (filtered_df['Date'].dt.date <= end_date)]
 
-                # 🚀 UI FIX: Added placeholder="Type to search..." so users know they can search by typing
+                # 🚀 SEARCH ENABLED WITH PLACEHOLDER FOR ALL MULTISELECTS
                 all_diseases_sorted = sorted([str(x) for x in filtered_df['Disease'].dropna().unique()]) if 'Disease' in filtered_df.columns else []
                 selected_diseases = st.multiselect(
                     "Select Disease(s)", 
                     options=all_diseases_sorted, 
                     key="disease_filter", 
-                    help="Type to search or select one/more diseases from the list.",
                     placeholder="Type to search..."
                 )
                 if selected_diseases:
@@ -373,7 +374,6 @@ if check_password():
                     "Select Zone(s)", 
                     options=zones_list_clean, 
                     key="zone_filter", 
-                    help="Type to search or select one/more zones.",
                     placeholder="Type to search..."
                 )
                 
@@ -388,7 +388,6 @@ if check_password():
                     "Select Ward(s)", 
                     options=wards_sorted, 
                     key="ward_filter", 
-                    help="Type to search or select specific wards/prabhags.",
                     placeholder="Type to search..."
                 )
                 if selected_wards:
@@ -399,7 +398,6 @@ if check_password():
                     "Select Status(es)", 
                     options=status_options_list, 
                     key="status_filter", 
-                    help="Type to search or filter by patient clinical status.",
                     placeholder="Type to search..."
                 )
                 if selected_statuses:
