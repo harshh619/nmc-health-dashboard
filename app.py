@@ -714,19 +714,50 @@ if check_password():
                 """
                 m.get_root().html.add_child(folium.Element(perfect_spacing_css))
 
+                # --- 🚀 SMART MEMORY HACK INTEGRATED HERE ---
                 class CustomMapControls(MacroElement):
                     _template = Template("""
                         {% macro script(this, kwargs) %}
+                            // 1. Setup Custom Controls
                             L.control.zoom({position: 'topright'}).addTo({{ this._parent.get_name() }});
                             var centerControl = L.control({position: 'topright'});
                             centerControl.onAdd = function (map) {
                                 var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-center-btn');
                                 var a = L.DomUtil.create('a', '', div);
                                 a.innerHTML = '🎯'; a.href = '#'; a.title = 'Center Map';
-                                L.DomEvent.on(a, 'click', function(e) { L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e); map.setView([21.130, 79.065], 11.7, {animate: true, duration: 1.0}); });
+                                L.DomEvent.on(a, 'click', function(e) { 
+                                    L.DomEvent.stopPropagation(e); 
+                                    L.DomEvent.preventDefault(e); 
+                                    map.setView([21.130, 79.065], 11.7, {animate: true, duration: 1.0}); 
+                                    // Jab koi manually center button dabaye, toh memory clear kar do
+                                    sessionStorage.removeItem('mapLat');
+                                    sessionStorage.removeItem('mapLng');
+                                    sessionStorage.removeItem('mapZoom');
+                                });
                                 return div;
                             };
                             {{ this._parent.get_name() }}.addControl(centerControl);
+
+                            // 2. 🚀 SMART MEMORY HACK (Anti-Reset)
+                            var myMap = {{ this._parent.get_name() }};
+                            
+                            // A) Pehle check karo ki kya memory me purani location save hai?
+                            var savedLat = sessionStorage.getItem('mapLat');
+                            var savedLng = sessionStorage.getItem('mapLng');
+                            var savedZoom = sessionStorage.getItem('mapZoom');
+                            
+                            if (savedLat && savedLng && savedZoom) {
+                                // Agar save hai, toh map load hote hi bina animation ke wahi chale jao
+                                myMap.setView([savedLat, savedLng], savedZoom, {animate: false});
+                            }
+                            
+                            // B) Jab bhi user map ko pan/zoom kare, uski location memory me save kar lo
+                            myMap.on('moveend', function() {
+                                var center = myMap.getCenter();
+                                sessionStorage.setItem('mapLat', center.lat);
+                                sessionStorage.setItem('mapLng', center.lng);
+                                sessionStorage.setItem('mapZoom', myMap.getZoom());
+                            });
                         {% endmacro %}
                     """)
                 m.add_child(CustomMapControls())
