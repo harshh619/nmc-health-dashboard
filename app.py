@@ -17,8 +17,8 @@ from streamlit_autorefresh import st_autorefresh
 # Set page config
 st.set_page_config(page_title="NMC Disease Surveillance Portal", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ⏱️ AUTO-REFRESH CONFIGURATION (5 Seconds) ---
-count = st_autorefresh(interval=5000, limit=None, key="datarefresh")
+# --- ⏱️ AUTO-REFRESH CONFIGURATION (30 Seconds) ---
+count = st_autorefresh(interval=30000, limit=None, key="datarefresh")
 
 # --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING & ANIMATIONS ---
 st.markdown("""
@@ -746,7 +746,7 @@ if check_password():
                                 <div style="color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1;">{count}</div>
                             </div>"""
                     else:
-                        disease_html_rows = '<div style="color:#64748b; font-size:11px; text-align:center; padding: 4px;">No cases found</div>'
+                        disease_html_rows = '<div style="color:#64748b; font-size:11.5px; text-align:center; padding: 4px;">No cases found</div>'
                     
                     pure_html_legend = f"""
                     <div id="independent-overlay">
