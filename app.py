@@ -12,9 +12,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 import requests
 import os
+from streamlit_autorefresh import st_autorefresh
 
 # Set page config
 st.set_page_config(page_title="NMC Disease Surveillance Portal", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
+
+# --- ⏱️ AUTO-REFRESH CONFIGURATION (5 Seconds) ---
+count = st_autorefresh(interval=5000, limit=None, key="datarefresh")
 
 # --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING & ANIMATIONS ---
 st.markdown("""
@@ -595,10 +599,10 @@ if check_password():
                     max_ward_cases = max(clean_ward_counts.values()) if clean_ward_counts else 1
 
                     def get_density_color(cases):
-                        if cases == 0: return "#ebedef"  
-                        elif cases < max_ward_cases * 0.2: return "#ffeda0"  
-                        elif cases < max_ward_cases * 0.4: return "#feb24c"  
-                        elif cases < max_ward_cases * 0.7: return "#fc4e2a"  
+                        if cases == 0: return "#ebedef" 
+                        elif cases < max_ward_cases * 0.2: return "#ffeda0" 
+                        elif cases < max_ward_cases * 0.4: return "#feb24c" 
+                        elif cases < max_ward_cases * 0.7: return "#fc4e2a" 
                         else: return "#bd0026"
 
                     for feature in geo_data['features']:
@@ -753,9 +757,9 @@ if check_password():
                         </style>
                         <div style="
                             position: absolute; 
-                            top: 345px;       
-                            height: 360px;    
-                            left: 15px;       
+                            top: 345px;        
+                            height: 360px;     
+                            left: 15px;        
                             z-index: 999999; 
                             display: flex; 
                             flex-direction: row; 
