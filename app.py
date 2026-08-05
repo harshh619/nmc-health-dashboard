@@ -17,9 +17,6 @@ from streamlit_autorefresh import st_autorefresh
 # Set page config
 st.set_page_config(page_title="NMC Disease Surveillance Portal", layout="wide", page_icon="🏥", initial_sidebar_state="expanded")
 
-# --- ⏱️ AUTO-REFRESH CONFIGURATION (30 Seconds) ---
-count = st_autorefresh(interval=30000, limit=None, key="datarefresh")
-
 # --- ENTERPRISE-GRADE PROFESSIONAL CSS STYLING & ANIMATIONS ---
 st.markdown("""
     <style>
@@ -149,6 +146,72 @@ def check_password():
                 st.error("❌ Incorrect Password")
     return False
 
+# --- 2. OPTIMIZED STATIC DATA LOADING (Loads once per day) ---
+@st.cache_data(ttl=86400)
+def load_static_data():
+    try:
+        mapping_df = pd.read_excel('Table.xlsx')
+        mapping_df.rename(columns={'name': 'Ward_Name', 'description': 'Zone'}, inplace=True)
+        mapping_df['Zone'] = mapping_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+        
+        file_to_load = 'wards_simplified.geojson' if os.path.exists('wards_simplified.geojson') else 'wards.geojson'
+        
+        with open(file_to_load, encoding='utf-8') as f:
+            geo_data = json.load(f)
+            
+        for feature in geo_data['features']:
+            raw_ward = str(feature['properties'].get('name', 'Unknown'))
+            clean_w = raw_ward[:-2] if raw_ward.endswith('.0') else raw_ward
+            for p in ["Prabhag No. ", "Prabhag No.", "Prabhag No ", "Ward No. ", "Ward No.", "Ward No "]:
+                clean_w = clean_w.replace(p, "")
+            clean_w = clean_w.strip().lstrip('0')
+            if clean_w == "": clean_w = "0"
+            feature['properties']['Clean_Ward'] = clean_w
+            
+        return mapping_df, geo_data
+    except Exception as e:
+        st.error(f"Static file load error: {e}")
+        return None, None
+
+# --- 3. 🚀 SUPABASE API CLIENT DATA ENGINE WITH FALLBACK ---
+# TTL changed to 30 to perfectly match the refresh interval
+@st.cache_data(ttl=30)
+def load_patient_data():
+    try:
+        from supabase import create_client, Client
+        
+        url = "https://oysmagibpobxsipxjzpd.supabase.co"
+        key = "sb_secret_yX2l6GXr0lKngsCY_CxSng_phLv7wH_"
+        
+        supabase: Client = create_client(url, key)
+        response = supabase.table("patients_data").select("*").limit(10000).execute()
+        
+        patient_df = pd.DataFrame(response.data)
+        
+        if not patient_df.empty:
+            if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
+                patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
+            if 'Zone' in patient_df.columns:
+                patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+            return patient_df, "Supabase API ⚡"
+        else:
+            raise Exception("Empty table")
+    except Exception:
+        pass 
+        
+    url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
+    try:
+        patient_df = pd.read_csv(url)
+        if 'Date' in patient_df.columns:
+            patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
+        if 'Zone' in patient_df.columns:
+            patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
+        return patient_df, "Google Sheets 📊"
+    except:
+        empty_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
+        return empty_df, "Offline ❌"
+
+
 if check_password():
     # --- HEADER BANNER WITH NEW TITLE & MSU BRANDING ---
     logo_html = '<div style="background: white; border-radius: 50%; padding: 4px; display: flex; align-items: center; justify-content: center; width: 60px; height: 60px;"><span style="font-size: 32px;">🏥</span></div>'
@@ -189,650 +252,589 @@ if check_password():
         with w_col2: st.metric("💧 Relative Humidity", f"{humidity} %", delta="Vector-Borne Risk Factor", help="High humidity levels correlate with increased mosquito breeding and vector-borne disease risks.")
         with w_col3: st.metric("🌧️ Precipitation / Rainfall", f"{rainfall} mm", delta="Waterlogging Index", help="Recent rainfall accumulation contributing to potential water stagnation zones.")
 
-    # --- 2. OPTIMIZED STATIC DATA LOADING ---
-    @st.cache_data(ttl=86400)
-    def load_static_data():
-        try:
-            mapping_df = pd.read_excel('Table.xlsx')
-            mapping_df.rename(columns={'name': 'Ward_Name', 'description': 'Zone'}, inplace=True)
-            mapping_df['Zone'] = mapping_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-            
-            file_to_load = 'wards_simplified.geojson' if os.path.exists('wards_simplified.geojson') else 'wards.geojson'
-            
-            with open(file_to_load, encoding='utf-8') as f:
-                geo_data = json.load(f)
-                
-            for feature in geo_data['features']:
-                raw_ward = str(feature['properties'].get('name', 'Unknown'))
-                clean_w = raw_ward[:-2] if raw_ward.endswith('.0') else raw_ward
-                for p in ["Prabhag No. ", "Prabhag No.", "Prabhag No ", "Ward No. ", "Ward No.", "Ward No "]:
-                    clean_w = clean_w.replace(p, "")
-                clean_w = clean_w.strip().lstrip('0')
-                if clean_w == "": clean_w = "0"
-                feature['properties']['Clean_Ward'] = clean_w
-                
-            return mapping_df, geo_data
-        except Exception as e:
-            st.error(f"Static file load error: {e}")
-            return None, None
-
-    # --- 3. 🚀 SUPABASE API CLIENT DATA ENGINE WITH FALLBACK ---
-    @st.cache_data(ttl=60)
-    def load_patient_data():
-        try:
-            from supabase import create_client, Client
-            
-            url = "https://oysmagibpobxsipxjzpd.supabase.co"
-            key = "sb_secret_yX2l6GXr0lKngsCY_CxSng_phLv7wH_"
-            
-            supabase: Client = create_client(url, key)
-            # 🚀 FIX: Limit set to 10000 to fetch all records beyond default 1000 limit
-            response = supabase.table("patients_data").select("*").limit(10000).execute()
-            
-            patient_df = pd.DataFrame(response.data)
-            
-            if not patient_df.empty:
-                if 'Date' in patient_df.columns and not pd.api.types.is_datetime64_any_dtype(patient_df['Date']):
-                    patient_df['Date'] = pd.to_datetime(patient_df['Date'], errors='coerce')
-                if 'Zone' in patient_df.columns:
-                    patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-                return patient_df, "Supabase API ⚡"
-            else:
-                raise Exception("Empty table")
-        except Exception:
-            pass 
-            
-        # Fallback to Google Sheets CSV
-        url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT_77OEOeI0MVDxYCbcTlq_Ld7Oq5CFSTC6LyYyAwQGyiHHSJhBvniVns4djzswkQSGNGT2_09r0LUA/pub?gid=0&single=true&output=csv"
-        try:
-            patient_df = pd.read_csv(url)
-            if 'Date' in patient_df.columns:
-                patient_df['Date'] = pd.to_datetime(patient_df['Date'], format='mixed', dayfirst=True, errors='coerce')
-            if 'Zone' in patient_df.columns:
-                patient_df['Zone'] = patient_df['Zone'].astype(str).str.replace(r'^(Zone No\.?\s*|Zone No\s*)', '', regex=True).str.strip()
-            return patient_df, "Google Sheets 📊"
-        except:
-            empty_df = pd.DataFrame(columns=['Date', 'Patient_ID', 'Patient_Name', 'Disease', 'Ward_Name', 'Zone', 'Lat', 'Long', 'Status'])
-            return empty_df, "Offline ❌"
-
     mapping_df, geo_data = load_static_data()
-    raw_patient_df, data_source = load_patient_data()
 
-    if raw_patient_df is not None and mapping_df is not None:
-        patient_df = pd.merge(raw_patient_df, mapping_df[['Ward_Name', 'Zone']], on='Ward_Name', how='left', suffixes=('', '_map'))
-        if 'Zone_map' in patient_df.columns:
-            patient_df['Zone'] = patient_df['Zone'].fillna(patient_df['Zone_map'])
-            patient_df.drop(columns=['Zone_map'], inplace=True)
+    # =====================================================================
+    # 🚀 STREAMLIT FRAGMENT: INTERACTIVE DASHBOARD SECTION
+    # =====================================================================
+    @st.fragment
+    def interactive_dashboard_fragment(mapping_df, geo_data):
+        # ⏱️ MOVED HERE: Now only this inner fragment refreshes every 30 seconds!
+        st_autorefresh(interval=30000, limit=None, key="datarefresh")
 
-        if 'Age' not in patient_df.columns:
-            np.random.seed(42)  
-            patient_df['Age'] = np.random.randint(2, 85, size=len(patient_df))
-        if 'Gender' not in patient_df.columns:
-            np.random.seed(43)
-            patient_df['Gender'] = np.random.choice(['Male', 'Female'], size=len(patient_df), p=[0.55, 0.45])
+        raw_patient_df, data_source = load_patient_data()
 
-        min_date, max_date = None, None
-        if 'Date' in patient_df.columns and not patient_df['Date'].dropna().empty:
-            min_date = patient_df['Date'].min().date()
-            max_date = patient_df['Date'].max().date()
+        if raw_patient_df is not None and mapping_df is not None:
+            patient_df = pd.merge(raw_patient_df, mapping_df[['Ward_Name', 'Zone']], on='Ward_Name', how='left', suffixes=('', '_map'))
+            if 'Zone_map' in patient_df.columns:
+                patient_df['Zone'] = patient_df['Zone'].fillna(patient_df['Zone_map'])
+                patient_df.drop(columns=['Zone_map'], inplace=True)
 
-        # =====================================================================
-        # 🚀 STREAMLIT FRAGMENT: INTERACTIVE DASHBOARD SECTION
-        # =====================================================================
-        @st.fragment
-        def interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source):
+            if 'Age' not in patient_df.columns:
+                np.random.seed(42)  
+                patient_df['Age'] = np.random.randint(2, 85, size=len(patient_df))
+            if 'Gender' not in patient_df.columns:
+                np.random.seed(43)
+                patient_df['Gender'] = np.random.choice(['Male', 'Female'], size=len(patient_df), p=[0.55, 0.45])
+
+            min_date, max_date = None, None
+            if 'Date' in patient_df.columns and not patient_df['Date'].dropna().empty:
+                min_date = patient_df['Date'].min().date()
+                max_date = patient_df['Date'].max().date()
+        
+        ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        
+        bold_colors = px.colors.qualitative.Bold
+        all_diseases = patient_df['Disease'].dropna().unique() if 'Disease' in patient_df.columns else []
+        disease_color_map = {d: bold_colors[i % len(bold_colors)] for i, d in enumerate(sorted(all_diseases))}
+        
+        def clear_filters():
+            st.session_state['disease_filter'] = []
+            st.session_state['zone_filter'] = []
+            st.session_state['ward_filter'] = []
+            st.session_state['status_filter'] = []
+            if min_date and max_date:
+                st.session_state['start_date'] = min_date
+                st.session_state['end_date'] = datetime.datetime.now(ist_tz).date()
+
+        with st.sidebar:
+            is_supabase = "Supabase" in data_source
+            indicator_color = "#2ed573" if is_supabase else "#3b82f6"
             
-            ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+            sync_time = datetime.datetime.now(ist_tz).strftime("%d %b %Y, %I:%M %p")
             
-            bold_colors = px.colors.qualitative.Bold
-            all_diseases = patient_df['Disease'].dropna().unique() if 'Disease' in patient_df.columns else []
-            disease_color_map = {d: bold_colors[i % len(bold_colors)] for i, d in enumerate(sorted(all_diseases))}
+            indicator_html = f"""
+            <style>
+            @keyframes pulse-dot {{
+                0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 {indicator_color}99; }}
+                70% {{ transform: scale(1); box-shadow: 0 0 0 10px {indicator_color}00; }}
+                100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 {indicator_color}00; }}
+            }}
+            .db-indicator-box {{
+                display: flex; align-items: center; padding: 10px 14px;
+                background-color: {indicator_color}15; border-radius: 8px;
+                border: 1px solid {indicator_color}33; margin-bottom: 4px;
+            }}
+            .db-blob {{
+                background: {indicator_color}; border-radius: 50%; height: 10px; width: 10px; min-width: 10px;
+                box-shadow: 0 0 0 0 {indicator_color}; animation: pulse-dot 1.5s infinite; margin-right: 10px;
+            }}
+            .db-text {{
+                font-weight: 600; color: {indicator_color}; font-size: 13px; margin: 0; padding: 0;
+            }}
+            </style>
+            <div class="db-indicator-box">
+                <div class="db-blob"></div>
+                <div class="db-text">Live: {data_source}</div>
+            </div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-align: right;">
+                ⏱️ Synced: <b>{sync_time}</b> (IST)
+            </div>
+            """
+            st.markdown(indicator_html, unsafe_allow_html=True)
             
-            def clear_filters():
-                st.session_state['disease_filter'] = []
-                st.session_state['zone_filter'] = []
-                st.session_state['ward_filter'] = []
-                st.session_state['status_filter'] = []
-                if min_date and max_date:
-                    st.session_state['start_date'] = min_date
-                    st.session_state['end_date'] = datetime.datetime.now(ist_tz).date()
+            # 🚀 Sync Live Data Button
+            if st.button("🔄 Sync Live Data", use_container_width=True, help="Force refresh data from database"):
+                st.cache_data.clear()
+                st.rerun()
 
-            with st.sidebar:
-                is_supabase = "Supabase" in data_source
-                indicator_color = "#2ed573" if is_supabase else "#3b82f6"
+            st.markdown("<br>", unsafe_allow_html=True)
+
+            col_header, col_reset = st.columns([5, 3])
+            with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
+            with col_reset: st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
+            
+            filtered_df = patient_df.copy()
+            
+            if min_date and max_date:
+                st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
                 
-                sync_time = datetime.datetime.now(ist_tz).strftime("%d %b %Y, %I:%M %p")
+                today_date = datetime.datetime.now(ist_tz).date()
+                upper_bound = max(max_date, today_date) if max_date else today_date
                 
-                indicator_html = f"""
-                <style>
-                @keyframes pulse-dot {{
-                    0% {{ transform: scale(0.95); box-shadow: 0 0 0 0 {indicator_color}99; }}
-                    70% {{ transform: scale(1); box-shadow: 0 0 0 10px {indicator_color}00; }}
-                    100% {{ transform: scale(0.95); box-shadow: 0 0 0 0 {indicator_color}00; }}
-                }}
-                .db-indicator-box {{
-                    display: flex; align-items: center; padding: 10px 14px;
-                    background-color: {indicator_color}15; border-radius: 8px;
-                    border: 1px solid {indicator_color}33; margin-bottom: 4px;
-                }}
-                .db-blob {{
-                    background: {indicator_color}; border-radius: 50%; height: 10px; width: 10px; min-width: 10px;
-                    box-shadow: 0 0 0 0 {indicator_color}; animation: pulse-dot 1.5s infinite; margin-right: 10px;
-                }}
-                .db-text {{
-                    font-weight: 600; color: {indicator_color}; font-size: 13px; margin: 0; padding: 0;
-                }}
-                </style>
-                <div class="db-indicator-box">
-                    <div class="db-blob"></div>
-                    <div class="db-text">Live: {data_source}</div>
+                col1, col2 = st.columns(2)
+                with col1: start_date = st.date_input("From", value=min_date, max_value=upper_bound, format="DD/MM/YYYY", key="start_date")
+                with col2: end_date = st.date_input("To", value=upper_bound, max_value=upper_bound, format="DD/MM/YYYY", key="end_date")
+                
+                if start_date > end_date:
+                    st.error("Error: 'To' date 'From' date se aage ki honi chahiye.")
+                else:
+                    filtered_df = filtered_df[(filtered_df['Date'].dt.date >= start_date) & (filtered_df['Date'].dt.date <= end_date)]
+
+            # 🚀 SEARCH ENABLED WITH PLACEHOLDER FOR ALL MULTISELECTS
+            all_diseases_sorted = sorted([str(x) for x in filtered_df['Disease'].dropna().unique()]) if 'Disease' in filtered_df.columns else []
+            selected_diseases = st.multiselect(
+                "Select Disease(s)", 
+                options=all_diseases_sorted, 
+                key="disease_filter", 
+                placeholder="Type to search..."
+            )
+            if selected_diseases:
+                filtered_df = filtered_df[filtered_df['Disease'].isin(selected_diseases)]
+
+            raw_zones = sorted(mapping_df['Zone'].dropna().unique(), key=lambda x: int(''.join(filter(str.isdigit, str(x))) or 0)) if mapping_df is not None and 'Zone' in mapping_df.columns else []
+            zones_list_clean = [str(z) for z in raw_zones]
+            selected_zones = st.multiselect(
+                "Select Zone(s)", 
+                options=zones_list_clean, 
+                key="zone_filter", 
+                placeholder="Type to search..."
+            )
+            
+            if selected_zones:
+                filtered_df = filtered_df[filtered_df['Zone'].isin(selected_zones)]
+                raw_wards = mapping_df[mapping_df['Zone'].isin(selected_zones)]['Ward_Name'].dropna().unique()
+            else:
+                raw_wards = mapping_df['Ward_Name'].dropna().unique() if mapping_df is not None else []
+                
+            wards_sorted = sorted([str(x) for x in raw_wards])
+            selected_wards = st.multiselect(
+                "Select Ward(s)", 
+                options=wards_sorted, 
+                key="ward_filter", 
+                placeholder="Type to search..."
+            )
+            if selected_wards:
+                filtered_df = filtered_df[filtered_df['Ward_Name'].isin(selected_wards)]
+
+            status_options_list = sorted([str(x) for x in filtered_df['Status'].dropna().unique()]) if 'Status' in filtered_df.columns else []
+            selected_statuses = st.multiselect(
+                "Select Status(es)", 
+                options=status_options_list, 
+                key="status_filter", 
+                placeholder="Type to search..."
+            )
+            if selected_statuses:
+                filtered_df = filtered_df[filtered_df['Status'].isin(selected_statuses)]
+
+            st.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
+            st.markdown("<h3 style='margin-top:0px; margin-bottom: 5px; font-size: 15px;'>📊 Zone-wise Cases</h3>", unsafe_allow_html=True)
+            if not filtered_df.empty and 'Zone' in filtered_df.columns:
+                zone_summary = filtered_df['Zone'].value_counts().reset_index()
+                zone_summary.columns = ['Zone', 'Cases']
+                st.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
+
+        # 🚀 [OPTION 2 FEATURE] - COMPARATIVE PERIOD ANALYSIS
+        def calculate_trend(df, col_filter=None, val_filter=None):
+            if 'Date' not in df.columns or df.empty: return 0
+            max_d = df['Date'].max()
+            current_period = df[df['Date'] >= (max_d - pd.Timedelta(days=30))]
+            prev_period = df[(df['Date'] >= (max_d - pd.Timedelta(days=60))) & (df['Date'] < (max_d - pd.Timedelta(days=30)))]
+            
+            if col_filter and val_filter:
+                curr_val = len(current_period[current_period[col_filter] == val_filter])
+                prev_val = len(prev_period[prev_period[col_filter] == val_filter])
+            else:
+                curr_val = len(current_period)
+                prev_val = len(prev_period)
+            
+            if prev_val == 0: return f"+{curr_val} (New)" if curr_val > 0 else "0"
+            pct_change = ((curr_val - prev_val) / prev_val) * 100
+            return f"{pct_change:+.1f}% vs Last 30d"
+
+        with st.container(border=True):
+            zones_display = ", ".join(selected_zones) if selected_zones else "All Zones"
+            wards_display = ", ".join(selected_wards) if selected_wards else "All Wards"
+            st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{zones_display}` ➔ `{wards_display}`</span>", unsafe_allow_html=True)
+            
+            status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
+            total_cols = 1 + len(status_counts)
+            metric_cols = st.columns(total_cols)
+            
+            trend_total = calculate_trend(filtered_df)
+            with metric_cols[0]: st.metric("Total Cases (Filtered)", len(filtered_df), delta=trend_total, delta_color="inverse", help="Total cases in current filter with 30-day comparative trend.")
+            
+            for idx, (status_name, count_val) in enumerate(status_counts.items()):
+                trend_stat = calculate_trend(filtered_df, 'Status', status_name)
+                d_color = "normal" if status_name.lower() in ['recovered', 'discharged'] else "inverse"
+                with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val, delta=trend_stat, delta_color=d_color)
+
+        if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
+            top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
+            top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
+            top_disease = filtered_df['Disease'].mode()[0] if 'Disease' in filtered_df.columns and not filtered_df['Disease'].empty else "Unknown Disease"
+            
+            st.markdown(f"""
+                <div class="ai-alert-box">
+                    <div class="ai-alert-title"><span>🤖</span> Automated Health Intelligence & Alert</div>
+                    <div class="ai-alert-text">
+                        🚨 <b>High-Risk Hotspot:</b> <b>{top_ward}</b> is currently the most affected area with <b>{top_ward_cases} active cases</b>!<br>
+                        🦠 <b>Insight:</b> Based on the current dataset, <b>{top_disease}</b> is detected as the most prominent disease in this region. Immediate vector control activities and public health awareness campaigns are highly recommended.
+                    </div>
                 </div>
-                <div style="font-size: 11px; color: #64748b; margin-bottom: 8px; text-align: right;">
-                    ⏱️ Synced: <b>{sync_time}</b> (IST)
+            """, unsafe_allow_html=True)
+
+        # --- ROW 1: DISTRIBUTION & HOTSPOTS ---
+        col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
+        with col_chart1:
+            with st.container(border=True):
+                st.markdown("### 🦠 Disease Distribution")
+                if 'Disease' in filtered_df.columns and not filtered_df.empty:
+                    disease_df = filtered_df['Disease'].value_counts().reset_index()
+                    disease_df.columns = ['Disease', 'Count']
+                    fig_pie = px.pie(disease_df, names='Disease', values='Count', hole=0.45, color='Disease', color_discrete_map=disease_color_map)
+                    fig_pie.update_traces(texttemplate='<b>%{value}</b><br>%{percent:.1%}', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
+                    fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=265, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.82))
+                    st.plotly_chart(fig_pie, use_container_width=True)
+
+        with col_divider: st.markdown("<div class='vertical-divider'></div>", unsafe_allow_html=True)
+                
+        with col_chart2:
+            with st.container(border=True):
+                st.markdown("### 🏢 Top Wards by Total Case Volume")
+                if 'Ward_Name' in filtered_df.columns and not filtered_df.empty:
+                    ward_df = filtered_df['Ward_Name'].value_counts().head(8).reset_index()
+                    ward_df.columns = ['Ward', 'Cases']
+                    fig_bar = px.bar(ward_df, x='Ward', y='Cases', text='Cases', color='Cases', color_continuous_scale=['#fca5a5', '#dc2626', '#991b1b'])
+                    fig_bar.update_traces(textposition='outside', marker_cornerradius=6)
+                    fig_bar.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=265, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
+                    st.plotly_chart(fig_bar, use_container_width=True)
+
+        # --- ROW 2: TIMELINE & RISK MATRIX ---
+        col_chart3, col_divider2, col_chart4 = st.columns([5.5, 0.2, 4.3])
+        with col_chart3:
+            with st.container(border=True):
+                st.markdown("### 📈 Date Trend / Timeline Analysis")
+                if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
+                    timeline_df = filtered_df.dropna(subset=['Date']).copy()
+                    timeline_df['DateOnly'] = timeline_df['Date'].dt.date
+                    timeline_counts = timeline_df['DateOnly'].value_counts().sort_index().reset_index()
+                    timeline_counts.columns = ['Date', 'Cases']
+                    fig_timeline = px.area(timeline_counts, x='Date', y='Cases', markers=True, color_discrete_sequence=['#1e3a8a'])
+                    fig_timeline.update_traces(line=dict(width=3, color='#1e3a8a'), marker=dict(size=6, color='#1e3a8a', line=dict(width=2, color='white')), fill='tozeroy', fillcolor='rgba(30, 58, 138, 0.12)')
+                    fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
+                    st.plotly_chart(fig_timeline, use_container_width=True)
+
+        with col_divider2: st.markdown("<div class='vertical-divider'></div>", unsafe_allow_html=True)
+
+        with col_chart4:
+            with st.container(border=True):
+                st.markdown("### 🔥 Zone vs Disease Risk Matrix")
+                if not filtered_df.empty and 'Zone' in filtered_df.columns and 'Disease' in filtered_df.columns:
+                    pivot_df = pd.crosstab(filtered_df['Zone'], filtered_df['Disease'])
+                    pivot_df['Total'] = pivot_df.sum(axis=1)
+                    pivot_df = pivot_df.sort_values(by='Total', ascending=True).drop(columns=['Total'])
+                    
+                    fig_heat = px.imshow(
+                        pivot_df, text_auto=True, aspect="auto", color_continuous_scale='Reds',
+                        labels=dict(x="Disease Type", y="Zone/Region", color="Case Count")
+                    )
+                    fig_heat.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, coloraxis_showscale=False, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter"))
+                    fig_heat.update_xaxes(side="bottom")
+                    st.plotly_chart(fig_heat, use_container_width=True)
+
+        # --- ROW 3: PATIENT DEMOGRAPHICS ---
+        col_demo1, col_divider3, col_demo2 = st.columns([6, 0.2, 3.8])
+        with col_demo1:
+            with st.container(border=True):
+                st.markdown("### 👥 Patient Age Demographics")
+                if not filtered_df.empty and 'Age' in filtered_df.columns:
+                    bins = [0, 12, 18, 35, 50, 65, 100]
+                    labels = ['0-12 (Children)', '13-18 (Teens)', '19-35 (Youth)', '36-50 (Adults)', '51-65 (Seniors)', '65+ (Elders)']
+                    filtered_df['Age Group'] = pd.cut(filtered_df['Age'], bins=bins, labels=labels, right=False)
+                    age_df = filtered_df['Age Group'].value_counts().reindex(labels).reset_index()
+                    age_df.columns = ['Age Group', 'Patients']
+                    
+                    fig_age = px.bar(age_df, x='Age Group', y='Patients', text='Patients', color='Patients', color_continuous_scale='Blues')
+                    fig_age.update_traces(textposition='outside', marker_cornerradius=4)
+                    fig_age.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=240, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', xaxis=dict(title=''), yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
+                    st.plotly_chart(fig_age, use_container_width=True)
+        
+        with col_divider3: st.markdown("<div class='vertical-divider' style='min-height:240px;'></div>", unsafe_allow_html=True)
+        
+        with col_demo2:
+            with st.container(border=True):
+                st.markdown("### 🚻 Gender Ratio")
+                if not filtered_df.empty and 'Gender' in filtered_df.columns:
+                    gender_df = filtered_df['Gender'].value_counts().reset_index()
+                    gender_df.columns = ['Gender', 'Count']
+                    color_map = {'Male': '#3b82f6', 'Female': '#ec4899', 'Other': '#8b5cf6'}
+                    fig_gen = px.pie(gender_df, names='Gender', values='Count', hole=0.55, color='Gender', color_discrete_map=color_map)
+                    fig_gen.update_traces(textinfo='percent+label', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
+                    fig_gen.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=240, showlegend=False)
+                    st.plotly_chart(fig_gen, use_container_width=True)
+
+        # --- ROW 4: INTERACTIVE MAP ---
+        with st.container(border=True):
+            st.markdown("""
+                <style>
+                    div[data-testid="stRadio"] { margin-top: -10px; margin-bottom: 0px; }
+                </style>
+            """, unsafe_allow_html=True)
+            st.markdown("<h3 style='margin-top: 0px; margin-bottom: -5px;'>📍 Patients Map View</h3>", unsafe_allow_html=True)
+            
+            map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
+            
+            if geo_data:
+                m = folium.Map(location=[21.130, 79.065], zoom_start=11.7, tiles=None, zoom_control=False, attribution_control=False)
+                
+                folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
+                folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
+                folium.TileLayer('OpenStreetMap', name='Default Map', control=True).add_to(m)
+                
+                def clean_ward_fast(val):
+                    if pd.isna(val): return "Unknown"
+                    v = str(val)
+                    v = v[:-2] if v.endswith('.0') else v
+                    for p in ["Prabhag No. ", "Prabhag No.", "Prabhag No ", "Ward No. ", "Ward No.", "Ward No "]:
+                        v = v.replace(p, "")
+                    v = v.strip().lstrip('0')
+                    return v if v else "0"
+
+                zone_dict = {clean_ward_fast(w): str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
+                
+                clean_ward_counts = {}
+                if not filtered_df.empty:
+                    ward_counts = filtered_df['Ward_Name'].value_counts()
+                    for w, count in ward_counts.items():
+                        clean_w = clean_ward_fast(w)
+                        clean_ward_counts[clean_w] = clean_ward_counts.get(clean_w, 0) + count
+                        
+                clean_zone_counts = {}
+                if not filtered_df.empty:
+                    zone_counts = filtered_df['Zone'].value_counts()
+                    for z, count in zone_counts.items():
+                        clean_zone_counts[str(z)] = clean_zone_counts.get(str(z), 0) + count
+
+                max_ward_cases = max(clean_ward_counts.values()) if clean_ward_counts else 1
+
+                def get_density_color(cases):
+                    if cases == 0: return "#ebedef" 
+                    elif cases < max_ward_cases * 0.2: return "#ffeda0" 
+                    elif cases < max_ward_cases * 0.4: return "#feb24c" 
+                    elif cases < max_ward_cases * 0.7: return "#fc4e2a" 
+                    else: return "#bd0026"
+
+                for feature in geo_data['features']:
+                    clean_ward = feature['properties']['Clean_Ward'] 
+                    zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
+                    ward_cases = clean_ward_counts.get(clean_ward, 0)
+                    
+                    if selected_wards: 
+                        zone_cases = ward_cases if clean_ward in [clean_ward_fast(w) for w in selected_wards] else 0
+                    else: 
+                        zone_cases = clean_zone_counts.get(zone_name, 0)
+                    
+                    feature['properties']['Clean_Zone'] = zone_name
+                    feature['properties']['Ward_Cases'] = ward_cases
+                    feature['properties']['Zone_Cases'] = zone_cases
+                    feature['properties']['fill_color'] = get_density_color(ward_cases)
+
+                popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_wards else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
+                popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_wards else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
+
+                folium.GeoJson(
+                    geo_data,
+                    name="Base map", 
+                    style_function=lambda feature: {'color': '#444444', 'weight': 1, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.60},
+                    highlight_function=lambda feature: {'color': '#000000', 'weight': 2.5, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.80},
+                    tooltip=folium.GeoJsonTooltip(
+                        fields=popup_fields, 
+                        aliases=popup_aliases, 
+                        labels=True
+                    )
+                ).add_to(m)
+
+                if map_mode == "Patient Cluster View":
+                    marker_cluster = MarkerCluster(name="Cases").add_to(m)
+                    if not filtered_df.empty:
+                        for idx, row in filtered_df.iterrows():
+                            p_name = str(row.get('Patient_Name', 'N/A')).title()
+                            disease_name = row.get('Disease', 'N/A')
+                            point_color = disease_color_map.get(disease_name, '#2563eb')
+                            
+                            popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
+                                <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
+                                <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
+                            if pd.notna(row['Lat']) and pd.notna(row['Long']):
+                                folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, tooltip=popup_text).add_to(marker_cluster)
+
+                elif map_mode == "Ward-wise Exact Count View":
+                    cases_group = folium.FeatureGroup(name="Cases").add_to(m)
+                    for feature in geo_data['features']:
+                        ward_cases = feature['properties']['Ward_Cases']
+                        if ward_cases > 0:
+                            geom = feature.get('geometry')
+                            if geom:
+                                try:
+                                    coords = geom.get('coordinates')
+                                    ring = coords[0] if geom['type'] == 'Polygon' else coords[0][0]
+                                    lons = [p[0] for p in ring]
+                                    lats = [p[1] for p in ring]
+                                    center_lat, center_lon = sum(lats) / len(lats), sum(lons) / len(lons)
+                                    badge = f"""<div style="background-color:#e53e3e; border:2px solid #fff; color:#fff; font-weight:bold; font-size:11px; width:24px; height:24px; line-height:20px; border-radius:50%; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.4); transform:translate(-50%, -50%);">{ward_cases}</div>"""
+                                    extra_str = "" if selected_wards else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
+                                    popup = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px;"><b>Ward No :</b> {feature['properties']['Clean_Ward']}<br><b>Total Cases :</b> {ward_cases}<br><b>Zone No :</b> {feature['properties']['Clean_Zone']}{extra_str}</div>"""
+                                    folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), tooltip=popup).add_to(cases_group)
+                                except Exception: pass
+
+                elif map_mode == "All Cases Points View":
+                    cases_group = folium.FeatureGroup(name="Cases").add_to(m)
+                    if not filtered_df.empty:
+                        for idx, row in filtered_df.iterrows():
+                            p_name = str(row.get('Patient_Name', 'N/A')).title()
+                            disease_name = row.get('Disease', 'N/A')
+                            point_color = disease_color_map.get(disease_name, '#e53e3e') 
+                            
+                            popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
+                                <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
+                                <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
+                            if pd.notna(row['Lat']) and pd.notna(row['Long']):
+                                folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, tooltip=popup_text, color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(cases_group)
+                        
+                folium.LayerControl(position='topright').add_to(m)
+                
+                perfect_spacing_css = """
+                <style>
+                    html, body, #map { margin: 0 !important; padding: 0 !important; height: 100% !important; overflow: hidden !important; }
+                    
+                    .leaflet-top.leaflet-right { right: 12px !important; top: 12px !important; display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 8px !important; }
+                    .leaflet-top.leaflet-right > div { position: relative !important; float: none !important; margin: 0 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important; border: 2px solid rgba(0,0,0,0.2) !important; border-radius: 6px !important; background: white !important; }
+                    .leaflet-control-layers-expanded { position: absolute !important; right: 0 !important; top: 0 !important; z-index: 9999 !important; background: white !important; padding: 10px 14px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; }
+                    .leaflet-control-zoom-in, .leaflet-control-zoom-out { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; color: #333 !important; }
+                    .custom-center-btn a { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; text-align: center; display: block; text-decoration: none; color: #333; }
+                    .custom-center-btn a:hover, .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f4f4f4 !important; }
+                    path.leaflet-interactive:focus, .leaflet-container:focus, .leaflet-interactive, svg:focus { outline: none !important; }
+
+                    .leaflet-tooltip {
+                        font-family: 'Inter', sans-serif !important;
+                        font-size: 13px !important;
+                        background-color: rgba(255, 255, 255, 0.98) !important;
+                        border: 1px solid #cbd5e1 !important;
+                        border-radius: 8px !important;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+                        padding: 10px 14px !important;
+                        color: #334155 !important;
+                        white-space: nowrap !important;
+                    }
+                    .leaflet-tooltip table { margin: 0 !important; border-spacing: 0 !important; border: none !important; }
+                    .leaflet-tooltip th { font-weight: 700 !important; color: #0f172a !important; padding-right: 12px !important; padding-bottom: 4px !important; text-align: left !important; border: none !important; }
+                    .leaflet-tooltip td { font-weight: 500 !important; color: #334155 !important; padding-bottom: 4px !important; border: none !important;}
+                </style>
+                """
+                m.get_root().html.add_child(folium.Element(perfect_spacing_css))
+
+                class CustomMapControls(MacroElement):
+                    _template = Template("""
+                        {% macro script(this, kwargs) %}
+                            L.control.zoom({position: 'topright'}).addTo({{ this._parent.get_name() }});
+                            var centerControl = L.control({position: 'topright'});
+                            centerControl.onAdd = function (map) {
+                                var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-center-btn');
+                                var a = L.DomUtil.create('a', '', div);
+                                a.innerHTML = '🎯'; a.href = '#'; a.title = 'Center Map';
+                                L.DomEvent.on(a, 'click', function(e) { L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e); map.setView([21.130, 79.065], 11.7, {animate: true, duration: 1.0}); });
+                                return div;
+                            };
+                            {{ this._parent.get_name() }}.addControl(centerControl);
+                        {% endmacro %}
+                    """)
+                m.add_child(CustomMapControls())
+
+                disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
+                sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
+                
+                disease_html_rows = ""
+                if len(sorted_diseases_for_legend) > 0:
+                    for disease, color, count in sorted_diseases_for_legend:
+                        disease_html_rows += f"""
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;">
+                                <div style="width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; flex-shrink: 0; background-color:{color};"></div>
+                                {disease}
+                            </div>
+                            <div style="color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1;">{count}</div>
+                        </div>"""
+                else:
+                    disease_html_rows = '<div style="color:#64748b; font-size:11.5px; text-align:center; padding: 4px;">No cases found</div>'
+                
+                pure_html_legend = f"""
+                <div id="independent-overlay">
+                    <style>
+                        .disease-scroll::-webkit-scrollbar {{ width: 5px; }}
+                        .disease-scroll::-webkit-scrollbar-track {{ background: #f1f5f9; border-radius: 4px; margin: 4px 0; }}
+                        .disease-scroll::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 4px; }}
+                    </style>
+                    <div style="
+                        position: absolute; 
+                        top: 345px;        
+                        height: 360px;     
+                        left: 15px;        
+                        z-index: 999999; 
+                        display: flex; 
+                        flex-direction: row; 
+                        align-items: flex-end; 
+                        gap: 15px; 
+                        pointer-events: none;
+                    ">
+                        <!-- Disease Types Box -->
+                        <div class="disease-scroll" style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 220px; max-height: 100%; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column;">
+                            <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px; flex-shrink: 0;">🦠 Disease Types</p>
+                            <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px; flex-shrink: 0;"></div>
+                            <div style="display: flex; flex-direction: column; gap: 7px; overflow-y: auto;">
+                                {disease_html_rows}
+                            </div>
+                        </div>
+
+                        <!-- Case Density Box -->
+                        <div style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 175px;">
+                            <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px;">📊 Case Density</p>
+                            <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px;"></div>
+                            <div style="display: flex; flex-direction: column; gap: 7px;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#bd0026;"></div>High / Critical</div></div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#fc4e2a;"></div>Moderate-High</div></div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#feb24c;"></div>Moderate</div></div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#ffeda0;"></div>Low Cases</div></div>
+                                <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#ebedef;"></div>Zero Cases</div></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 """
-                st.markdown(indicator_html, unsafe_allow_html=True)
                 
-                # 🚀 Sync Live Data Button
-                if st.button("🔄 Sync Live Data", use_container_width=True, help="Force refresh data from database"):
-                    st.cache_data.clear()
-                    st.rerun()
+                class PureHTMLOverlay(MacroElement):
+                    def __init__(self, html):
+                        super().__init__()
+                        self.html = html
 
-                st.markdown("<br>", unsafe_allow_html=True)
-
-                col_header, col_reset = st.columns([5, 3])
-                with col_header: st.markdown("<h3 style='margin-top:0px;'>Filters 🔍</h3>", unsafe_allow_html=True)
-                with col_reset: st.button("Reset", on_click=clear_filters, help="Clear all filters", use_container_width=True)
-                
-                filtered_df = patient_df.copy()
-                
-                if min_date and max_date:
-                    st.markdown("<div style='font-size: 13px; font-weight: 600; margin-bottom: 2px; color: #334155;'>Date Window</div>", unsafe_allow_html=True)
-                    
-                    today_date = datetime.datetime.now(ist_tz).date()
-                    upper_bound = max(max_date, today_date) if max_date else today_date
-                    
-                    col1, col2 = st.columns(2)
-                    with col1: start_date = st.date_input("From", value=min_date, max_value=upper_bound, format="DD/MM/YYYY", key="start_date")
-                    with col2: end_date = st.date_input("To", value=upper_bound, max_value=upper_bound, format="DD/MM/YYYY", key="end_date")
-                    
-                    if start_date > end_date:
-                        st.error("Error: 'To' date 'From' date se aage ki honi chahiye.")
-                    else:
-                        filtered_df = filtered_df[(filtered_df['Date'].dt.date >= start_date) & (filtered_df['Date'].dt.date <= end_date)]
-
-                # 🚀 SEARCH ENABLED WITH PLACEHOLDER FOR ALL MULTISELECTS
-                all_diseases_sorted = sorted([str(x) for x in filtered_df['Disease'].dropna().unique()]) if 'Disease' in filtered_df.columns else []
-                selected_diseases = st.multiselect(
-                    "Select Disease(s)", 
-                    options=all_diseases_sorted, 
-                    key="disease_filter", 
-                    placeholder="Type to search..."
-                )
-                if selected_diseases:
-                    filtered_df = filtered_df[filtered_df['Disease'].isin(selected_diseases)]
-
-                raw_zones = sorted(mapping_df['Zone'].dropna().unique(), key=lambda x: int(''.join(filter(str.isdigit, str(x))) or 0)) if mapping_df is not None and 'Zone' in mapping_df.columns else []
-                zones_list_clean = [str(z) for z in raw_zones]
-                selected_zones = st.multiselect(
-                    "Select Zone(s)", 
-                    options=zones_list_clean, 
-                    key="zone_filter", 
-                    placeholder="Type to search..."
-                )
-                
-                if selected_zones:
-                    filtered_df = filtered_df[filtered_df['Zone'].isin(selected_zones)]
-                    raw_wards = mapping_df[mapping_df['Zone'].isin(selected_zones)]['Ward_Name'].dropna().unique()
-                else:
-                    raw_wards = mapping_df['Ward_Name'].dropna().unique() if mapping_df is not None else []
-                    
-                wards_sorted = sorted([str(x) for x in raw_wards])
-                selected_wards = st.multiselect(
-                    "Select Ward(s)", 
-                    options=wards_sorted, 
-                    key="ward_filter", 
-                    placeholder="Type to search..."
-                )
-                if selected_wards:
-                    filtered_df = filtered_df[filtered_df['Ward_Name'].isin(selected_wards)]
-
-                status_options_list = sorted([str(x) for x in filtered_df['Status'].dropna().unique()]) if 'Status' in filtered_df.columns else []
-                selected_statuses = st.multiselect(
-                    "Select Status(es)", 
-                    options=status_options_list, 
-                    key="status_filter", 
-                    placeholder="Type to search..."
-                )
-                if selected_statuses:
-                    filtered_df = filtered_df[filtered_df['Status'].isin(selected_statuses)]
-
-                st.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
-                st.markdown("<h3 style='margin-top:0px; margin-bottom: 5px; font-size: 15px;'>📊 Zone-wise Cases</h3>", unsafe_allow_html=True)
-                if not filtered_df.empty and 'Zone' in filtered_df.columns:
-                    zone_summary = filtered_df['Zone'].value_counts().reset_index()
-                    zone_summary.columns = ['Zone', 'Cases']
-                    st.dataframe(zone_summary, hide_index=True, use_container_width=True, height=450)
-
-            # 🚀 [OPTION 2 FEATURE] - COMPARATIVE PERIOD ANALYSIS
-            def calculate_trend(df, col_filter=None, val_filter=None):
-                if 'Date' not in df.columns or df.empty: return 0
-                max_d = df['Date'].max()
-                current_period = df[df['Date'] >= (max_d - pd.Timedelta(days=30))]
-                prev_period = df[(df['Date'] >= (max_d - pd.Timedelta(days=60))) & (df['Date'] < (max_d - pd.Timedelta(days=30)))]
-                
-                if col_filter and val_filter:
-                    curr_val = len(current_period[current_period[col_filter] == val_filter])
-                    prev_val = len(prev_period[prev_period[col_filter] == val_filter])
-                else:
-                    curr_val = len(current_period)
-                    prev_val = len(prev_period)
-                
-                if prev_val == 0: return f"+{curr_val} (New)" if curr_val > 0 else "0"
-                pct_change = ((curr_val - prev_val) / prev_val) * 100
-                return f"{pct_change:+.1f}% vs Last 30d"
-
-            with st.container(border=True):
-                zones_display = ", ".join(selected_zones) if selected_zones else "All Zones"
-                wards_display = ", ".join(selected_wards) if selected_wards else "All Wards"
-                st.markdown(f"**Active View:** <span style='color:#1e3a8a; font-weight:600;'>`{zones_display}` ➔ `{wards_display}`</span>", unsafe_allow_html=True)
-                
-                status_counts = filtered_df['Status'].value_counts() if 'Status' in filtered_df.columns else pd.Series()
-                total_cols = 1 + len(status_counts)
-                metric_cols = st.columns(total_cols)
-                
-                trend_total = calculate_trend(filtered_df)
-                with metric_cols[0]: st.metric("Total Cases (Filtered)", len(filtered_df), delta=trend_total, delta_color="inverse", help="Total cases in current filter with 30-day comparative trend.")
-                
-                for idx, (status_name, count_val) in enumerate(status_counts.items()):
-                    trend_stat = calculate_trend(filtered_df, 'Status', status_name)
-                    d_color = "normal" if status_name.lower() in ['recovered', 'discharged'] else "inverse"
-                    with metric_cols[idx + 1]: st.metric(label=f"Status: {status_name}", value=count_val, delta=trend_stat, delta_color=d_color)
-
-            if not filtered_df.empty and 'Ward_Name' in filtered_df.columns:
-                top_ward = filtered_df['Ward_Name'].value_counts().idxmax()
-                top_ward_cases = filtered_df['Ward_Name'].value_counts().max()
-                top_disease = filtered_df['Disease'].mode()[0] if 'Disease' in filtered_df.columns and not filtered_df['Disease'].empty else "Unknown Disease"
-                
-                st.markdown(f"""
-                    <div class="ai-alert-box">
-                        <div class="ai-alert-title"><span>🤖</span> Automated Health Intelligence & Alert</div>
-                        <div class="ai-alert-text">
-                            🚨 <b>High-Risk Hotspot:</b> <b>{top_ward}</b> is currently the most affected area with <b>{top_ward_cases} active cases</b>!<br>
-                            🦠 <b>Insight:</b> Based on the current dataset, <b>{top_disease}</b> is detected as the most prominent disease in this region. Immediate vector control activities and public health awareness campaigns are highly recommended.
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
-
-            # --- ROW 1: DISTRIBUTION & HOTSPOTS ---
-            col_chart1, col_divider, col_chart2 = st.columns([3.9, 0.2, 5.9])
-            with col_chart1:
-                with st.container(border=True):
-                    st.markdown("### 🦠 Disease Distribution")
-                    if 'Disease' in filtered_df.columns and not filtered_df.empty:
-                        disease_df = filtered_df['Disease'].value_counts().reset_index()
-                        disease_df.columns = ['Disease', 'Count']
-                        fig_pie = px.pie(disease_df, names='Disease', values='Count', hole=0.45, color='Disease', color_discrete_map=disease_color_map)
-                        fig_pie.update_traces(texttemplate='<b>%{value}</b><br>%{percent:.1%}', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
-                        fig_pie.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=265, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=0.82))
-                        st.plotly_chart(fig_pie, use_container_width=True)
-
-            with col_divider: st.markdown("<div class='vertical-divider'></div>", unsafe_allow_html=True)
-                    
-            with col_chart2:
-                with st.container(border=True):
-                    st.markdown("### 🏢 Top Wards by Total Case Volume")
-                    if 'Ward_Name' in filtered_df.columns and not filtered_df.empty:
-                        ward_df = filtered_df['Ward_Name'].value_counts().head(8).reset_index()
-                        ward_df.columns = ['Ward', 'Cases']
-                        fig_bar = px.bar(ward_df, x='Ward', y='Cases', text='Cases', color='Cases', color_continuous_scale=['#fca5a5', '#dc2626', '#991b1b'])
-                        fig_bar.update_traces(textposition='outside', marker_cornerradius=6)
-                        fig_bar.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=265, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"), yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
-                        st.plotly_chart(fig_bar, use_container_width=True)
-
-            # --- ROW 2: TIMELINE & RISK MATRIX ---
-            col_chart3, col_divider2, col_chart4 = st.columns([5.5, 0.2, 4.3])
-            with col_chart3:
-                with st.container(border=True):
-                    st.markdown("### 📈 Date Trend / Timeline Analysis")
-                    if 'Date' in filtered_df.columns and not filtered_df['Date'].dropna().empty:
-                        timeline_df = filtered_df.dropna(subset=['Date']).copy()
-                        timeline_df['DateOnly'] = timeline_df['Date'].dt.date
-                        timeline_counts = timeline_df['DateOnly'].value_counts().sort_index().reset_index()
-                        timeline_counts.columns = ['Date', 'Cases']
-                        fig_timeline = px.area(timeline_counts, x='Date', y='Cases', markers=True, color_discrete_sequence=['#1e3a8a'])
-                        fig_timeline.update_traces(line=dict(width=3, color='#1e3a8a'), marker=dict(size=6, color='#1e3a8a', line=dict(width=2, color='white')), fill='tozeroy', fillcolor='rgba(30, 58, 138, 0.12)')
-                        fig_timeline.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, xaxis=dict(title='', showgrid=False), yaxis=dict(title='Daily Cases', showgrid=True, gridcolor='#f1f5f9'), plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter", bordercolor="#cbd5e1"))
-                        st.plotly_chart(fig_timeline, use_container_width=True)
-
-            with col_divider2: st.markdown("<div class='vertical-divider'></div>", unsafe_allow_html=True)
-
-            with col_chart4:
-                with st.container(border=True):
-                    st.markdown("### 🔥 Zone vs Disease Risk Matrix")
-                    if not filtered_df.empty and 'Zone' in filtered_df.columns and 'Disease' in filtered_df.columns:
-                        pivot_df = pd.crosstab(filtered_df['Zone'], filtered_df['Disease'])
-                        pivot_df['Total'] = pivot_df.sum(axis=1)
-                        pivot_df = pivot_df.sort_values(by='Total', ascending=True).drop(columns=['Total'])
-                        
-                        fig_heat = px.imshow(
-                            pivot_df, text_auto=True, aspect="auto", color_continuous_scale='Reds',
-                            labels=dict(x="Disease Type", y="Zone/Region", color="Case Count")
-                        )
-                        fig_heat.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=280, coloraxis_showscale=False, hoverlabel=dict(bgcolor="white", font_size=13, font_family="Inter"))
-                        fig_heat.update_xaxes(side="bottom")
-                        st.plotly_chart(fig_heat, use_container_width=True)
-
-            # --- ROW 3: PATIENT DEMOGRAPHICS ---
-            col_demo1, col_divider3, col_demo2 = st.columns([6, 0.2, 3.8])
-            with col_demo1:
-                with st.container(border=True):
-                    st.markdown("### 👥 Patient Age Demographics")
-                    if not filtered_df.empty and 'Age' in filtered_df.columns:
-                        bins = [0, 12, 18, 35, 50, 65, 100]
-                        labels = ['0-12 (Children)', '13-18 (Teens)', '19-35 (Youth)', '36-50 (Adults)', '51-65 (Seniors)', '65+ (Elders)']
-                        filtered_df['Age Group'] = pd.cut(filtered_df['Age'], bins=bins, labels=labels, right=False)
-                        age_df = filtered_df['Age Group'].value_counts().reindex(labels).reset_index()
-                        age_df.columns = ['Age Group', 'Patients']
-                        
-                        fig_age = px.bar(age_df, x='Age Group', y='Patients', text='Patients', color='Patients', color_continuous_scale='Blues')
-                        fig_age.update_traces(textposition='outside', marker_cornerradius=4)
-                        fig_age.update_layout(margin=dict(t=25, b=10, l=10, r=10), height=240, coloraxis_showscale=False, plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)', xaxis=dict(title=''), yaxis=dict(showgrid=True, gridcolor='#f1f5f9'))
-                        st.plotly_chart(fig_age, use_container_width=True)
-            
-            with col_divider3: st.markdown("<div class='vertical-divider' style='min-height:240px;'></div>", unsafe_allow_html=True)
-            
-            with col_demo2:
-                with st.container(border=True):
-                    st.markdown("### 🚻 Gender Ratio")
-                    if not filtered_df.empty and 'Gender' in filtered_df.columns:
-                        gender_df = filtered_df['Gender'].value_counts().reset_index()
-                        gender_df.columns = ['Gender', 'Count']
-                        color_map = {'Male': '#3b82f6', 'Female': '#ec4899', 'Other': '#8b5cf6'}
-                        fig_gen = px.pie(gender_df, names='Gender', values='Count', hole=0.55, color='Gender', color_discrete_map=color_map)
-                        fig_gen.update_traces(textinfo='percent+label', textfont_size=12, textfont_color='white', marker=dict(line=dict(color='#ffffff', width=2)))
-                        fig_gen.update_layout(margin=dict(t=10, b=10, l=10, r=10), height=240, showlegend=False)
-                        st.plotly_chart(fig_gen, use_container_width=True)
-
-            # --- ROW 4: INTERACTIVE MAP ---
-            with st.container(border=True):
-                st.markdown("""
-                    <style>
-                        div[data-testid="stRadio"] { margin-top: -10px; margin-bottom: 0px; }
-                    </style>
-                """, unsafe_allow_html=True)
-                st.markdown("<h3 style='margin-top: 0px; margin-bottom: -5px;'>📍 Patients Map View</h3>", unsafe_allow_html=True)
-                
-                map_mode = st.radio("Select Map View Mode", ["Patient Cluster View", "Ward-wise Exact Count View", "All Cases Points View"], horizontal=True, label_visibility="collapsed")
-                
-                if geo_data:
-                    m = folium.Map(location=[21.130, 79.065], zoom_start=11.7, tiles=None, zoom_control=False, attribution_control=False)
-                    
-                    folium.TileLayer('CartoDB Positron', name='Clean B&W Map', control=True).add_to(m)
-                    folium.TileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', attr='&copy; OpenStreetMap & CARTO', name='Clean No-Labels Map', control=True).add_to(m)
-                    folium.TileLayer('OpenStreetMap', name='Default Map', control=True).add_to(m)
-                    
-                    def clean_ward_fast(val):
-                        if pd.isna(val): return "Unknown"
-                        v = str(val)
-                        v = v[:-2] if v.endswith('.0') else v
-                        for p in ["Prabhag No. ", "Prabhag No.", "Prabhag No ", "Ward No. ", "Ward No.", "Ward No "]:
-                            v = v.replace(p, "")
-                        v = v.strip().lstrip('0')
-                        return v if v else "0"
-
-                    zone_dict = {clean_ward_fast(w): str(z) for w, z in zip(mapping_df['Ward_Name'], mapping_df['Zone'])}
-                    
-                    clean_ward_counts = {}
-                    if not filtered_df.empty:
-                        ward_counts = filtered_df['Ward_Name'].value_counts()
-                        for w, count in ward_counts.items():
-                            clean_w = clean_ward_fast(w)
-                            clean_ward_counts[clean_w] = clean_ward_counts.get(clean_w, 0) + count
+                    _template = Template("""
+                        {% macro script(this, kwargs) %}
+                            var overlayWrapper = document.createElement('div');
+                            overlayWrapper.innerHTML = `{{ this.html }}`;
                             
-                    clean_zone_counts = {}
-                    if not filtered_df.empty:
-                        zone_counts = filtered_df['Zone'].value_counts()
-                        for z, count in zone_counts.items():
-                            clean_zone_counts[str(z)] = clean_zone_counts.get(str(z), 0) + count
-
-                    max_ward_cases = max(clean_ward_counts.values()) if clean_ward_counts else 1
-
-                    def get_density_color(cases):
-                        if cases == 0: return "#ebedef" 
-                        elif cases < max_ward_cases * 0.2: return "#ffeda0" 
-                        elif cases < max_ward_cases * 0.4: return "#feb24c" 
-                        elif cases < max_ward_cases * 0.7: return "#fc4e2a" 
-                        else: return "#bd0026"
-
-                    for feature in geo_data['features']:
-                        clean_ward = feature['properties']['Clean_Ward'] 
-                        zone_name = zone_dict.get(clean_ward, 'Unknown Zone')
-                        ward_cases = clean_ward_counts.get(clean_ward, 0)
-                        
-                        if selected_wards: 
-                            zone_cases = ward_cases if clean_ward in [clean_ward_fast(w) for w in selected_wards] else 0
-                        else: 
-                            zone_cases = clean_zone_counts.get(zone_name, 0)
-                        
-                        feature['properties']['Clean_Zone'] = zone_name
-                        feature['properties']['Ward_Cases'] = ward_cases
-                        feature['properties']['Zone_Cases'] = zone_cases
-                        feature['properties']['fill_color'] = get_density_color(ward_cases)
-
-                    popup_fields = ['Clean_Ward', 'Ward_Cases', 'Clean_Zone'] if selected_wards else ['Clean_Ward', 'Ward_Cases', 'Clean_Zone', 'Zone_Cases']
-                    popup_aliases = ['Ward No :', 'Total Cases :', 'Zone No :'] if selected_wards else ['Ward No :', 'Total Cases :', 'Zone No :', 'Total Cases :']
-
-                    folium.GeoJson(
-                        geo_data,
-                        name="Base map", 
-                        style_function=lambda feature: {'color': '#444444', 'weight': 1, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.60},
-                        highlight_function=lambda feature: {'color': '#000000', 'weight': 2.5, 'fillColor': feature['properties']['fill_color'], 'fillOpacity': 0.80},
-                        tooltip=folium.GeoJsonTooltip(
-                            fields=popup_fields, 
-                            aliases=popup_aliases, 
-                            labels=True
-                        )
-                    ).add_to(m)
-
-                    if map_mode == "Patient Cluster View":
-                        marker_cluster = MarkerCluster(name="Cases").add_to(m)
-                        if not filtered_df.empty:
-                            for idx, row in filtered_df.iterrows():
-                                p_name = str(row.get('Patient_Name', 'N/A')).title()
-                                disease_name = row.get('Disease', 'N/A')
-                                point_color = disease_color_map.get(disease_name, '#2563eb')
-                                
-                                popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
-                                    <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
-                                    <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
-                                if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=7, color='white', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9, tooltip=popup_text).add_to(marker_cluster)
-
-                    elif map_mode == "Ward-wise Exact Count View":
-                        cases_group = folium.FeatureGroup(name="Cases").add_to(m)
-                        for feature in geo_data['features']:
-                            ward_cases = feature['properties']['Ward_Cases']
-                            if ward_cases > 0:
-                                geom = feature.get('geometry')
-                                if geom:
-                                    try:
-                                        coords = geom.get('coordinates')
-                                        ring = coords[0] if geom['type'] == 'Polygon' else coords[0][0]
-                                        lons = [p[0] for p in ring]
-                                        lats = [p[1] for p in ring]
-                                        center_lat, center_lon = sum(lats) / len(lats), sum(lons) / len(lons)
-                                        badge = f"""<div style="background-color:#e53e3e; border:2px solid #fff; color:#fff; font-weight:bold; font-size:11px; width:24px; height:24px; line-height:20px; border-radius:50%; text-align:center; box-shadow:0 2px 5px rgba(0,0,0,0.4); transform:translate(-50%, -50%);">{ward_cases}</div>"""
-                                        extra_str = "" if selected_wards else f"<br><b>Total Cases :</b> {feature['properties']['Zone_Cases']}"
-                                        popup = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px;"><b>Ward No :</b> {feature['properties']['Clean_Ward']}<br><b>Total Cases :</b> {ward_cases}<br><b>Zone No :</b> {feature['properties']['Clean_Zone']}{extra_str}</div>"""
-                                        folium.Marker(location=[center_lat, center_lon], icon=folium.DivIcon(html=badge), tooltip=popup).add_to(cases_group)
-                                    except Exception: pass
-
-                    elif map_mode == "All Cases Points View":
-                        cases_group = folium.FeatureGroup(name="Cases").add_to(m)
-                        if not filtered_df.empty:
-                            for idx, row in filtered_df.iterrows():
-                                p_name = str(row.get('Patient_Name', 'N/A')).title()
-                                disease_name = row.get('Disease', 'N/A')
-                                point_color = disease_color_map.get(disease_name, '#e53e3e') 
-                                
-                                popup_text = f"""<div style="font-family: 'Inter', sans-serif; font-size: 13px; min-width: 160px;">
-                                    <b style="color: {point_color}; font-size: 14px;">Disease: {disease_name}</b><br><hr style="margin: 4px 0;">
-                                    <b>Patient Name:</b> {p_name}<br><b>Ward No:</b> {clean_ward_fast(row.get('Ward_Name', 'N/A'))}<br><b>Status:</b> {row.get('Status', 'N/A')}</div>"""
-                                if pd.notna(row['Lat']) and pd.notna(row['Long']):
-                                    folium.CircleMarker(location=[row['Lat'], row['Long']], radius=5, tooltip=popup_text, color='#ffffff', weight=1, fill=True, fill_color=point_color, fill_opacity=0.9).add_to(cases_group)
+                            document.body.appendChild(overlayWrapper.firstElementChild);
                             
-                    folium.LayerControl(position='topright').add_to(m)
-                    
-                    perfect_spacing_css = """
-                    <style>
-                        html, body, #map { margin: 0 !important; padding: 0 !important; height: 100% !important; overflow: hidden !important; }
-                        
-                        .leaflet-top.leaflet-right { right: 12px !important; top: 12px !important; display: flex !important; flex-direction: column !important; align-items: flex-end !important; gap: 8px !important; }
-                        .leaflet-top.leaflet-right > div { position: relative !important; float: none !important; margin: 0 !important; box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important; border: 2px solid rgba(0,0,0,0.2) !important; border-radius: 6px !important; background: white !important; }
-                        .leaflet-control-layers-expanded { position: absolute !important; right: 0 !important; top: 0 !important; z-index: 9999 !important; background: white !important; padding: 10px 14px !important; box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important; }
-                        .leaflet-control-zoom-in, .leaflet-control-zoom-out { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; color: #333 !important; }
-                        .custom-center-btn a { width: 34px !important; height: 34px !important; line-height: 34px !important; font-size: 16px !important; text-align: center; display: block; text-decoration: none; color: #333; }
-                        .custom-center-btn a:hover, .leaflet-control-zoom-in:hover, .leaflet-control-zoom-out:hover { background-color: #f4f4f4 !important; }
-                        path.leaflet-interactive:focus, .leaflet-container:focus, .leaflet-interactive, svg:focus { outline: none !important; }
+                            var el = document.getElementById('independent-overlay');
+                            L.DomEvent.disableClickPropagation(el);
+                            L.DomEvent.disableScrollPropagation(el);
+                        {% endmacro %}
+                    """)
+                
+                m.add_child(PureHTMLOverlay(pure_html_legend))
 
-                        .leaflet-tooltip {
-                            font-family: 'Inter', sans-serif !important;
-                            font-size: 13px !important;
-                            background-color: rgba(255, 255, 255, 0.98) !important;
-                            border: 1px solid #cbd5e1 !important;
-                            border-radius: 8px !important;
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-                            padding: 10px 14px !important;
-                            color: #334155 !important;
-                            white-space: nowrap !important;
-                        }
-                        .leaflet-tooltip table { margin: 0 !important; border-spacing: 0 !important; border: none !important; }
-                        .leaflet-tooltip th { font-weight: 700 !important; color: #0f172a !important; padding-right: 12px !important; padding-bottom: 4px !important; text-align: left !important; border: none !important; }
-                        .leaflet-tooltip td { font-weight: 500 !important; color: #334155 !important; padding-bottom: 4px !important; border: none !important;}
-                    </style>
-                    """
-                    m.get_root().html.add_child(folium.Element(perfect_spacing_css))
+                # Map height fixed at 720
+                components.html(m._repr_html_(), height=720)
 
-                    class CustomMapControls(MacroElement):
-                        _template = Template("""
-                            {% macro script(this, kwargs) %}
-                                L.control.zoom({position: 'topright'}).addTo({{ this._parent.get_name() }});
-                                var centerControl = L.control({position: 'topright'});
-                                centerControl.onAdd = function (map) {
-                                    var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control custom-center-btn');
-                                    var a = L.DomUtil.create('a', '', div);
-                                    a.innerHTML = '🎯'; a.href = '#'; a.title = 'Center Map';
-                                    L.DomEvent.on(a, 'click', function(e) { L.DomEvent.stopPropagation(e); L.DomEvent.preventDefault(e); map.setView([21.130, 79.065], 11.7, {animate: true, duration: 1.0}); });
-                                    return div;
-                                };
-                                {{ this._parent.get_name() }}.addControl(centerControl);
-                            {% endmacro %}
-                        """)
-                    m.add_child(CustomMapControls())
+        # --- ROW 5: DATA TABLE WITH EXPORT ---
+        with st.container(border=True):
+            col_t1, col_t2 = st.columns([8, 2], vertical_alignment="bottom")
+            with col_t1: st.markdown("### 📋 Patient Details Database")
+            with col_t2:
+                csv_data = filtered_df.to_csv(index=False).encode('utf-8')
+                st.download_button(label="📥 Export CSV Data", data=csv_data, file_name="NMC_Health_Report.csv", mime="text/csv", use_container_width=True)
 
-                    disease_counts_dict = filtered_df['Disease'].value_counts().to_dict() if not filtered_df.empty and 'Disease' in filtered_df.columns else {}
-                    sorted_diseases_for_legend = sorted([(disease, color, disease_counts_dict.get(disease, 0)) for disease, color in disease_color_map.items() if disease_counts_dict.get(disease, 0) > 0], key=lambda x: x[2], reverse=True)
-                    
-                    disease_html_rows = ""
-                    if len(sorted_diseases_for_legend) > 0:
-                        for disease, color, count in sorted_diseases_for_legend:
-                            disease_html_rows += f"""
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;">
-                                    <div style="width: 12px; height: 12px; border-radius: 50%; border: 1px solid #999; flex-shrink: 0; background-color:{color};"></div>
-                                    {disease}
-                                </div>
-                                <div style="color: #1e3a8a; font-weight: 700; font-size: 10.5px; background: #f1f5f9; padding: 2px 6px; border-radius: 6px; border: 1px solid #cbd5e1;">{count}</div>
-                            </div>"""
-                    else:
-                        disease_html_rows = '<div style="color:#64748b; font-size:11.5px; text-align:center; padding: 4px;">No cases found</div>'
-                    
-                    pure_html_legend = f"""
-                    <div id="independent-overlay">
-                        <style>
-                            .disease-scroll::-webkit-scrollbar {{ width: 5px; }}
-                            .disease-scroll::-webkit-scrollbar-track {{ background: #f1f5f9; border-radius: 4px; margin: 4px 0; }}
-                            .disease-scroll::-webkit-scrollbar-thumb {{ background: #cbd5e1; border-radius: 4px; }}
-                        </style>
-                        <div style="
-                            position: absolute; 
-                            top: 345px;        
-                            height: 360px;     
-                            left: 15px;        
-                            z-index: 999999; 
-                            display: flex; 
-                            flex-direction: row; 
-                            align-items: flex-end; 
-                            gap: 15px; 
-                            pointer-events: none;
-                        ">
-                            <!-- Disease Types Box -->
-                            <div class="disease-scroll" style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 220px; max-height: 100%; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column;">
-                                <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px; flex-shrink: 0;">🦠 Disease Types</p>
-                                <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px; flex-shrink: 0;"></div>
-                                <div style="display: flex; flex-direction: column; gap: 7px; overflow-y: auto;">
-                                    {disease_html_rows}
-                                </div>
-                            </div>
+            display_df = filtered_df.copy()
+            if 'Date' in display_df.columns: display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
+            st.dataframe(display_df, use_container_width=True, hide_index=True)
 
-                            <!-- Case Density Box -->
-                            <div style="background-color: rgba(255, 255, 255, 0.95); border: 2px solid rgba(0,0,0,0.15); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); padding: 12px; box-sizing: border-box; font-family: 'Inter', sans-serif; pointer-events: auto; width: 175px;">
-                                <p style="color:#1e3a8a; font-size:13px; font-weight: 700; margin: 0 0 8px 0; display:flex; align-items:center; gap:5px;">📊 Case Density</p>
-                                <div style="border-top:1px solid #cbd5e1; margin-bottom: 8px;"></div>
-                                <div style="display: flex; flex-direction: column; gap: 7px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#bd0026;"></div>High / Critical</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#fc4e2a;"></div>Moderate-High</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#feb24c;"></div>Moderate</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#ffeda0;"></div>Low Cases</div></div>
-                                    <div style="display: flex; justify-content: space-between; align-items: center;"><div style="display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: #334155; font-weight: 500;"><div style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #999; flex-shrink: 0; background-color:#ebedef;"></div>Zero Cases</div></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    """
-                    
-                    class PureHTMLOverlay(MacroElement):
-                        def __init__(self, html):
-                            super().__init__()
-                            self.html = html
+    # FRAGMENT CALL 
+    if mapping_df is not None:
+        interactive_dashboard_fragment(mapping_df, geo_data)
 
-                        _template = Template("""
-                            {% macro script(this, kwargs) %}
-                                var overlayWrapper = document.createElement('div');
-                                overlayWrapper.innerHTML = `{{ this.html }}`;
-                                
-                                document.body.appendChild(overlayWrapper.firstElementChild);
-                                
-                                var el = document.getElementById('independent-overlay');
-                                L.DomEvent.disableClickPropagation(el);
-                                L.DomEvent.disableScrollPropagation(el);
-                            {% endmacro %}
-                        """)
-                    
-                    m.add_child(PureHTMLOverlay(pure_html_legend))
-
-                    # Map height fixed at 720
-                    components.html(m._repr_html_(), height=720)
-
-            # --- ROW 5: DATA TABLE WITH EXPORT ---
-            with st.container(border=True):
-                col_t1, col_t2 = st.columns([8, 2], vertical_alignment="bottom")
-                with col_t1: st.markdown("### 📋 Patient Details Database")
-                with col_t2:
-                    csv_data = filtered_df.to_csv(index=False).encode('utf-8')
-                    st.download_button(label="📥 Export CSV Data", data=csv_data, file_name="NMC_Health_Report.csv", mime="text/csv", use_container_width=True)
-
-                display_df = filtered_df.copy()
-                if 'Date' in display_df.columns: display_df['Date'] = display_df['Date'].dt.strftime('%d/%m/%Y') 
-                st.dataframe(display_df, use_container_width=True, hide_index=True)
-
-        interactive_dashboard_fragment(patient_df, mapping_df, geo_data, min_date, max_date, data_source)
-
-        # --- PROFESSIONAL FOOTER ---
-        st.markdown("""
-            <div class="footer-container">
-                <div><b>Nagpur Municipal Corporation (NMC)</b> - Disease Surveillance Portal</div>
-                <div style="margin-top: 4px; color: #64748b;">Designed & Developed by <b>Harsh Wardhan Chandel</b> (Technical Officer I.T., MSU Nagpur)</div>
-            </div>
-        """, unsafe_allow_html=True)
+    # --- PROFESSIONAL FOOTER ---
+    st.markdown("""
+        <div class="footer-container">
+            <div><b>Nagpur Municipal Corporation (NMC)</b> - Disease Surveillance Portal</div>
+            <div style="margin-top: 4px; color: #64748b;">Designed & Developed by <b>Harsh Wardhan Chandel</b> (Technical Officer I.T., MSU Nagpur)</div>
+        </div>
+    """, unsafe_allow_html=True)
